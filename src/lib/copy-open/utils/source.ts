@@ -1,13 +1,16 @@
 import type { ElementInfo } from 'element-source';
 
 import type { InspectorHoverInfo, InspectorRuntimeOptions } from '../types';
+import { clampNumber, getElementTextPreview, getTagLabel } from './dom';
 import { buildVsCodeUrl } from './path';
 
 export const NO_SOURCE_VALUE = 'no-source-found';
 
 const VIEWPORT_GUTTER = 8;
-const MAX_HOVER_CARD_WIDTH = 560;
-const HOVER_CARD_OFFSET = 42;
+const MAX_HOVER_CARD_WIDTH = 312;
+const HOVER_CARD_HEIGHT = 38;
+const HOVER_CARD_OFFSET_X = 10;
+const HOVER_CARD_OFFSET_Y = 34;
 
 export const shortenPath = (filePath: string) => filePath.split('/').slice(-1)[0] ?? filePath;
 
@@ -26,6 +29,22 @@ export const buildCopyText = (
 	return `${summary}\n${filePath}`;
 };
 
+const truncateText = (value: string, maxLength = 52) => {
+	if (value.length <= maxLength) return value;
+	return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+};
+
+const buildHoverTargetLabel = (target: Element) => {
+	const label = getTagLabel(target.tagName);
+	const textPreview = truncateText(getElementTextPreview(target));
+
+	if (!textPreview) {
+		return label;
+	}
+
+	return `${label}: "${textPreview}"`;
+};
+
 const clampCardLeft = (left: number) => {
 	if (typeof window === 'undefined') return Math.max(VIEWPORT_GUTTER, left);
 
@@ -34,13 +53,34 @@ const clampCardLeft = (left: number) => {
 	return Math.min(Math.max(VIEWPORT_GUTTER, left), maxLeft);
 };
 
+const clampCardTop = (top: number) => {
+	if (typeof window === 'undefined') return Math.max(VIEWPORT_GUTTER, top);
+
+	const maxTop = Math.max(VIEWPORT_GUTTER, window.innerHeight - HOVER_CARD_HEIGHT - VIEWPORT_GUTTER);
+	return clampNumber(top, VIEWPORT_GUTTER, maxTop);
+};
+
+export const getHoverGeometry = (target: Element, clientX: number, clientY: number) => {
+	const rect = target.getBoundingClientRect();
+
+	return {
+		left: rect.left,
+		top: rect.top,
+		width: rect.width,
+		height: rect.height,
+		cardLeft: clampCardLeft(clientX + HOVER_CARD_OFFSET_X),
+		cardTop: clampCardTop(clientY - HOVER_CARD_OFFSET_Y)
+	};
+};
+
 export const buildHoverInfo = (
 	target: Element,
 	elementInfo: ElementInfo,
+	clientX: number,
+	clientY: number,
 	options: Pick<InspectorRuntimeOptions, 'workspaceRoot' | 'vscodeScheme'>
 ): InspectorHoverInfo => {
 	const source = elementInfo.source;
-	const rect = target.getBoundingClientRect();
 	const filePath = source?.filePath ?? NO_SOURCE_VALUE;
 	const shortFileName = filePath === NO_SOURCE_VALUE ? NO_SOURCE_VALUE : shortenPath(filePath);
 	const copyText = buildCopyText(
@@ -60,19 +100,17 @@ export const buildHoverInfo = (
 					options.workspaceRoot,
 					options.vscodeScheme
 				);
+	const geometry = getHoverGeometry(target, clientX, clientY);
 
 	return {
 		componentName: elementInfo.componentName,
+		tagName: target.tagName.toLowerCase(),
+		targetLabel: buildHoverTargetLabel(target),
 		filePath,
 		shortFileName,
 		lineNumber: source?.lineNumber ?? null,
 		columnNumber: source?.columnNumber ?? null,
-		left: rect.left,
-		top: rect.top,
-		width: rect.width,
-		height: rect.height,
-		cardLeft: clampCardLeft(rect.left),
-		cardTop: Math.max(VIEWPORT_GUTTER, rect.top - HOVER_CARD_OFFSET),
+		...geometry,
 		copyText,
 		vscodeUrl,
 		canCopy: filePath !== NO_SOURCE_VALUE,
