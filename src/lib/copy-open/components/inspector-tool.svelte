@@ -69,6 +69,7 @@
 	};
 
 	const settingsPanelWidth = `${EXPANDED_TOOLBAR_WIDTH}px`;
+	const getNoteCountLabel = () => (notes.length > 99 ? '99+' : `${notes.length}`);
 </script>
 
 <div
@@ -278,6 +279,9 @@
 				onclick={onToggleToolbar}
 			>
 				<PanelBottom size={20} />
+				{#if notes.length > 0}
+					<span class="launcher-badge" data-inspector-ui>{getNoteCountLabel()}</span>
+				{/if}
 			</button>
 		</div>
 	{/if}
@@ -311,6 +315,7 @@
 	}
 
 	.launcher-button {
+		position: relative;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -326,6 +331,28 @@
 			transform 180ms ease,
 			box-shadow 180ms ease,
 			background 180ms ease;
+	}
+
+	.launcher-badge {
+		position: absolute;
+		top: -4px;
+		right: -4px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 22px;
+		height: 22px;
+		padding: 0 6px;
+		border: 2px solid var(--inspector-toolbar-surface);
+		border-radius: 999px;
+		background: var(--inspector-marker-color);
+		color: var(--inspector-marker-foreground);
+		box-shadow: 0 8px 18px rgba(8, 10, 15, 0.2);
+		font-size: 0.71rem;
+		font-weight: 700;
+		line-height: 1;
+		letter-spacing: -0.01em;
+		pointer-events: none;
 	}
 
 	.launcher-button:hover {

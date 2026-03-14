@@ -19,9 +19,9 @@ const TOOLBAR_MARGIN = 8;
 export const COLLAPSED_TOOLBAR_SIZE = 52;
 export const EXPANDED_TOOLBAR_WIDTH = 266;
 export const EXPANDED_TOOLBAR_HEIGHT = 52;
-const COMPOSER_WIDTH = 350;
+const COMPOSER_WIDTH = 328;
 const COMPOSER_HEIGHT = 186;
-const PANEL_GAP = 14;
+const PANEL_GAP = 24;
 
 export const DEFAULT_MARKER_COLORS = [
 	'#6157F4',
@@ -38,6 +38,41 @@ export const DEFAULT_NOTES_SETTINGS: NotesSettings = {
 	themeMode: 'dark',
 	blockPageInteractions: true,
 	outputDetail: 'standard'
+};
+
+const normalizeHexColor = (value: string) => {
+	const normalized = value.trim();
+	if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)) return null;
+
+	if (normalized.length === 4) {
+		return `#${normalized
+			.slice(1)
+			.split('')
+			.map((segment) => `${segment}${segment}`)
+			.join('')}`.toUpperCase();
+	}
+
+	return normalized.toUpperCase();
+};
+
+const hexToRgb = (value: string) => {
+	const normalized = normalizeHexColor(value);
+	if (!normalized) return null;
+
+	const numeric = Number.parseInt(normalized.slice(1), 16);
+	return {
+		r: (numeric >> 16) & 255,
+		g: (numeric >> 8) & 255,
+		b: numeric & 255
+	};
+};
+
+const rgbToRgba = (value: { r: number; g: number; b: number }, alpha: number) =>
+	`rgba(${value.r}, ${value.g}, ${value.b}, ${alpha})`;
+
+const getReadableOnColor = (value: { r: number; g: number; b: number }) => {
+	const luminance = (0.2126 * value.r + 0.7152 * value.g + 0.0722 * value.b) / 255;
+	return luminance > 0.62 ? '#17181C' : '#FFFFFF';
 };
 
 const readStoredJson = <Value>(key: string) => {
@@ -173,6 +208,25 @@ export const writeStoredMarkerColor = (markerColor: string) => {
 	writeStoredJson(MARKER_COLOR_STORAGE_KEY, markerColor);
 };
 
+export const buildMarkerOutlineVars = (markerColor: string) => {
+	const rgb = hexToRgb(markerColor);
+	if (!rgb) {
+		return {
+			border: 'rgba(20, 206, 76, 0.82)',
+			background: 'rgba(20, 206, 76, 0.08)',
+			inner: 'rgba(20, 206, 76, 0.12)',
+			foreground: '#FFFFFF'
+		};
+	}
+
+	return {
+		border: rgbToRgba(rgb, 0.82),
+		background: rgbToRgba(rgb, 0.08),
+		inner: rgbToRgba(rgb, 0.12),
+		foreground: getReadableOnColor(rgb)
+	};
+};
+
 export const readStoredSettings = () => {
 	const storedSettings = readStoredJson<Partial<NotesSettings>>(SETTINGS_STORAGE_KEY);
 	if (!storedSettings) return DEFAULT_NOTES_SETTINGS;
@@ -270,17 +324,14 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 export const getComposerPosition = (markerLeft: number, markerTop: number) => {
 	if (typeof window === 'undefined') {
 		return {
-			panelLeft: markerLeft,
+			panelLeft: markerLeft - COMPOSER_WIDTH / 2,
 			panelTop: markerTop + PANEL_GAP
 		};
 	}
 
-	let panelLeft = markerLeft + 18;
-	if (panelLeft + COMPOSER_WIDTH > window.innerWidth - 16) {
-		panelLeft = markerLeft - COMPOSER_WIDTH + 18;
-	}
+	let panelLeft = markerLeft - COMPOSER_WIDTH / 2;
 
-	let panelTop = markerTop + 18;
+	let panelTop = markerTop + PANEL_GAP;
 	if (panelTop + COMPOSER_HEIGHT > window.innerHeight - 16) {
 		panelTop = markerTop - COMPOSER_HEIGHT - PANEL_GAP;
 	}

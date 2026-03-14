@@ -143,9 +143,10 @@
 		position: fixed;
 		z-index: 9996;
 		box-sizing: border-box;
-		border: 1.5px solid rgba(20, 206, 76, 0.82);
+		border: 1.5px solid var(--inspector-outline-border);
 		border-radius: 4px;
-		background: rgba(20, 206, 76, 0.08);
+		background: var(--inspector-outline-bg);
+		box-shadow: 0 0 0 1px var(--inspector-outline-inner) inset;
 		pointer-events: none;
 	}
 
@@ -161,7 +162,7 @@
 		border: none;
 		border-radius: 10px;
 		background: var(--inspector-marker-color);
-		color: #ffffff;
+		color: var(--inspector-marker-foreground);
 		box-shadow: var(--inspector-shadow-overlay);
 		transform: translate(-50%, -50%);
 		pointer-events: none;
@@ -176,12 +177,12 @@
 	.composer {
 		position: fixed;
 		z-index: 9999;
-		width: min(332px, calc(100vw - 28px));
-		padding: 12px 12px 11px;
-		border: 1px solid var(--inspector-border);
-		border-radius: 20px;
-		background: var(--inspector-overlay-surface);
-		box-shadow: var(--inspector-shadow-panel);
+		width: min(328px, calc(100vw - 28px));
+		padding: 10px 10px 9px;
+		border: 1px solid var(--inspector-composer-border);
+		border-radius: 18px;
+		background: var(--inspector-composer-surface);
+		box-shadow: var(--inspector-shadow-composer);
 		backdrop-filter: blur(18px);
 	}
 
@@ -189,8 +190,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 10px;
-		margin-bottom: 10px;
+		gap: 8px;
+		margin-bottom: 8px;
 	}
 
 	.target-label {
@@ -199,7 +200,7 @@
 		gap: 5px;
 		min-width: 0;
 		color: var(--inspector-text-muted);
-		font-size: 0.82rem;
+		font-size: 0.8rem;
 		font-style: italic;
 	}
 
@@ -211,15 +212,15 @@
 
 	.composer-input {
 		width: 100%;
-		min-height: 66px;
-		padding: 12px 13px;
+		min-height: 62px;
+		padding: 10px 11px;
 		border: 1px solid var(--inspector-accent);
 		border-radius: 12px;
-		background: var(--inspector-input-surface);
+		background: var(--inspector-composer-input-surface);
 		color: var(--inspector-text-primary);
 		font: inherit;
-		font-size: 0.86rem;
-		line-height: 1.38;
+		font-size: 0.84rem;
+		line-height: 1.34;
 		resize: none;
 		outline: none;
 		box-sizing: border-box;
@@ -233,8 +234,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 10px;
-		margin-top: 10px;
+		gap: 8px;
+		margin-top: 8px;
 	}
 
 	.delete-button,
@@ -266,16 +267,16 @@
 
 	.cancel-button {
 		color: var(--inspector-text-muted);
-		font-size: 0.84rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 	}
 
 	.submit-button {
-		padding: 9px 17px;
+		padding: 8px 16px;
 		border-radius: 999px;
-		background: var(--inspector-success);
-		color: #ffffff;
-		font-size: 0.84rem;
+		background: var(--inspector-marker-color);
+		color: var(--inspector-marker-foreground);
+		font-size: 0.82rem;
 		font-weight: 700;
 	}
 

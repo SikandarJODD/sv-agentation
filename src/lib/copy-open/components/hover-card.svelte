@@ -58,10 +58,10 @@
 		position: fixed;
 		z-index: 9998;
 		box-sizing: border-box;
-		border: 1px solid rgba(20, 206, 76, 0.78);
+		border: 1px solid var(--inspector-outline-border);
 		border-radius: 6px;
-		background: rgba(20, 206, 76, 0.06);
-		box-shadow: 0 0 0 1px rgba(20, 206, 76, 0.12) inset;
+		background: var(--inspector-outline-bg);
+		box-shadow: 0 0 0 1px var(--inspector-outline-inner) inset;
 		pointer-events: none;
 		transition:
 			left 180ms cubic-bezier(0.22, 1, 0.36, 1),

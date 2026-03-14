@@ -179,16 +179,9 @@ export class CopyOpenController {
 
 	toggle = () => {
 		this.enabled = !this.enabled;
-		const nextPosition = this.toolbar.expanded
-			? this.toolbar.position
-			: alignToolbarPositionForStateChange(this.toolbar.position, false, true);
-
 		this.#setToolbar({
-			expanded: true,
-			confirmDeleteAll: false,
-			position: nextPosition
+			confirmDeleteAll: false
 		});
-		writeStoredToolbarPosition(nextPosition);
 
 		if (!this.enabled) {
 			this.closeComposer();

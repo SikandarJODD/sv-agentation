@@ -7,6 +7,7 @@
 	import NoteComposer from './components/note-composer.svelte';
 	import NoteMarkers from './components/note-markers.svelte';
 	import type { InspectorProps } from './types';
+	import { buildMarkerOutlineVars } from './utils/notes';
 
 	let {
 		workspaceRoot = null,
@@ -16,6 +17,16 @@
 	}: InspectorProps = $props();
 
 	const controller = new CopyOpenController();
+	const getInspectorThemeStyle = (markerColor: string) => {
+		const outline = buildMarkerOutlineVars(markerColor);
+		return [
+			`--inspector-marker-color:${markerColor}`,
+			`--inspector-marker-foreground:${outline.foreground}`,
+			`--inspector-outline-border:${outline.border}`,
+			`--inspector-outline-bg:${outline.background}`,
+			`--inspector-outline-inner:${outline.inner}`
+		].join(';');
+	};
 
 	$effect(() => {
 		controller.updateOptions({
@@ -46,7 +57,7 @@
 	class:theme-light={controller.settings.themeMode === 'light'}
 	class="inspector-root"
 	data-inspector-ui
-	style={`--inspector-marker-color:${controller.settings.markerColor};`}
+	style={getInspectorThemeStyle(controller.settings.markerColor)}
 >
 	<InspectorTool
 		active={controller.enabled}
@@ -102,17 +113,17 @@
 		--inspector-success-soft: rgba(20, 206, 76, 0.12);
 		--inspector-danger: #ff7b73;
 		--inspector-danger-soft: rgba(255, 69, 58, 0.12);
-		--inspector-outline-border: rgba(20, 206, 76, 0.78);
-		--inspector-outline-bg: rgba(20, 206, 76, 0.06);
-		--inspector-outline-inner: rgba(20, 206, 76, 0.12);
 	}
 
 	.inspector-root.theme-dark {
 		--inspector-toolbar-surface: rgba(28, 28, 30, 0.98);
 		--inspector-panel-surface: rgba(29, 29, 31, 0.98);
 		--inspector-overlay-surface: rgba(28, 28, 30, 0.98);
+		--inspector-composer-surface: rgba(29, 29, 31, 0.985);
 		--inspector-input-surface: rgba(37, 37, 40, 1);
+		--inspector-composer-input-surface: rgba(37, 37, 40, 1);
 		--inspector-border: rgba(255, 255, 255, 0.08);
+		--inspector-composer-border: rgba(255, 255, 255, 0.08);
 		--inspector-border-strong: rgba(255, 255, 255, 0.12);
 		--inspector-divider: rgba(255, 255, 255, 0.1);
 		--inspector-text-primary: rgba(255, 255, 255, 0.94);
@@ -130,6 +141,9 @@
 		--inspector-shadow-panel:
 			0 20px 40px rgba(0, 0, 0, 0.2),
 			0 12px 20px rgba(0, 0, 0, 0.12);
+		--inspector-shadow-composer:
+			0 18px 34px rgba(0, 0, 0, 0.2),
+			0 10px 18px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-overlay: 0 12px 22px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-marker: 0 4px 10px rgba(0, 0, 0, 0.08);
 		--inspector-marker-border: rgba(255, 255, 255, 0.92);
@@ -143,8 +157,11 @@
 		--inspector-toolbar-surface: rgba(255, 255, 255, 0.98);
 		--inspector-panel-surface: rgba(247, 246, 242, 0.98);
 		--inspector-overlay-surface: rgba(255, 255, 255, 0.98);
+		--inspector-composer-surface: rgba(255, 255, 255, 0.985);
 		--inspector-input-surface: rgba(242, 241, 237, 1);
+		--inspector-composer-input-surface: rgba(255, 255, 255, 1);
 		--inspector-border: rgba(15, 23, 42, 0.08);
+		--inspector-composer-border: rgba(15, 23, 42, 0.12);
 		--inspector-border-strong: rgba(15, 23, 42, 0.14);
 		--inspector-divider: rgba(15, 23, 42, 0.1);
 		--inspector-text-primary: #17181c;
@@ -162,6 +179,9 @@
 		--inspector-shadow-panel:
 			0 20px 40px rgba(15, 23, 42, 0.08),
 			0 10px 18px rgba(15, 23, 42, 0.06);
+		--inspector-shadow-composer:
+			0 16px 28px rgba(15, 23, 42, 0.1),
+			0 8px 16px rgba(15, 23, 42, 0.06);
 		--inspector-shadow-overlay: 0 12px 22px rgba(15, 23, 42, 0.08);
 		--inspector-shadow-marker: 0 4px 10px rgba(15, 23, 42, 0.1);
 		--inspector-marker-border: rgba(15, 23, 42, 0.18);
