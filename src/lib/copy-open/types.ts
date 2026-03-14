@@ -50,9 +50,11 @@ export interface ToolbarCoordinates {
 }
 
 export type OutputDetail = 'standard' | 'detailed';
+export type ThemeMode = 'dark' | 'light';
 
 export interface NotesSettings {
 	markerColor: string;
+	themeMode: ThemeMode;
 	blockPageInteractions: boolean;
 	outputDetail: OutputDetail;
 }
@@ -78,7 +80,7 @@ export interface ElementNoteAnchor {
 export interface InspectorNote {
 	id: string;
 	note: string;
-	color: string;
+	color?: string;
 	targetSummary: string;
 	componentName: string | null;
 	tagName: string;

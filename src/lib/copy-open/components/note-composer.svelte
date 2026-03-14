@@ -160,11 +160,9 @@
 		padding: 0;
 		border: none;
 		border-radius: 10px;
-		background: #14ce4c;
+		background: var(--inspector-marker-color);
 		color: #ffffff;
-		box-shadow:
-			0 10px 24px rgba(20, 206, 76, 0.28),
-			0 4px 12px rgba(0, 0, 0, 0.16);
+		box-shadow: var(--inspector-shadow-overlay);
 		transform: translate(-50%, -50%);
 		pointer-events: none;
 	}
@@ -180,12 +178,10 @@
 		z-index: 9999;
 		width: min(332px, calc(100vw - 28px));
 		padding: 12px 12px 11px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--inspector-border);
 		border-radius: 20px;
-		background: rgba(28, 28, 30, 0.98);
-		box-shadow:
-			0 22px 42px rgba(0, 0, 0, 0.22),
-			0 12px 20px rgba(0, 0, 0, 0.14);
+		background: var(--inspector-overlay-surface);
+		box-shadow: var(--inspector-shadow-panel);
 		backdrop-filter: blur(18px);
 	}
 
@@ -202,7 +198,7 @@
 		align-items: center;
 		gap: 5px;
 		min-width: 0;
-		color: rgba(255, 255, 255, 0.56);
+		color: var(--inspector-text-muted);
 		font-size: 0.82rem;
 		font-style: italic;
 	}
@@ -217,10 +213,10 @@
 		width: 100%;
 		min-height: 66px;
 		padding: 12px 13px;
-		border: 1px solid rgba(10, 132, 255, 0.94);
+		border: 1px solid var(--inspector-accent);
 		border-radius: 12px;
-		background: rgba(37, 37, 40, 1);
-		color: #ffffff;
+		background: var(--inspector-input-surface);
+		color: var(--inspector-text-primary);
 		font: inherit;
 		font-size: 0.86rem;
 		line-height: 1.38;
@@ -230,7 +226,7 @@
 	}
 
 	.composer-input::placeholder {
-		color: rgba(255, 255, 255, 0.35);
+		color: var(--inspector-text-subtle);
 	}
 
 	.composer-actions {
@@ -261,15 +257,15 @@
 		height: 32px;
 		margin-right: auto;
 		border-radius: 999px;
-		color: rgba(255, 123, 115, 0.92);
+		color: var(--inspector-danger);
 	}
 
 	.delete-button:hover {
-		background: rgba(255, 69, 58, 0.1);
+		background: var(--inspector-danger-soft);
 	}
 
 	.cancel-button {
-		color: rgba(255, 255, 255, 0.56);
+		color: var(--inspector-text-muted);
 		font-size: 0.84rem;
 		font-weight: 600;
 	}
@@ -277,7 +273,7 @@
 	.submit-button {
 		padding: 9px 17px;
 		border-radius: 999px;
-		background: #14ce4c;
+		background: var(--inspector-success);
 		color: #ffffff;
 		font-size: 0.84rem;
 		font-weight: 700;
@@ -288,8 +284,8 @@
 	}
 
 	.submit-button:disabled {
-		background: rgba(255, 255, 255, 0.12);
-		color: rgba(255, 255, 255, 0.4);
+		background: var(--inspector-surface-soft);
+		color: var(--inspector-text-subtle);
 		cursor: not-allowed;
 		transform: none;
 	}

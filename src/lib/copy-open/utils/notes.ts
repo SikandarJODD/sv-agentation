@@ -3,6 +3,7 @@ import type {
 	NotesSettings,
 	RenderedInspectorNote,
 	ResolvedNotePosition,
+	ThemeMode,
 	ToolbarCoordinates
 } from '../types';
 import { clampNumber, getElementTextPreview, getTagLabel, resolveDomPath } from './dom';
@@ -11,6 +12,8 @@ const STORAGE_PREFIX = 'copy-open';
 const TOOLBAR_POSITION_STORAGE_KEY = `${STORAGE_PREFIX}:toolbar-position:v1`;
 const SETTINGS_STORAGE_KEY = `${STORAGE_PREFIX}:settings:v1`;
 const NOTES_STORAGE_PREFIX = `${STORAGE_PREFIX}:notes:v1:`;
+const THEME_MODE_STORAGE_KEY = 'sv-agentation-theme-mode';
+const MARKER_COLOR_STORAGE_KEY = 'sv-agentation-marker-color';
 
 const TOOLBAR_MARGIN = 8;
 export const COLLAPSED_TOOLBAR_SIZE = 52;
@@ -32,6 +35,7 @@ export const DEFAULT_MARKER_COLORS = [
 
 export const DEFAULT_NOTES_SETTINGS: NotesSettings = {
 	markerColor: '#14CE4C',
+	themeMode: 'dark',
 	blockPageInteractions: true,
 	outputDetail: 'standard'
 };
@@ -140,25 +144,58 @@ export const writeStoredToolbarPosition = (position: ToolbarCoordinates) => {
 	writeStoredJson(TOOLBAR_POSITION_STORAGE_KEY, position);
 };
 
+export const readStoredThemeMode = () => {
+	const storedThemeMode = readStoredJson<string>(THEME_MODE_STORAGE_KEY);
+	if (storedThemeMode === 'dark' || storedThemeMode === 'light') {
+		return storedThemeMode as ThemeMode;
+	}
+
+	return null;
+};
+
+export const writeStoredThemeMode = (themeMode: ThemeMode) => {
+	writeStoredJson(THEME_MODE_STORAGE_KEY, themeMode);
+};
+
+export const readStoredMarkerColor = () => {
+	const storedMarkerColor = readStoredJson<string>(MARKER_COLOR_STORAGE_KEY);
+	if (
+		typeof storedMarkerColor === 'string' &&
+		DEFAULT_MARKER_COLORS.includes(storedMarkerColor as (typeof DEFAULT_MARKER_COLORS)[number])
+	) {
+		return storedMarkerColor;
+	}
+
+	return null;
+};
+
+export const writeStoredMarkerColor = (markerColor: string) => {
+	writeStoredJson(MARKER_COLOR_STORAGE_KEY, markerColor);
+};
+
 export const readStoredSettings = () => {
 	const storedSettings = readStoredJson<Partial<NotesSettings>>(SETTINGS_STORAGE_KEY);
 	if (!storedSettings) return DEFAULT_NOTES_SETTINGS;
 
 	return {
-		markerColor:
-			typeof storedSettings.markerColor === 'string'
-				? storedSettings.markerColor
-				: DEFAULT_NOTES_SETTINGS.markerColor,
+		markerColor: DEFAULT_NOTES_SETTINGS.markerColor,
+		themeMode: DEFAULT_NOTES_SETTINGS.themeMode,
 		blockPageInteractions:
 			typeof storedSettings.blockPageInteractions === 'boolean'
 				? storedSettings.blockPageInteractions
 				: DEFAULT_NOTES_SETTINGS.blockPageInteractions,
-		outputDetail: DEFAULT_NOTES_SETTINGS.outputDetail
+		outputDetail:
+			storedSettings.outputDetail === 'detailed' || storedSettings.outputDetail === 'standard'
+				? storedSettings.outputDetail
+				: DEFAULT_NOTES_SETTINGS.outputDetail
 	} satisfies NotesSettings;
 };
 
 export const writeStoredSettings = (settings: NotesSettings) => {
-	writeStoredJson(SETTINGS_STORAGE_KEY, settings);
+	writeStoredJson(SETTINGS_STORAGE_KEY, {
+		blockPageInteractions: settings.blockPageInteractions,
+		outputDetail: settings.outputDetail
+	});
 };
 
 export const readStoredNotes = (pageStorageKey: string) => {
@@ -170,7 +207,6 @@ export const readStoredNotes = (pageStorageKey: string) => {
 			typeof note?.id === 'string' &&
 			typeof note?.note === 'string' &&
 			typeof note?.targetSummary === 'string' &&
-			typeof note?.color === 'string' &&
 			typeof note?.anchor?.domPath === 'string'
 	);
 };

@@ -78,11 +78,11 @@
 		gap: 8px;
 		max-width: min(19.5rem, calc(100vw - 16px));
 		padding: 6px 8px 6px 10px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--inspector-border);
 		border-radius: 11px;
-		background: rgba(26, 26, 28, 0.98);
-		color: rgba(255, 255, 255, 0.94);
-		box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
+		background: var(--inspector-overlay-surface);
+		color: var(--inspector-text-primary);
+		box-shadow: var(--inspector-shadow-overlay);
 		backdrop-filter: blur(16px);
 		transition:
 			left 180ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -94,7 +94,7 @@
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
-		color: rgba(255, 255, 255, 0.92);
+		color: var(--inspector-text-primary);
 		font-size: 0.8rem;
 		font-style: italic;
 		font-weight: 600;
@@ -110,10 +110,10 @@
 		align-items: center;
 		padding: 0 0 0 8px;
 		border: none;
-		border-left: 1px solid rgba(255, 255, 255, 0.12);
+		border-left: 1px solid var(--inspector-divider);
 		border-radius: 0;
 		background: transparent;
-		color: rgba(255, 255, 255, 0.72);
+		color: var(--inspector-text-secondary);
 		font: inherit;
 		font-size: 0.72rem;
 		line-height: 1;
@@ -125,7 +125,7 @@
 	}
 
 	.action-button:hover:not(:disabled) {
-		color: rgba(255, 255, 255, 0.96);
+		color: var(--inspector-text-primary);
 		transform: translateY(-0.5px);
 	}
 
@@ -141,10 +141,10 @@
 		min-width: 1rem;
 		height: 1rem;
 		padding: 0 0.2rem;
-		border: 1px solid rgba(255, 255, 255, 0.12);
+		border: 1px solid var(--inspector-kbd-border);
 		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.05);
-		color: rgba(255, 255, 255, 0.8);
+		background: var(--inspector-kbd-bg);
+		color: var(--inspector-kbd-text);
 		font-size: 0.64rem;
 		font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 	}

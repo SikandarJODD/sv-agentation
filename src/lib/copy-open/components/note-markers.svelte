@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { backOut, cubicInOut } from 'svelte/easing';
 	import { fade, scale } from 'svelte/transition';
 	import { PenLine } from '@lucide/svelte';
 
@@ -33,14 +34,28 @@
 			return 'left:12px;top:12px;';
 		}
 
-		const previewWidth = 242;
+		const previewWidth = 236;
 		const left = Math.min(
-			Math.max(12, note.position.markerLeft - previewWidth + 22),
+			Math.max(12, note.position.markerLeft - previewWidth * 0.58),
 			window.innerWidth - previewWidth - 12
 		);
-		const top = Math.max(12, note.position.markerTop - 82);
+		const top = Math.max(12, note.position.markerTop - 88);
 
 		return `left:${left}px;top:${top}px;`;
+	};
+
+	const markerEnter = {
+		duration: 180,
+		start: 0.72,
+		opacity: 0,
+		easing: backOut
+	};
+
+	const markerExit = {
+		duration: 140,
+		start: 1,
+		opacity: 0,
+		easing: cubicInOut
 	};
 </script>
 
@@ -52,16 +67,15 @@
 				class:active-marker={activeNoteId === note.id}
 				class="marker"
 				data-inspector-ui
-				style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;--marker-color:${note.color};`}
-				title={note.note}
+				style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;`}
 				type="button"
 				onclick={(event) => handleOpenNote(event, note.id)}
 				onmouseenter={() => setHoveredNote(note.id)}
 				onmouseleave={() => setHoveredNote(null)}
 				onfocus={() => setHoveredNote(note.id)}
 				onblur={() => setHoveredNote(null)}
-				in:scale={{ duration: 160, start: 0.86 }}
-				out:fade={{ duration: 130 }}
+				in:scale={markerEnter}
+				out:scale={markerExit}
 			>
 				{#if hoveredNoteId === note.id || activeNoteId === note.id}
 					<PenLine size={11} />
@@ -96,16 +110,17 @@
 		width: 22px;
 		height: 22px;
 		padding: 0;
-		border: 1.5px solid rgba(255, 255, 255, 0.92);
+		border: 1.5px solid var(--inspector-marker-border);
 		border-radius: 999px;
-		background: var(--marker-color);
+		background: var(--inspector-marker-color);
 		color: #ffffff;
 		font: inherit;
 		font-size: 0.68rem;
 		font-weight: 700;
-		box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+		box-shadow: var(--inspector-shadow-marker);
 		transform: translate(-50%, -50%);
 		cursor: pointer;
+		will-change: transform, opacity;
 		transition:
 			transform 180ms ease,
 			box-shadow 180ms ease,
@@ -114,42 +129,43 @@
 
 	.marker:hover {
 		transform: translate(-50%, calc(-50% - 1px));
-		box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--inspector-shadow-overlay);
 	}
 
 	.marker.active-marker {
 		filter: saturate(1.14);
-		box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+		box-shadow: var(--inspector-shadow-overlay);
 	}
 
 	.note-preview {
 		position: fixed;
 		z-index: 9998;
-		width: min(242px, calc(100vw - 24px));
-		padding: 8px 10px 10px;
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 18px;
-		background: rgba(28, 28, 30, 0.98);
-		color: rgba(255, 255, 255, 0.92);
-		box-shadow: 0 12px 22px rgba(0, 0, 0, 0.14);
+		width: min(236px, calc(100vw - 24px));
+		padding: 9px 12px 10px;
+		border: 1px solid var(--inspector-border);
+		border-radius: 16px;
+		background: var(--inspector-overlay-surface);
+		color: var(--inspector-text-primary);
+		box-shadow: var(--inspector-shadow-overlay);
 		backdrop-filter: blur(16px);
 		pointer-events: none;
 	}
 
 	.note-preview-title {
-		margin-bottom: 5px;
+		margin-bottom: 4px;
 		overflow: hidden;
-		color: rgba(255, 255, 255, 0.56);
-		font-size: 0.8rem;
+		color: var(--inspector-text-muted);
+		font-size: 0.79rem;
 		font-style: italic;
 		font-weight: 600;
+		line-height: 1.2;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
 	.note-preview-body {
-		font-size: 0.76rem;
-		line-height: 1.32;
-		color: rgba(255, 255, 255, 0.95);
+		font-size: 0.78rem;
+		line-height: 1.28;
+		color: var(--inspector-text-primary);
 	}
 </style>

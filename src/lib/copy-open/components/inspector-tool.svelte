@@ -6,9 +6,11 @@
 		EllipsisVertical,
 		Eye,
 		EyeOff,
+		Moon,
 		PanelBottom,
 		Play,
 		Settings,
+		SunMedium,
 		Trash2,
 		X
 	} from '@lucide/svelte';
@@ -31,6 +33,7 @@
 		onToggle,
 		onToggleNotesVisibility,
 		onToggleSettings,
+		onToggleThemeMode,
 		onToggleToolbar,
 		onToolbarPointerDown
 	}: {
@@ -48,6 +51,7 @@
 		onToggle: () => void;
 		onToggleNotesVisibility: () => void;
 		onToggleSettings: () => void;
+		onToggleThemeMode: () => void;
 		onToggleToolbar: () => void;
 		onToolbarPointerDown: (event: PointerEvent) => void;
 	} = $props();
@@ -86,9 +90,21 @@
 				</div>
 				<div class="settings-meta" data-inspector-ui>
 					<span class="version" data-inspector-ui>v2.3.3</span>
-					<span class="head-icon" data-inspector-ui>
-						<Settings size={13} />
-					</span>
+					<button
+						aria-label={
+							settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+						class="theme-toggle"
+						data-inspector-ui
+						title={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+						type="button"
+						onclick={onToggleThemeMode}
+					>
+						{#if settings.themeMode === 'dark'}
+							<SunMedium size={13} />
+						{:else}
+							<Moon size={13} />
+						{/if}
+					</button>
 				</div>
 			</div>
 
@@ -300,13 +316,11 @@
 		justify-content: center;
 		width: 52px;
 		height: 52px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--inspector-border);
 		border-radius: 999px;
-		background: rgba(27, 27, 29, 0.98);
-		color: rgba(255, 255, 255, 0.92);
-		box-shadow:
-			0 18px 34px rgba(0, 0, 0, 0.18),
-			0 12px 22px rgba(0, 0, 0, 0.14);
+		background: var(--inspector-toolbar-surface);
+		color: var(--inspector-text-primary);
+		box-shadow: var(--inspector-shadow-toolbar);
 		cursor: pointer;
 		transition:
 			transform 180ms ease,
@@ -316,10 +330,8 @@
 
 	.launcher-button:hover {
 		transform: translateY(-1px);
-		box-shadow:
-			0 20px 40px rgba(0, 0, 0, 0.22),
-			0 14px 24px rgba(0, 0, 0, 0.16);
-		background: rgba(24, 24, 27, 1);
+		box-shadow: var(--inspector-shadow-panel);
+		background: var(--inspector-toolbar-surface);
 	}
 
 	.toolbar {
@@ -327,12 +339,10 @@
 		align-items: center;
 		gap: 6px;
 		padding: 7px 8px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--inspector-border);
 		border-radius: 999px;
-		background: rgba(28, 28, 30, 0.98);
-		box-shadow:
-			0 18px 34px rgba(0, 0, 0, 0.18),
-			0 12px 22px rgba(0, 0, 0, 0.14);
+		background: var(--inspector-toolbar-surface);
+		box-shadow: var(--inspector-shadow-toolbar);
 		backdrop-filter: blur(18px);
 	}
 
@@ -347,7 +357,7 @@
 		border: none;
 		border-radius: 999px;
 		background: transparent;
-		color: rgba(255, 255, 255, 0.78);
+		color: var(--inspector-text-secondary);
 		cursor: pointer;
 		transition:
 			transform 180ms ease,
@@ -358,8 +368,8 @@
 	}
 
 	.toolbar-button:hover:not(:disabled) {
-		color: rgba(255, 255, 255, 0.98);
-		background: rgba(255, 255, 255, 0.06);
+		color: var(--inspector-text-primary);
+		background: var(--inspector-toolbar-hover);
 	}
 
 	.toolbar-button:disabled {
@@ -368,26 +378,26 @@
 	}
 
 	.toolbar-button.primary.active-button {
-		background: rgba(10, 132, 255, 0.22);
-		color: #45a3ff;
-		box-shadow: inset 0 0 0 1px rgba(69, 163, 255, 0.3);
+		background: var(--inspector-accent-soft);
+		color: var(--inspector-accent-text);
+		box-shadow: inset 0 0 0 1px var(--inspector-accent-border);
 	}
 
 	.toolbar-button.active-pane {
-		background: rgba(255, 255, 255, 0.08);
-		color: rgba(255, 255, 255, 0.96);
+		background: var(--inspector-surface-soft);
+		color: var(--inspector-text-primary);
 	}
 
 	.flash-button {
-		background: rgba(20, 206, 76, 0.12);
-		color: #79ef9f;
+		background: var(--inspector-success-soft);
+		color: var(--inspector-success);
 		box-shadow: inset 0 0 0 1px rgba(20, 206, 76, 0.22);
 	}
 
 	.divider {
 		width: 1px;
 		height: 18px;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--inspector-divider);
 	}
 
 	.panel {
@@ -396,13 +406,11 @@
 		left: 0;
 		width: min(340px, calc(100vw - 40px));
 		padding: 18px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--inspector-border);
 		border-radius: 22px;
-		background: rgba(29, 29, 31, 0.98);
-		color: rgba(255, 255, 255, 0.9);
-		box-shadow:
-			0 20px 40px rgba(0, 0, 0, 0.2),
-			0 12px 20px rgba(0, 0, 0, 0.12);
+		background: var(--inspector-panel-surface);
+		color: var(--inspector-text-primary);
+		box-shadow: var(--inspector-shadow-panel);
 		backdrop-filter: blur(18px);
 	}
 
@@ -431,7 +439,7 @@
 
 	.version {
 		font-size: 0.76rem;
-		color: rgba(255, 255, 255, 0.52);
+		color: var(--inspector-text-muted);
 	}
 
 	.brand {
@@ -452,11 +460,29 @@
 		gap: 8px;
 	}
 
-	.head-icon {
+	.theme-toggle {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		color: rgba(255, 255, 255, 0.34);
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		border: 1px solid var(--inspector-border);
+		border-radius: 999px;
+		background: var(--inspector-surface-soft);
+		color: var(--inspector-text-muted);
+		cursor: pointer;
+		transition:
+			color 160ms ease,
+			background 160ms ease,
+			border-color 160ms ease,
+			transform 160ms ease;
+	}
+
+	.theme-toggle:hover {
+		color: var(--inspector-text-primary);
+		background: var(--inspector-toolbar-hover);
+		transform: translateY(-0.5px);
 	}
 
 	.settings-list,
@@ -483,19 +509,19 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		color: rgba(255, 255, 255, 0.88);
+		color: var(--inspector-text-primary);
 		font-weight: 600;
 	}
 
 	.settings-label {
 		font-size: 0.84rem;
-		color: rgba(255, 255, 255, 0.7);
+		color: var(--inspector-text-muted);
 	}
 
 	.settings-divider {
 		width: 100%;
 		height: 1px;
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--inspector-divider);
 	}
 
 	.color-row {
@@ -540,9 +566,9 @@
 		width: 16px;
 		height: 16px;
 		margin: 0;
-		border: 1px solid rgba(255, 255, 255, 0.18);
+		border: 1px solid var(--inspector-checkbox-border);
 		border-radius: 4px;
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--inspector-checkbox-bg);
 		appearance: none;
 		cursor: pointer;
 		transition:
@@ -552,8 +578,8 @@
 	}
 
 	.settings-checkbox:checked {
-		border-color: rgba(255, 255, 255, 0.94);
-		background: rgba(255, 255, 255, 0.94);
+		border-color: var(--inspector-checkbox-checked-bg);
+		background: var(--inspector-checkbox-checked-bg);
 		box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 	}
 
@@ -564,8 +590,8 @@
 		top: 1px;
 		width: 4px;
 		height: 8px;
-		border-right: 1.5px solid #111111;
-		border-bottom: 1.5px solid #111111;
+		border-right: 1.5px solid var(--inspector-checkbox-check);
+		border-bottom: 1.5px solid var(--inspector-checkbox-check);
 		transform: rotate(45deg);
 	}
 
@@ -573,7 +599,7 @@
 		margin: 0;
 		font-size: 0.92rem;
 		line-height: 1.5;
-		color: rgba(255, 255, 255, 0.7);
+		color: var(--inspector-text-muted);
 	}
 
 	.confirm-actions {
@@ -595,11 +621,11 @@
 	}
 
 	.text-action {
-		color: rgba(255, 255, 255, 0.62);
+		color: var(--inspector-text-muted);
 	}
 
 	.danger-action {
-		color: #ff7b73;
+		color: var(--inspector-danger);
 		font-weight: 600;
 	}
 

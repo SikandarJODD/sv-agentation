@@ -23,12 +23,16 @@ import {
 	formatNotesAsMarkdown,
 	getComposerPosition,
 	getPageStorageKey,
+	readStoredMarkerColor,
 	readStoredNotes,
 	readStoredSettings,
+	readStoredThemeMode,
 	readStoredToolbarPosition,
 	renderNote,
+	writeStoredMarkerColor,
 	writeStoredNotes,
 	writeStoredSettings,
+	writeStoredThemeMode,
 	writeStoredToolbarPosition
 } from './utils/notes';
 import { buildHoverInfo, getHoverGeometry } from './utils/source';
@@ -138,7 +142,18 @@ export class CopyOpenController {
 				...this.toolbar,
 				position: readStoredToolbarPosition()
 			};
-			this.settings = readStoredSettings();
+			const storedSettings = readStoredSettings();
+			const themeMode = readStoredThemeMode() ?? DEFAULT_NOTES_SETTINGS.themeMode;
+			const markerColor = readStoredMarkerColor() ?? DEFAULT_NOTES_SETTINGS.markerColor;
+
+			writeStoredThemeMode(themeMode);
+			writeStoredMarkerColor(markerColor);
+
+			this.settings = {
+				...storedSettings,
+				themeMode,
+				markerColor
+			};
 			this.notes = readStoredNotes(this.#pageStorageKey);
 			this.refreshRenderedNotes();
 		}
@@ -222,11 +237,7 @@ export class CopyOpenController {
 	};
 
 	requestDeleteAll = () => {
-		this.#setToolbar({
-			expanded: true,
-			settingsOpen: false,
-			confirmDeleteAll: !this.toolbar.confirmDeleteAll
-		});
+		this.confirmDeleteAll();
 	};
 
 	cancelDeleteAll = () => {
@@ -253,7 +264,7 @@ export class CopyOpenController {
 			...this.settings,
 			markerColor: color
 		};
-		writeStoredSettings(this.settings);
+		writeStoredMarkerColor(color);
 	};
 
 	setBlockPageInteractions = (value: boolean) => {
@@ -262,6 +273,15 @@ export class CopyOpenController {
 			blockPageInteractions: value
 		};
 		writeStoredSettings(this.settings);
+	};
+
+	toggleThemeMode = () => {
+		const themeMode = this.settings.themeMode === 'dark' ? 'light' : 'dark';
+		this.settings = {
+			...this.settings,
+			themeMode
+		};
+		writeStoredThemeMode(themeMode);
 	};
 
 	handleToolbarPointerDown = (event: PointerEvent) => {
@@ -484,7 +504,6 @@ export class CopyOpenController {
 		const nextNote: InspectorNote = {
 			id: existingNote?.id ?? this.#createNoteId(),
 			note: noteText,
-			color: existingNote?.color ?? this.settings.markerColor,
 			targetSummary: this.composer.targetSummary,
 			componentName: this.composer.hoverInfo.componentName,
 			tagName: this.composer.hoverInfo.tagName,
