@@ -65,6 +65,8 @@
 			<button
 				aria-label={`Open note ${index + 1}`}
 				class:active-marker={activeNoteId === note.id}
+				class:group-marker={note.kind === 'group' || note.kind === 'area'}
+				class:unresolved-marker={note.resolution === 'unresolved'}
 				class="marker"
 				data-inspector-ui
 				style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;`}
@@ -127,6 +129,10 @@
 			filter 180ms ease;
 	}
 
+	.marker.group-marker {
+		background: var(--inspector-group-color);
+	}
+
 	.marker:hover {
 		transform: translate(-50%, calc(-50% - 1px));
 		box-shadow: var(--inspector-shadow-overlay);
@@ -135,6 +141,10 @@
 	.marker.active-marker {
 		filter: saturate(1.14);
 		box-shadow: var(--inspector-shadow-overlay);
+	}
+
+	.marker.unresolved-marker {
+		opacity: 0.78;
 	}
 
 	.note-preview {

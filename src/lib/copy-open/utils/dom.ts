@@ -1,6 +1,45 @@
 export const INSPECTOR_UI_ATTRIBUTE = 'data-inspector-ui';
 const DOM_PATH_SEPARATOR = '/';
 
+const TEXT_CURSOR_SELECTOR = [
+	'p',
+	'span',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'li',
+	'td',
+	'th',
+	'label',
+	'blockquote',
+	'figcaption',
+	'caption',
+	'legend',
+	'dt',
+	'dd',
+	'pre',
+	'code',
+	'em',
+	'strong',
+	'b',
+	'i',
+	'u',
+	's',
+	'a',
+	'time',
+	'address',
+	'cite',
+	'q',
+	'abbr',
+	'dfn',
+	'[contenteditable]'
+].join(',');
+
+const INTERACTIVE_SELECTOR = "button, a, input, select, textarea, [role='button'], [onclick]";
+
 export const isElementTarget = (target: EventTarget | null): target is Element =>
 	typeof Element !== 'undefined' && target instanceof Element;
 
@@ -12,6 +51,12 @@ export const isTypingTarget = (target: EventTarget | null) => {
 	const tagName = target.tagName.toLowerCase();
 	if (target.isContentEditable) return true;
 	return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+};
+
+export const resolveElementFromNode = (node: Node | null) => {
+	if (!node) return null;
+	if (node instanceof Element) return node;
+	return node.parentElement;
 };
 
 export const isInspectorUiTarget = (target: Element) =>
@@ -26,6 +71,10 @@ export const matchesSelectorScope = (target: Element, selector: string | null) =
 		return false;
 	}
 };
+
+export const isInteractiveElement = (target: Element) => target.closest(INTERACTIVE_SELECTOR) !== null;
+
+export const isTextCursorElement = (target: Element) => target.closest(TEXT_CURSOR_SELECTOR) !== null;
 
 export const resolveInspectableTarget = (target: EventTarget | null, selector: string | null) => {
 	if (!isElementTarget(target)) return null;
@@ -98,4 +147,19 @@ export const getTagLabel = (tagName: string) => {
 		default:
 			return normalized;
 	}
+};
+
+export const getDeepElementFromPoint = (x: number, y: number) => {
+	let element = document.elementFromPoint(x, y);
+	if (!(element instanceof HTMLElement)) return null;
+
+	while (element.shadowRoot) {
+		const deeper = element.shadowRoot.elementFromPoint(x, y);
+		if (!(deeper instanceof HTMLElement) || deeper === element) {
+			break;
+		}
+		element = deeper;
+	}
+
+	return element;
 };

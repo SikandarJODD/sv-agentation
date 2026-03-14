@@ -6,8 +6,9 @@
 	import HoverCard from './components/hover-card.svelte';
 	import NoteComposer from './components/note-composer.svelte';
 	import NoteMarkers from './components/note-markers.svelte';
+	import SelectionPreview from './components/selection-preview.svelte';
 	import type { InspectorProps } from './types';
-	import { buildMarkerOutlineVars } from './utils/notes';
+	import { buildMarkerOutlineVars, GROUP_SELECTION_COLOR } from './utils/notes';
 
 	let {
 		workspaceRoot = null,
@@ -19,12 +20,15 @@
 	const controller = new CopyOpenController();
 	const getInspectorThemeStyle = (markerColor: string) => {
 		const outline = buildMarkerOutlineVars(markerColor);
-		return [
+	return [
 			`--inspector-marker-color:${markerColor}`,
 			`--inspector-marker-foreground:${outline.foreground}`,
 			`--inspector-outline-border:${outline.border}`,
 			`--inspector-outline-bg:${outline.background}`,
-			`--inspector-outline-inner:${outline.inner}`
+			`--inspector-outline-inner:${outline.inner}`,
+			`--inspector-group-color:${GROUP_SELECTION_COLOR}`,
+			`--inspector-group-outline-border:color-mix(in srgb, ${GROUP_SELECTION_COLOR} 72%, transparent)`,
+			`--inspector-group-outline-bg:color-mix(in srgb, ${GROUP_SELECTION_COLOR} 6%, transparent)`
 		].join(';');
 	};
 
@@ -43,8 +47,12 @@
 </script>
 
 <svelte:window
+	onblur={controller.handleWindowBlur}
 	onclickcapture={controller.handleClick}
 	onkeydown={controller.handleKeyDown}
+	onkeyup={controller.handleKeyUp}
+	onmousedowncapture={controller.handleMouseDownCapture}
+	onmouseupcapture={controller.handleMouseUpCapture}
 	onpointermove={controller.handlePointerMove}
 	onpointerup={controller.handlePointerUp}
 	onpointercancel={controller.handlePointerUp}
@@ -84,6 +92,11 @@
 		notes={controller.renderedNotes}
 		onOpenNote={controller.openNote}
 		visible={controller.toolbar.notesVisible}
+	/>
+
+	<SelectionPreview
+		dragSelection={controller.dragSelection}
+		selectionPreview={controller.selectionPreview}
 	/>
 
 	<NoteComposer

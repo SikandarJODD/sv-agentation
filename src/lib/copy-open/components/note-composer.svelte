@@ -57,21 +57,35 @@
 
 	const getCanSubmit = (composerState: NoteComposerState, nextValue: string) =>
 		nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
+
+	const getOutlineClass = (composerState: NoteComposerState) =>
+		composerState.noteKind === 'group' || composerState.noteKind === 'area' ? 'outline dashed' : 'outline solid';
 </script>
 
 {#if composer}
-	<div
-		aria-hidden="true"
-		class="selected-outline"
-		data-inspector-ui
-		style={`left:${composer.targetRect.left}px;top:${composer.targetRect.top}px;width:${composer.targetRect.width}px;height:${composer.targetRect.height}px;`}
-	></div>
+	{#each composer.outlineRects as rect, index (`outline-${index}`)}
+		<div
+			aria-hidden="true"
+			class={getOutlineClass(composer)}
+			data-inspector-ui
+			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+		></div>
+	{/each}
+
+	{#each composer.highlightRects as rect, index (`highlight-${index}`)}
+		<div
+			aria-hidden="true"
+			class="highlight-rect"
+			data-inspector-ui
+			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+		></div>
+	{/each}
 
 	<button
 		aria-label="Active note anchor"
 		class="anchor-marker"
 		data-inspector-ui
-		style={`left:${composer.markerLeft}px;top:${composer.markerTop}px;`}
+		style={`left:${composer.markerLeft}px;top:${composer.markerTop}px;--composer-accent:${composer.accentColor};`}
 		type="button"
 	>
 		<span>+</span>
@@ -90,12 +104,19 @@
 			</div>
 		</div>
 
+		{#if composer.selectedText}
+			<div class="quote-block" data-inspector-ui>
+				"{composer.selectedText}"
+			</div>
+		{/if}
+
 		<textarea
 			bind:this={textareaElement}
 			class="composer-input"
 			data-inspector-ui
-			placeholder="what should change?"
-			rows="4"
+			placeholder={composer.placeholder}
+			rows="2"
+			style={`--composer-accent:${composer.accentColor};`}
 			value={value}
 			oninput={handleInput}
 			onkeydown={handleKeyDown}
@@ -129,6 +150,7 @@
 				class="submit-button"
 				data-inspector-ui
 				disabled={!getCanSubmit(composer, value)}
+				style={`--composer-accent:${composer.accentColor};`}
 				type="button"
 				onclick={handleSubmit}
 			>
@@ -139,15 +161,30 @@
 {/if}
 
 <style>
-	.selected-outline {
+	.outline,
+	.highlight-rect {
 		position: fixed;
 		z-index: 9996;
 		box-sizing: border-box;
-		border: 1.5px solid var(--inspector-outline-border);
-		border-radius: 4px;
-		background: var(--inspector-outline-bg);
-		box-shadow: 0 0 0 1px var(--inspector-outline-inner) inset;
 		pointer-events: none;
+	}
+
+	.outline.solid {
+		border: 1.5px solid color-mix(in srgb, var(--composer-accent) 70%, transparent);
+		border-radius: 4px;
+		background: color-mix(in srgb, var(--composer-accent) 5%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--composer-accent) 12%, transparent) inset;
+	}
+
+	.outline.dashed {
+		border: 2px dashed color-mix(in srgb, var(--composer-accent) 72%, transparent);
+		border-radius: 4px;
+		background: color-mix(in srgb, var(--composer-accent) 6%, transparent);
+	}
+
+	.highlight-rect {
+		border-radius: 3px;
+		background: color-mix(in srgb, var(--composer-accent) 18%, transparent);
 	}
 
 	.anchor-marker {
@@ -156,20 +193,20 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
+		width: 32px;
+		height: 32px;
 		padding: 0;
 		border: none;
-		border-radius: 10px;
-		background: var(--inspector-marker-color);
-		color: var(--inspector-marker-foreground);
+		border-radius: 8px;
+		background: var(--composer-accent);
+		color: #ffffff;
 		box-shadow: var(--inspector-shadow-overlay);
 		transform: translate(-50%, -50%);
 		pointer-events: none;
 	}
 
 	.anchor-marker span {
-		font-size: 1.2rem;
+		font-size: 1.15rem;
 		line-height: 1;
 		transform: translateY(-0.5px);
 	}
@@ -177,8 +214,8 @@
 	.composer {
 		position: fixed;
 		z-index: 9999;
-		width: min(328px, calc(100vw - 28px));
-		padding: 10px 10px 9px;
+		width: min(280px, calc(100vw - 28px));
+		padding: 12px 12px 10px;
 		border: 1px solid var(--inspector-composer-border);
 		border-radius: 18px;
 		background: var(--inspector-composer-surface);
@@ -197,11 +234,10 @@
 	.target-label {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: 4px;
 		min-width: 0;
 		color: var(--inspector-text-muted);
-		font-size: 0.8rem;
-		font-style: italic;
+		font-size: 0.76rem;
 	}
 
 	.target-label span {
@@ -210,12 +246,23 @@
 		white-space: nowrap;
 	}
 
+	.quote-block {
+		margin-bottom: 8px;
+		padding: 7px 8px;
+		border-radius: 8px;
+		background: var(--inspector-surface-soft);
+		color: var(--inspector-text-muted);
+		font-size: 0.76rem;
+		font-style: italic;
+		line-height: 1.4;
+	}
+
 	.composer-input {
 		width: 100%;
-		min-height: 62px;
+		min-height: 64px;
 		padding: 10px 11px;
-		border: 1px solid var(--inspector-accent);
-		border-radius: 12px;
+		border: 1px solid color-mix(in srgb, var(--composer-accent) 88%, transparent);
+		border-radius: 11px;
 		background: var(--inspector-composer-input-surface);
 		color: var(--inspector-text-primary);
 		font: inherit;
@@ -254,8 +301,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
+		width: 30px;
+		height: 30px;
 		margin-right: auto;
 		border-radius: 999px;
 		color: var(--inspector-danger);
@@ -274,8 +321,8 @@
 	.submit-button {
 		padding: 8px 16px;
 		border-radius: 999px;
-		background: var(--inspector-marker-color);
-		color: var(--inspector-marker-foreground);
+		background: var(--composer-accent);
+		color: #ffffff;
 		font-size: 0.82rem;
 		font-weight: 700;
 	}

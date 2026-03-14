@@ -1,12 +1,29 @@
 import type {
+	AreaInspectorNote,
+	ElementInspectorNote,
+	InspectorHoverInfo,
 	InspectorNote,
+	NoteComposerState,
+	NoteResolutionState,
+	NoteSourceInfo,
 	NotesSettings,
+	RectBox,
 	RenderedInspectorNote,
 	ResolvedNotePosition,
+	TextInspectorNote,
 	ThemeMode,
 	ToolbarCoordinates
 } from '../types';
 import { clampNumber, getElementTextPreview, getTagLabel, resolveDomPath } from './dom';
+import {
+	buildAreaSelectionAnchor,
+	buildGroupSelectionAnchor,
+	getBoundsFromRects,
+	markerFromFallback,
+	resolveAreaSelection,
+	resolveGroupSelection,
+	resolveTextSelection
+} from './selection';
 
 const STORAGE_PREFIX = 'copy-open';
 const TOOLBAR_POSITION_STORAGE_KEY = `${STORAGE_PREFIX}:toolbar-position:v1`;
@@ -19,9 +36,11 @@ const TOOLBAR_MARGIN = 8;
 export const COLLAPSED_TOOLBAR_SIZE = 52;
 export const EXPANDED_TOOLBAR_WIDTH = 266;
 export const EXPANDED_TOOLBAR_HEIGHT = 52;
-const COMPOSER_WIDTH = 328;
-const COMPOSER_HEIGHT = 186;
-const PANEL_GAP = 24;
+export const COMPOSER_WIDTH = 280;
+export const COMPOSER_HEIGHT = 180;
+const PANEL_GAP = 20;
+export const GROUP_SELECTION_COLOR = '#14CE4C';
+export const NO_SOURCE_VALUE = 'no-source-found';
 
 export const DEFAULT_MARKER_COLORS = [
 	'#6157F4',
@@ -101,6 +120,8 @@ export const truncateText = (value: string, maxLength = 40) => {
 	if (value.length <= maxLength) return value;
 	return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
 };
+
+const collapseWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 export const getPageStorageKey = () => {
 	if (typeof window === 'undefined') return 'unknown-page';
@@ -252,22 +273,141 @@ export const writeStoredSettings = (settings: NotesSettings) => {
 	});
 };
 
+const isNoteSourceInfo = (value: unknown): value is NoteSourceInfo => {
+	if (!value || typeof value !== 'object') return false;
+	const candidate = value as Partial<NoteSourceInfo>;
+	return (
+		typeof candidate.tagName === 'string' &&
+		typeof candidate.filePath === 'string' &&
+		typeof candidate.shortFileName === 'string'
+	);
+};
+
+const toLegacyElementNote = (value: unknown): InspectorNote | null => {
+	if (!value || typeof value !== 'object') return null;
+
+	const note = value as {
+		id?: unknown;
+		note?: unknown;
+		targetSummary?: unknown;
+		componentName?: unknown;
+		tagName?: unknown;
+		filePath?: unknown;
+		shortFileName?: unknown;
+		lineNumber?: unknown;
+		columnNumber?: unknown;
+		createdAt?: unknown;
+		updatedAt?: unknown;
+		anchor?: {
+			domPath?: unknown;
+			relativeX?: unknown;
+			relativeY?: unknown;
+			viewportX?: unknown;
+			viewportY?: unknown;
+		};
+		targetLabel?: unknown;
+	};
+
+	if (
+		typeof note.id !== 'string' ||
+		typeof note.note !== 'string' ||
+		typeof note.targetSummary !== 'string' ||
+		typeof note.tagName !== 'string' ||
+		typeof note.filePath !== 'string' ||
+		typeof note.shortFileName !== 'string' ||
+		typeof note.anchor?.domPath !== 'string'
+	) {
+		return null;
+	}
+
+	return {
+		id: note.id,
+		kind: 'element',
+		note: note.note,
+		targetSummary: note.targetSummary,
+		targetLabel: typeof note.targetLabel === 'string' ? note.targetLabel : note.targetSummary,
+		componentName: typeof note.componentName === 'string' ? note.componentName : null,
+		tagName: note.tagName,
+		filePath: note.filePath,
+		shortFileName: note.shortFileName,
+		lineNumber: typeof note.lineNumber === 'number' ? note.lineNumber : null,
+		columnNumber: typeof note.columnNumber === 'number' ? note.columnNumber : null,
+		createdAt: typeof note.createdAt === 'string' ? note.createdAt : new Date().toISOString(),
+		updatedAt: typeof note.updatedAt === 'string' ? note.updatedAt : new Date().toISOString(),
+		anchor: {
+			domPath: note.anchor.domPath,
+			relativeX: typeof note.anchor.relativeX === 'number' ? note.anchor.relativeX : 0.5,
+			relativeY: typeof note.anchor.relativeY === 'number' ? note.anchor.relativeY : 0.5,
+			viewportX: typeof note.anchor.viewportX === 'number' ? note.anchor.viewportX : 0,
+			viewportY: typeof note.anchor.viewportY === 'number' ? note.anchor.viewportY : 0
+		}
+	};
+};
+
+const isValidNote = (value: unknown): value is InspectorNote => {
+	if (!value || typeof value !== 'object') return false;
+	const candidate = value as Partial<InspectorNote> & Record<string, unknown>;
+
+	if (
+		typeof candidate.id !== 'string' ||
+		typeof candidate.note !== 'string' ||
+		typeof candidate.targetSummary !== 'string' ||
+		typeof candidate.targetLabel !== 'string' ||
+		typeof candidate.kind !== 'string' ||
+		typeof candidate.tagName !== 'string' ||
+		typeof candidate.filePath !== 'string' ||
+		typeof candidate.shortFileName !== 'string'
+	) {
+		return false;
+	}
+
+	switch (candidate.kind) {
+		case 'element':
+			return typeof (candidate as ElementInspectorNote).anchor?.domPath === 'string';
+		case 'text':
+			return typeof (candidate as TextInspectorNote).anchor?.commonAncestorPath === 'string';
+		case 'group':
+			return Array.isArray((candidate.anchor as { selectedDomPaths?: unknown[] })?.selectedDomPaths);
+		case 'area':
+			return typeof (candidate.anchor as { bounds?: { left?: unknown } })?.bounds?.left === 'number';
+		default:
+			return false;
+	}
+};
+
 export const readStoredNotes = (pageStorageKey: string) => {
-	const storedNotes = readStoredJson<InspectorNote[]>(buildNotesStorageKey(pageStorageKey));
+	const storedNotes = readStoredJson<unknown[]>(buildNotesStorageKey(pageStorageKey));
 	if (!Array.isArray(storedNotes)) return [] as InspectorNote[];
 
-	return storedNotes.filter(
-		(note): note is InspectorNote =>
-			typeof note?.id === 'string' &&
-			typeof note?.note === 'string' &&
-			typeof note?.targetSummary === 'string' &&
-			typeof note?.anchor?.domPath === 'string'
-	);
+	return storedNotes
+		.map((entry) => {
+			if (isValidNote(entry)) return entry;
+			return toLegacyElementNote(entry);
+		})
+		.filter((value): value is InspectorNote => value !== null);
 };
 
 export const writeStoredNotes = (pageStorageKey: string, notes: InspectorNote[]) => {
 	writeStoredJson(buildNotesStorageKey(pageStorageKey), notes);
 };
+
+export const buildSourceInfoFromHoverInfo = (hoverInfo: InspectorHoverInfo): NoteSourceInfo => ({
+	componentName: hoverInfo.componentName,
+	tagName: hoverInfo.tagName,
+	filePath: hoverInfo.filePath,
+	shortFileName: hoverInfo.shortFileName,
+	lineNumber: hoverInfo.lineNumber,
+	columnNumber: hoverInfo.columnNumber
+});
+
+export const createEmptySourceInfo = (tagName = 'area'): NoteSourceInfo => ({
+	componentName: null,
+	tagName,
+	filePath: NO_SOURCE_VALUE,
+	shortFileName: NO_SOURCE_VALUE,
+	lineNumber: null,
+	columnNumber: null
+});
 
 export const buildElementTargetSummary = (target: Element) => {
 	const label = getTagLabel(target.tagName);
@@ -291,33 +431,162 @@ export const buildElementTargetLabel = (target: Element) => {
 	return `${label}: "${textPreview}"`;
 };
 
-export const resolveNotePosition = (note: InspectorNote): ResolvedNotePosition | null => {
-	if (typeof window === 'undefined') return null;
+const buildNamedSelectionList = (targets: Element[]) =>
+	targets
+		.slice(0, 3)
+		.map((target) => buildElementTargetLabel(target))
+		.join(', ');
 
+export const buildGroupTargetSummary = (targets: Element[]) => {
+	if (targets.length === 0) return 'Selected elements';
+	if (targets.length === 1) return buildElementTargetSummary(targets[0]);
+
+	const suffix = targets.length > 3 ? ` +${targets.length - 3} more` : '';
+	return `${targets.length} elements: ${buildNamedSelectionList(targets)}${suffix}`;
+};
+
+export const buildGroupTargetLabel = (targets: Element[]) => {
+	if (targets.length === 0) return 'Selected elements';
+	if (targets.length === 1) return buildElementTargetLabel(targets[0]);
+
+	const suffix = targets.length > 3 ? ` +${targets.length - 3} more` : '';
+	return `${targets.length} elements: ${buildNamedSelectionList(targets)}${suffix}`;
+};
+
+export const buildAreaTargetSummary = () => 'Area selection';
+export const buildAreaTargetLabel = (box: RectBox) =>
+	`Area selection (${Math.round(box.width)} x ${Math.round(box.height)})`;
+
+export const buildTextTargetSummary = (target: Element, selectedText: string) => {
+	const base = buildElementTargetSummary(target);
+	const preview = truncateText(collapseWhitespace(selectedText), 48);
+	return preview ? `${base} -> "${preview}"` : base;
+};
+
+export const buildTextTargetLabel = (target: Element) => buildElementTargetLabel(target);
+
+export const getComposerPlaceholder = (kind: InspectorNote['kind'], elementCount = 1) => {
+	if (kind === 'group' && elementCount > 1) {
+		return 'Feedback for this group of elements...';
+	}
+
+	return 'What should change ?';
+};
+
+const resolveElementNotePosition = (note: ElementInspectorNote): ResolvedNotePosition | null => {
 	const target = resolveDomPath(note.anchor.domPath);
 	if (!target) return null;
 
 	const rect = target.getBoundingClientRect();
 	const markerLeft = clampNumber(rect.left + rect.width * note.anchor.relativeX, 12, window.innerWidth - 12);
 	const markerTop = clampNumber(rect.top + rect.height * note.anchor.relativeY, 12, window.innerHeight - 12);
-
-	return {
+	const bounds = {
 		left: rect.left,
 		top: rect.top,
 		width: rect.width,
-		height: rect.height,
+		height: rect.height
+	};
+
+	return {
 		markerLeft,
-		markerTop
+		markerTop,
+		bounds,
+		outlineRects: [bounds],
+		highlightRects: []
+	};
+};
+
+const resolveTextNotePosition = (note: TextInspectorNote) => {
+	const resolved = resolveTextSelection(note.anchor);
+	if (!resolved) return null;
+
+	return {
+		markerLeft: resolved.markerLeft,
+		markerTop: resolved.markerTop,
+		bounds: resolved.bounds,
+		outlineRects: resolved.bounds ? [resolved.bounds] : [],
+		highlightRects: resolved.rects
+	};
+};
+
+const resolveGroupNotePosition = (note: Extract<InspectorNote, { kind: 'group' | 'area' }>) => {
+	if (note.kind === 'group') {
+		const resolved = resolveGroupSelection(note.anchor);
+		if (!resolved) return null;
+		return {
+			position: {
+				markerLeft: resolved.markerLeft,
+				markerTop: resolved.markerTop,
+				bounds: resolved.bounds,
+				outlineRects: resolved.rects,
+				highlightRects: []
+			} satisfies ResolvedNotePosition,
+			resolution:
+				resolved.resolvedCount === note.anchor.selectedDomPaths.length ? 'resolved' : 'partial'
+		};
+	}
+
+	const resolved = resolveAreaSelection(note.anchor);
+	const position: ResolvedNotePosition = {
+		markerLeft: resolved.markerLeft,
+		markerTop: resolved.markerTop,
+		bounds: resolved.bounds,
+		outlineRects: [resolved.bounds],
+		highlightRects: []
+	};
+
+	return {
+		position,
+		resolution: 'resolved' as NoteResolutionState
 	};
 };
 
 export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
-	const position = resolveNotePosition(note);
+	if (note.kind === 'element') {
+		const position = resolveElementNotePosition(note);
+		return {
+			...note,
+			resolution: position ? 'resolved' : 'unresolved',
+			position:
+				position ??
+				{
+					markerLeft: clampNumber(note.anchor.viewportX, 12, window.innerWidth - 12),
+					markerTop: clampNumber(note.anchor.viewportY, 12, window.innerHeight - 12),
+					bounds: null,
+					outlineRects: [],
+					highlightRects: []
+				}
+		};
+	}
 
+	if (note.kind === 'text') {
+		const position = resolveTextNotePosition(note);
+		return {
+			...note,
+			resolution: position ? 'resolved' : 'unresolved',
+			position:
+				position ??
+				{
+					...markerFromFallback(note.anchor.fallbackMarker),
+					bounds: null,
+					outlineRects: [],
+					highlightRects: []
+				}
+		};
+	}
+
+	const groupResult = resolveGroupNotePosition(note);
 	return {
 		...note,
-		resolved: position !== null,
-		position
+		resolution: (groupResult?.resolution ?? 'unresolved') as NoteResolutionState,
+		position:
+			groupResult?.position ??
+			{
+				...markerFromFallback(note.anchor.fallbackMarker),
+				bounds: null,
+				outlineRects: [],
+				highlightRects: []
+			}
 	};
 };
 
@@ -330,28 +599,26 @@ export const getComposerPosition = (markerLeft: number, markerTop: number) => {
 	}
 
 	let panelLeft = markerLeft - COMPOSER_WIDTH / 2;
-
 	let panelTop = markerTop + PANEL_GAP;
-	if (panelTop + COMPOSER_HEIGHT > window.innerHeight - 16) {
+	if (panelTop + COMPOSER_HEIGHT > window.innerHeight - 20) {
 		panelTop = markerTop - COMPOSER_HEIGHT - PANEL_GAP;
 	}
 
 	return {
-		panelLeft: clampNumber(panelLeft, 16, Math.max(16, window.innerWidth - COMPOSER_WIDTH - 16)),
-		panelTop: clampNumber(panelTop, 16, Math.max(16, window.innerHeight - COMPOSER_HEIGHT - 16))
+		panelLeft: clampNumber(panelLeft, 20, Math.max(20, window.innerWidth - COMPOSER_WIDTH - 20)),
+		panelTop: clampNumber(panelTop, 20, Math.max(20, window.innerHeight - COMPOSER_HEIGHT - 20))
 	};
 };
 
 export const formatLocation = (note: InspectorNote) => {
-	if (!note.shortFileName) return 'Source unavailable';
+	if (!note.shortFileName || note.shortFileName === NO_SOURCE_VALUE) return 'Source unavailable';
 	if (note.lineNumber === null || note.columnNumber === null) return note.shortFileName;
 
 	return `${note.shortFileName}:${note.lineNumber}:${note.columnNumber}`;
 };
 
-const buildElementLocationPath = (note: InspectorNote) => {
-	const target = resolveDomPath(note.anchor.domPath);
-	if (!target) return note.tagName;
+const buildElementLocationPath = (target: Element | null, fallback: string) => {
+	if (!target) return fallback;
 
 	const segments: string[] = [];
 	let current: Element | null = target;
@@ -361,7 +628,24 @@ const buildElementLocationPath = (note: InspectorNote) => {
 		current = current.parentElement;
 	}
 
-	return segments.slice(-4).join(' > ') || note.tagName;
+	return segments.slice(-4).join(' > ') || fallback;
+};
+
+const getNoteLocationLabel = (note: InspectorNote) => {
+	switch (note.kind) {
+		case 'element':
+			return buildElementLocationPath(resolveDomPath(note.anchor.domPath), note.tagName);
+		case 'text':
+			return buildElementLocationPath(resolveDomPath(note.anchor.commonAncestorPath), note.tagName);
+		case 'group': {
+			const paths = note.anchor.selectedDomPaths
+				.map((path) => buildElementLocationPath(resolveDomPath(path), note.tagName))
+				.slice(0, 3);
+			return paths.join(' | ') || 'group selection';
+		}
+		case 'area':
+			return `area (${Math.round(note.anchor.bounds.width)} x ${Math.round(note.anchor.bounds.height)})`;
+	}
 };
 
 export const formatNotesAsMarkdown = (notes: InspectorNote[]) => {
@@ -372,14 +656,109 @@ export const formatNotesAsMarkdown = (notes: InspectorNote[]) => {
 	return [
 		'Page Feedback',
 		'',
-		...notes.flatMap((note, index) =>
-			[
+		...notes.flatMap((note, index) => {
+			const lines = [
 				`${index + 1}. ${note.targetSummary}`,
-				`Location: ${buildElementLocationPath(note)}`,
+				`Location: ${getNoteLocationLabel(note)}`,
 				`Feedback: ${note.note}`,
-				`Source: ${formatLocation(note)}`,
-				...(index < notes.length - 1 ? ['', '---', ''] : [])
-			]
-		)
+				`Source: ${formatLocation(note)}`
+			];
+
+			if (note.kind === 'text') {
+				lines.splice(2, 0, `Selected text: "${collapseWhitespace(note.anchor.selectedText)}"`);
+			}
+
+			if (index < notes.length - 1) {
+				lines.push('', '---', '');
+			}
+
+			return lines;
+		})
 	].join('\n');
 };
+
+export const buildComposerState = ({
+	noteId,
+	noteKind,
+	initialValue,
+	targetSummary,
+	targetLabel,
+	placeholder,
+	accentColor,
+	markerLeft,
+	markerTop,
+	outlineRects,
+	highlightRects,
+	selectedText,
+	anchor,
+	sourceInfo
+}: {
+	noteId: string | null;
+	noteKind: InspectorNote['kind'];
+	initialValue: string;
+	targetSummary: string;
+	targetLabel: string;
+	placeholder: string;
+	accentColor: string;
+	markerLeft: number;
+	markerTop: number;
+	outlineRects: RectBox[];
+	highlightRects: RectBox[];
+	selectedText: string | null;
+	anchor: InspectorNote['anchor'];
+	sourceInfo: NoteSourceInfo;
+}): NoteComposerState => {
+	const { panelLeft, panelTop } = getComposerPosition(markerLeft, markerTop);
+
+	return {
+		noteId,
+		noteKind,
+		initialValue,
+		targetSummary,
+		targetLabel,
+		placeholder,
+		accentColor,
+		markerLeft,
+		markerTop,
+		panelLeft,
+		panelTop,
+		outlineRects,
+		highlightRects,
+		selectedText,
+		anchor,
+		...sourceInfo
+	};
+};
+
+export const buildAreaComposerVisuals = (bounds: RectBox) => {
+	const markerLeft = clampNumber(bounds.left + bounds.width, 12, window.innerWidth - 12);
+	const markerTop = clampNumber(bounds.top + bounds.height, 12, window.innerHeight - 12);
+	return {
+		bounds,
+		markerLeft,
+		markerTop
+	};
+};
+
+export const buildGroupSelectionFromRects = (rects: RectBox[]) => {
+	const bounds = getBoundsFromRects(rects);
+	if (!bounds) return null;
+
+	const markerLeft = clampNumber(bounds.left + bounds.width, 12, window.innerWidth - 12);
+	const markerTop = clampNumber(bounds.top + bounds.height, 12, window.innerHeight - 12);
+	return {
+		bounds,
+		markerLeft,
+		markerTop
+	};
+};
+
+export const createAreaAnchorFromBounds = (bounds: RectBox, markerLeft: number, markerTop: number) =>
+	buildAreaSelectionAnchor(bounds, markerLeft, markerTop);
+
+export const createGroupAnchorFromElements = (
+	elements: Element[],
+	anchorElement: Element,
+	markerLeft: number,
+	markerTop: number
+) => buildGroupSelectionAnchor(elements, anchorElement, markerLeft, markerTop);

@@ -51,6 +51,8 @@ export interface ToolbarCoordinates {
 
 export type OutputDetail = 'standard' | 'detailed';
 export type ThemeMode = 'dark' | 'light';
+export type InspectorNoteKind = 'element' | 'text' | 'group' | 'area';
+export type NoteResolutionState = 'resolved' | 'partial' | 'unresolved';
 
 export interface NotesSettings {
 	markerColor: string;
@@ -69,6 +71,34 @@ export interface ToolbarState {
 	position: ToolbarCoordinates;
 }
 
+export interface RectBox {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+export interface AbsoluteRectBox {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+export interface NoteMarkerFallback {
+	xPercent: number;
+	yAbsolute: number;
+}
+
+export interface NoteSourceInfo {
+	componentName: string | null;
+	tagName: string;
+	filePath: string;
+	shortFileName: string;
+	lineNumber: number | null;
+	columnNumber: number | null;
+}
+
 export interface ElementNoteAnchor {
 	domPath: string;
 	relativeX: number;
@@ -77,51 +107,109 @@ export interface ElementNoteAnchor {
 	viewportY: number;
 }
 
-export interface InspectorNote {
+export interface TextSelectionAnchor {
+	commonAncestorPath: string;
+	selectedText: string;
+	contextBefore: string;
+	contextAfter: string;
+	startOffset: number;
+	endOffset: number;
+	fallbackMarker: NoteMarkerFallback;
+}
+
+export interface GroupSelectionAnchor {
+	selectedDomPaths: string[];
+	anchorDomPath: string;
+	bounds: AbsoluteRectBox;
+	fallbackMarker: NoteMarkerFallback;
+}
+
+export interface AreaSelectionAnchor {
+	bounds: AbsoluteRectBox;
+	fallbackMarker: NoteMarkerFallback;
+}
+
+export type InspectorNoteAnchor =
+	| ElementNoteAnchor
+	| TextSelectionAnchor
+	| GroupSelectionAnchor
+	| AreaSelectionAnchor;
+
+interface InspectorNoteBase extends NoteSourceInfo {
 	id: string;
+	kind: InspectorNoteKind;
 	note: string;
-	color?: string;
 	targetSummary: string;
-	componentName: string | null;
-	tagName: string;
-	filePath: string;
-	shortFileName: string;
-	lineNumber: number | null;
-	columnNumber: number | null;
+	targetLabel: string;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface ElementInspectorNote extends InspectorNoteBase {
+	kind: 'element';
 	anchor: ElementNoteAnchor;
 }
 
+export interface TextInspectorNote extends InspectorNoteBase {
+	kind: 'text';
+	anchor: TextSelectionAnchor;
+}
+
+export interface GroupInspectorNote extends InspectorNoteBase {
+	kind: 'group';
+	anchor: GroupSelectionAnchor;
+}
+
+export interface AreaInspectorNote extends InspectorNoteBase {
+	kind: 'area';
+	anchor: AreaSelectionAnchor;
+}
+
+export type InspectorNote =
+	| ElementInspectorNote
+	| TextInspectorNote
+	| GroupInspectorNote
+	| AreaInspectorNote;
+
 export interface ResolvedNotePosition {
-	left: number;
-	top: number;
-	width: number;
-	height: number;
 	markerLeft: number;
 	markerTop: number;
+	bounds: RectBox | null;
+	outlineRects: RectBox[];
+	highlightRects: RectBox[];
 }
 
-export interface RenderedInspectorNote extends InspectorNote {
-	resolved: boolean;
+export type RenderedInspectorNote = InspectorNote & {
+	resolution: NoteResolutionState;
 	position: ResolvedNotePosition | null;
-}
+};
 
-export interface NoteComposerState {
+export interface NoteComposerState extends NoteSourceInfo {
 	noteId: string | null;
+	noteKind: InspectorNoteKind;
 	initialValue: string;
 	targetSummary: string;
 	targetLabel: string;
+	placeholder: string;
+	accentColor: string;
 	markerLeft: number;
 	markerTop: number;
 	panelLeft: number;
 	panelTop: number;
-	targetRect: {
-		left: number;
-		top: number;
-		width: number;
-		height: number;
-	};
-	anchor: ElementNoteAnchor;
-	hoverInfo: InspectorHoverInfo;
+	outlineRects: RectBox[];
+	highlightRects: RectBox[];
+	selectedText: string | null;
+	anchor: InspectorNoteAnchor;
+}
+
+export interface GroupSelectionPreviewState {
+	rects: RectBox[];
+}
+
+export interface DragSelectionState {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+	highlightRects: RectBox[];
 }
