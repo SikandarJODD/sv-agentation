@@ -1,15 +1,18 @@
-# Svelte Agentation Website
+# Svelte Agentation
 
 ![Svelte Agentation OG](https://sv-agentation.com/og.png)
 
 [![npm version](https://img.shields.io/npm/v/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
 [![downloads](https://img.shields.io/npm/dm/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
 
+**Live Preview:** [Svelte Agentation](https://sv-agentation.com)
+
 Marketing site, docs, and playground app for `sv-agentation`.
 
 ## Overview
 
-`sv-agentation` is a dev-mode Svelte inspector for source-aware element inspection and browser annotations. This app is the public landing page and docs surface for the package.
+`sv-agentation` is a dev-mode Svelte inspector for source-aware element inspection and browser annotations.
+Click any element, add a note, and paste the output into Claude Code, Cursor, or any AI tool.
 
 ## Installation
 
@@ -35,12 +38,10 @@ bun add sv-agentation
 <script lang="ts">
 	import { browser, dev } from '$app/environment';
 	import { Agentation } from 'sv-agentation';
-
-	const workspaceRoot = '/absolute/path/to/your/repo';
 </script>
 
 {#if browser && dev}
-	<Agentation {workspaceRoot} />
+	<Agentation />
 {/if}
 ```
 
@@ -62,40 +63,30 @@ bun add sv-agentation
 
 ## Props
 
-| Prop | Type | Description |
-| --- | --- | --- |
-| `workspaceRoot` | `string \| null` | Absolute project root for source lookup and editor links. |
-| `selector` | `string \| null` | Optional selector to scope inspectable elements. |
-| `vscodeScheme` | `'vscode' \| 'vscode-insiders'` | Choose the VS Code URL scheme for open-in-editor actions. |
-| `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
-| `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
-| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | Initial preset for the floating toolbar position. |
+| Prop                | Type                                                                                                                           | Description                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `workspaceRoot`     | `string \| null`                                                                                                               | Absolute project root for source lookup and editor links.       |
+| `selector`          | `string \| null`                                                                                                               | Optional selector to scope inspectable elements.                |
+| `vscodeScheme`      | `'vscode' \| 'vscode-insiders'`                                                                                                | Choose the VS Code URL scheme for open-in-editor actions.       |
+| `openSourceOnClick` | `boolean`                                                                                                                      | Open source directly on click instead of only showing metadata. |
+| `deleteAllDelayMs`  | `number`                                                                                                                       | Confirmation delay for delete-all notes.                        |
+| `toolbarPosition`   | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | Initial preset for the floating toolbar position.               |
 
 ## Shortcuts
 
-| Shortcut | Action | Description |
-| --- | --- | --- |
-| `i` | Toggle inspector | Open or close the inspector toolbar and annotation mode. |
-| `c` | Copy all notes | Copy notes as Markdown when at least one note exists. |
-| `r` | Reset toolbar position | Move the floating toolbar back to its default bottom-right placement. |
-| `o` | Open source | Open the currently hovered source location when the inspector is active. |
-| `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
+| Shortcut                   | Action                  | Description                                                                             |
+| -------------------------- | ----------------------- | --------------------------------------------------------------------------------------- |
+| `i`                        | Toggle inspector        | Open or close the inspector toolbar and annotation mode.                                |
+| `c`                        | Copy all notes          | Copy notes as Markdown when at least one note exists.                                   |
+| `r`                        | Reset toolbar position  | Move the floating toolbar back to its default bottom-right placement.                   |
+| `o`                        | Open source             | Open the currently hovered source location when the inspector is active.                |
+| `esc`                      | Cancel current action   | Clear transient selections, close the composer, or close settings/delete state.         |
 | `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |
 
-## Local Dev
+## Credits
 
-```sh
-pnpm --filter @sv-agentation/web dev
-```
+This project is highly inspired by [Agentation.com](https://www.agentation.com).
 
-## Build
+## Sponsor
 
-```sh
-pnpm --filter @sv-agentation/web build
-```
-
-## Notes
-
-- Highly inspired from Agentation.
-- This app depends on the local workspace package `sv-agentation`.
-- `llms.txt` is available from the website for machine-readable package/docs context.
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Support-pink?logo=githubsponsors)](https://github.com/sponsors/SikandarJODD)
