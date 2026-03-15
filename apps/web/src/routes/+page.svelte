@@ -31,12 +31,12 @@
 	import { page } from '$app/state';
 
 	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
-	let siteUrl = $derived(page.url.origin);
+	let siteUrl = 'https://sv-agentation.com';
 	const githubUrl = 'https://github.com/SikandarJODD/sv-agentation';
 	const npmxUrl = 'https://npmx.dev/package/sv-agentation';
-	let llmsUrl = $derived(`${siteUrl}/llms.txt`);
+	let llmsUrl = 'https://sv-agentation.com/llms.txt';
 
-	let metaTags: MetaTagsProps = $derived({
+	let metaTags: MetaTagsProps = {
 		title: 'Svelte Agentation',
 		description:
 			'Minimal source-inspection tooling for Svelte apps, inspired by Agentation and designed for dev-only workflows.',
@@ -64,7 +64,7 @@
 				'Minimal source-inspection tooling for Svelte apps, inspired by Agentation and designed for dev-only workflows.',
 			image: `${siteUrl}/og.png`
 		}
-	});
+	};
 
 	const usageSnippet = `<script lang="ts">
   import { browser, dev } from '$app/environment';
@@ -220,8 +220,8 @@ Use this example:
 					<Paragraph
 						class="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground sm:text-[0.95rem]"
 					>
-						Highly inspired from Agentation. Inspect DOM elements and jump to source while staying
-						inside your Svelte dev workflow.
+						Svelte Agentation turns UI annotations into structured context that AI coding agents can understand and act on.
+						Click any element, add a note, and paste the output into Claude Code, Cursor, or any AI tool.
 					</Paragraph>
 				</div>
 			</div>
@@ -412,7 +412,7 @@ Use this example:
 			<H2 class="mt-0 text-[1.2rem]">Inspiration & Footer</H2>
 			<p class="inline-flex items-center gap-2 text-[0.82rem] text-muted-foreground">
 				<SparklesIcon class="size-3.5" />
-				<span>Inspiration : Highly inspired from Agentation</span>
+				<span>Highly inspired from Agentation</span>
 			</p>
 			<div class="flex flex-wrap gap-4">
 				<Link class="text-[0.86rem]" href={githubUrl}>GitHub</Link>
@@ -420,6 +420,10 @@ Use this example:
 				<Link class="text-[0.86rem]" href={npmjsUrl}>npmjs</Link>
 				<Link class="text-[0.86rem]" href={llmsUrl}>llms.txt</Link>
 			</div>
+			<p class="text-[0.82rem] leading-6 text-muted-foreground">
+				Credits: this project is highly inspired by
+				<Link class="text-[0.82rem]" href="https://www.agentation.com">Agentation.com</Link>.
+			</p>
 		</footer>
 	</div>
 </main>

@@ -1,6 +1,7 @@
 # sv-agentation
 
-`sv-agentation` is a dev-mode Svelte inspector for source-aware element inspection and browser annotations. It is designed to help developers inspect rendered DOM, jump to source in VS Code, annotate UI directly in the browser, and copy structured output for developer or AI-assisted workflows.
+Svelte Agentation turns UI annotations into structured context that AI coding agents can understand and act on.
+Click any element, add a note, and paste the output into Claude Code, Cursor, or any AI tool.
 
 ## Installation
 
@@ -34,14 +35,14 @@ Mount the inspector only in development and only in the browser.
 
 ```svelte
 <script lang="ts">
-  import { browser, dev } from '$app/environment';
-  import { Agentation } from 'sv-agentation';
+	import { browser, dev } from '$app/environment';
+	import { Agentation } from 'sv-agentation';
 
-  const workspaceRoot = '/absolute/path/to/your/repo';
+	const workspaceRoot = '/absolute/path/to/your/repo';
 </script>
 
 {#if browser && dev}
-  <Agentation {workspaceRoot} />
+	<Agentation {workspaceRoot} />
 {/if}
 ```
 
@@ -87,9 +88,3 @@ Sets the initial toolbar position preset for the floating inspector controls.
 - Use a delete-all flow with configurable delay.
 - Copy structured annotation output for developer and AI-assisted workflows.
 - Mount the inspector only in dev mode with `browser && dev`.
-
-## Current Limitations
-
-- The package is focused on Svelte apps and Svelte dev workflows.
-- The documented public props are limited to the current `InspectorProps` interface.
-- The project does not currently document MCP integrations, webhooks, or external sync APIs.

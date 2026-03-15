@@ -5,6 +5,8 @@
 [![npm version](https://img.shields.io/npm/v/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
 [![downloads](https://img.shields.io/npm/dm/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
 
+**Live Preview:** [Svelte Agentation](https://sv-agentation.com)
+
 Dev-mode Svelte inspector for source-aware element inspection and browser annotations.
 
 ## Overview
@@ -106,3 +108,11 @@ Mount the inspector only in development and only in the browser.
 - Intended for browser/dev-mode use, not production collaboration flows.
 - Highly inspired from Agentation.
 - Source-opening depends on `element-source` metadata and your `workspaceRoot` plus editor setup.
+
+## Credits
+
+This project is highly inspired by [Agentation.com](https://www.agentation.com).
+
+## Sponsor
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Support-pink?logo=githubsponsors)](https://github.com/sponsors/SikandarJODD)
