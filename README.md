@@ -1,52 +1,118 @@
-# sv-agentation Workspace
+# sv-agentation
 
-Monorepo for the `sv-agentation` Svelte package and its docs/demo app.
+![Svelte Agentation OG](https://sv-agentation.com/og.png)
 
-## Workspace Layout
+[![npm version](https://img.shields.io/npm/v/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
+[![downloads](https://img.shields.io/npm/dm/sv-agentation)](https://www.npmjs.com/package/sv-agentation)
 
-- `packages/sv-agentation`: publishable Svelte 5 package
-- `apps/web`: SvelteKit docs and playground app
-- `.changeset`: versioning metadata for automated releases
+**Live Preview:** [Svelte Agentation](https://sv-agentation.com)
 
-## Common Commands
+Dev-mode Svelte inspector for source-aware element inspection and browser annotations.
+
+## Overview
+
+`sv-agentation` helps developers inspect rendered DOM, jump to source, annotate UI directly in the browser, and copy structured output for developer or AI-assisted workflows.
+
+## Installation
 
 ```sh
-pnpm install
-pnpm dev
-pnpm check
-pnpm build
-pnpm package:pack
+npm install sv-agentation
 ```
 
-`pnpm dev` starts the docs app in `apps/web`.
+```sh
+pnpm add sv-agentation
+```
 
-## Publishing
+```sh
+yarn add sv-agentation
+```
 
-The npm package lives in `packages/sv-agentation` and is published through Changesets plus GitHub Actions trusted publishing.
+```sh
+bun add sv-agentation
+```
 
-Primary component export: `Agentation`
+## Usage
 
-Before the first public release, re-check npm name availability for `sv-agentation`.
+```svelte
+<script lang="ts">
+	import { browser, dev } from '$app/environment';
+	import { Agentation } from 'sv-agentation';
 
-Helpful guides in this repo:
+	const workspaceRoot = '/absolute/path/to/your/repo';
+</script>
 
-- `PACKAGE-RELEASE-GUIDE.md`
-- `DOCS-UPDATE-WORKFLOW.md`
+{#if browser && dev}
+	<Agentation {workspaceRoot} />
+{/if}
+```
 
-## Cloudflare Pages
+Mount the inspector only in development and only in the browser.
 
-The docs app in `apps/web` is prepared for Cloudflare Pages and should be deployed as a monorepo app.
+## Features
 
-Recommended settings:
+1. Inspect DOM elements and resolve source file location.
+2. Jump to source with VS Code or VS Code Insiders URL schemes.
+3. Annotate individual elements directly in the page.
+4. Annotate selected text ranges.
+5. Annotate grouped selections across multiple elements.
+6. Annotate selected page areas.
+7. Use a draggable floating toolbar.
+8. Choose toolbar position presets.
+9. Toggle the inspector theme inside the tool UI.
+10. Toggle marker visibility for notes.
+11. Block normal page interactions while inspecting.
+12. Use a delete-all flow with configurable delay.
+13. Copy structured annotation output for developer and AI-assisted workflows.
+14. Mount the inspector only in dev mode with `browser && dev`.
 
-- Root directory: `apps/web`
-- Build command: `pnpm --filter @sv-agentation/web build`
-- Build output directory: `.svelte-kit/cloudflare`
+## Props
 
-Cloudflare deployment is intentionally separate from npm publishing.
+| Prop | Type | Description |
+| --- | --- | --- |
+| `workspaceRoot` | `string \| null` | Absolute project root for source lookup and editor links. |
+| `selector` | `string \| null` | Optional selector to scope inspectable elements. |
+| `vscodeScheme` | `'vscode' \| 'vscode-insiders'` | Choose the VS Code URL scheme for open-in-editor actions. |
+| `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
+| `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
+| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | Initial preset for the floating toolbar position. |
 
-See `CLOUDFLARE-PAGES-DEPLOYMENT.md` for the full deployment and custom-domain guide.
+## Shortcuts
 
-## License
+| Shortcut | Action | Description |
+| --- | --- | --- |
+| `i` | Toggle inspector | Open or close the inspector toolbar and annotation mode. |
+| `c` | Copy all notes | Copy notes as Markdown when at least one note exists. |
+| `r` | Reset toolbar position | Move the floating toolbar back to its default bottom-right placement. |
+| `o` | Open source | Open the currently hovered source location when the inspector is active. |
+| `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
+| `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |
 
-MIT
+## Public API
+
+- `Agentation`
+- `AgentationInspector`
+- `ElementSourceInspector`
+- `AGENTATION_ACTIVE_CHANGE_EVENT`
+- `AGENTATION_BLOCKED_INTERACTION_EVENT`
+- `COPY_OPEN_ACTIVE_CHANGE_EVENT`
+- `COPY_OPEN_BLOCKED_INTERACTION_EVENT`
+- `INSPECTOR_ACTIVE_CHANGE_EVENT`
+- `INSPECTOR_BLOCKED_INTERACTION_EVENT`
+- `AgentationProps`
+- `InspectorProps`
+- related exported `Inspector*` public types
+
+## Notes
+
+- Targets Svelte 5 consumers.
+- Intended for browser/dev-mode use, not production collaboration flows.
+- Highly inspired from Agentation.
+- Source-opening depends on `element-source` metadata and your `workspaceRoot` plus editor setup.
+
+## Credits
+
+This project is highly inspired by [Agentation.com](https://www.agentation.com).
+
+## Sponsor
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Support-pink?logo=githubsponsors)](https://github.com/sponsors/SikandarJODD)
