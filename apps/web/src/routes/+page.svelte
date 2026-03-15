@@ -1,25 +1,77 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-
+	import GithubIcon from '@lucide/svelte/icons/github';
+	import MoonIcon from '@lucide/svelte/icons/moon';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
+	import SunIcon from '@lucide/svelte/icons/sun';
+	import { mode, toggleMode } from 'mode-watcher';
+	import { MetaTags, type MetaTagsProps } from 'svelte-meta-tags';
 	import {
-		AGENTATION_ACTIVE_CHANGE_EVENT,
-		AGENTATION_BLOCKED_INTERACTION_EVENT,
-		type InspectorActiveChangeDetail,
-		type InspectorBlockedInteractionDetail
-	} from 'sv-agentation';
-	import HoverSourceCard from '$lib/interesting-codes/hover-source-card.svelte';
+		Divider,
+		H1,
+		H2,
+		Link,
+		ListItem,
+		OrderedList,
+		Paragraph,
+		Strong,
+		Table,
+		Tbody,
+		Td,
+		Th,
+		Thead,
+		Tr
+	} from '$lib/components/markdown';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button/index';
+	import * as Code from '$lib/components/ui/code';
+	import { CopyButton } from '$lib/components/ui/copy-button';
+	import { Kbd } from '$lib/components/ui/kbd';
+	import PMCommand from '$lib/components/ui/pm-command/pm-command.svelte';
+	import { asset } from '$app/paths';
+	import { page } from '$app/state';
 
-	const installCommands = [
-		{ label: 'npm', command: 'npm install sv-agentation' },
-		{ label: 'pnpm', command: 'pnpm add sv-agentation' },
-		{ label: 'yarn', command: 'yarn add sv-agentation' },
-		{ label: 'bun', command: 'bun add sv-agentation' }
-	];
+	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
+	let siteUrl = $derived(page.url.origin);
+	const githubUrl = 'https://github.com/SikandarJODD/sv-agentation';
+	const npmxUrl = 'https://npmx.dev/package/sv-agentation';
+	let llmsUrl = $derived(`${siteUrl}/llms.txt`);
+
+	let metaTags: MetaTagsProps = $derived({
+		title: 'Svelte Agentation',
+		description:
+			'Minimal source-inspection tooling for Svelte apps, inspired by Agentation and designed for dev-only workflows.',
+		canonical: siteUrl,
+		openGraph: {
+			type: 'website',
+			url: siteUrl,
+			title: 'Svelte Agentation',
+			description:
+				'Minimal source-inspection tooling for Svelte apps, inspired by Agentation and designed for dev-only workflows.',
+			siteName: 'Svelte Agentation',
+			images: [
+				{
+					url: `${siteUrl}/og.png`,
+					width: 1200,
+					height: 630,
+					alt: 'Svelte Agentation landing page preview'
+				}
+			]
+		},
+		twitter: {
+			cardType: 'summary_large_image',
+			title: 'Svelte Agentation',
+			description:
+				'Minimal source-inspection tooling for Svelte apps, inspired by Agentation and designed for dev-only workflows.',
+			image: `${siteUrl}/og.png`
+		}
+	});
 
 	const usageSnippet = `<script lang="ts">
   import { browser, dev } from '$app/environment';
   import { Agentation } from 'sv-agentation';
 
+  //  provide the absolute path to your project
+  //  to open directly in vs code
   const workspaceRoot = '/absolute/path/to/your/repo';
 <\/script>
 
@@ -27,559 +79,347 @@
   <Agentation {workspaceRoot} />
 {/if}`;
 
-	let demoClicks = $state(0);
-	let demoSubscribed = $state(false);
-	let blockFeedbackTick = $state(0);
-	let blockFeedbackVisible = $state(false);
-	let freezeDemoRunning = $state(true);
+	const installationPrompt = `Install sv-agentation in this SvelteKit project and wire it into the app shell.
 
-	let interactionDemoElement: HTMLElement | null = null;
-	let blockFeedbackResetTimer: ReturnType<typeof setTimeout> | null = null;
+1. Add the package with the current package manager:
+   pnpm add sv-agentation
 
-	const clearBlockFeedbackResetTimer = () => {
-		if (blockFeedbackResetTimer === null) return;
-		clearTimeout(blockFeedbackResetTimer);
-		blockFeedbackResetTimer = null;
-	};
+2. Update src/routes/+layout.svelte to mount Agentation only in development and only in the browser.
 
-	onMount(() => {
-		const handleBlockedInteraction = (event: Event) => {
-			if (!interactionDemoElement) return;
+Use this example:
 
-			const { target } = (event as CustomEvent<InspectorBlockedInteractionDetail>).detail;
-			if (!interactionDemoElement.contains(target)) return;
+<script lang="ts">
+  import './layout.css';
+  import { browser, dev } from '$app/environment';
+  import { Agentation } from 'sv-agentation';
 
-			blockFeedbackTick += 1;
-			blockFeedbackVisible = true;
-			clearBlockFeedbackResetTimer();
-			blockFeedbackResetTimer = setTimeout(() => {
-				blockFeedbackVisible = false;
-				blockFeedbackResetTimer = null;
-			}, 1100);
-		};
-		const handleInspectorActiveChange = (event: Event) => {
-			const { active } = (event as CustomEvent<InspectorActiveChangeDetail>).detail;
-			freezeDemoRunning = active;
-		};
+  let { children } = $props();
+  const workspaceRoot = '/absolute/path/to/your/repo';
+<\/script>
 
-		window.addEventListener(
-			AGENTATION_BLOCKED_INTERACTION_EVENT,
-			handleBlockedInteraction as EventListener
-		);
-		window.addEventListener(
-			AGENTATION_ACTIVE_CHANGE_EVENT,
-			handleInspectorActiveChange as EventListener
-		);
+{@render children()}
 
-		return () => {
-			window.removeEventListener(
-				AGENTATION_BLOCKED_INTERACTION_EVENT,
-				handleBlockedInteraction as EventListener
-			);
-			window.removeEventListener(
-				AGENTATION_ACTIVE_CHANGE_EVENT,
-				handleInspectorActiveChange as EventListener
-			);
-			clearBlockFeedbackResetTimer();
-		};
-	});
+{#if browser && dev}
+  <Agentation {workspaceRoot} />
+{/if}
+
+3. Keep it disabled in production.
+4. If needed, set workspaceRoot to the absolute path of the repo so source links open correctly.`;
+
+	const features = [
+		'Inspect <strong>DOM elements</strong> and resolve source file location.',
+		// 'Jump to source with <strong>VS Code</strong> or <strong>VS Code Insiders</strong> URL schemes.',
+		'Annotate <strong>individual elements</strong> directly in the page.',
+		'Annotate <strong>selected text ranges</strong>.',
+		'Annotate <strong>grouped selections</strong> across multiple elements.',
+		'Annotate <strong>selected page areas</strong>.',
+		'Use a <strong>draggable floating toolbar</strong>.',
+		'Choose <strong>toolbar position presets</strong>.',
+		'Toggle the <strong>inspector theme</strong> inside the tool UI.',
+		'Toggle <strong>marker visibility</strong> for notes.',
+		'Block <strong>normal page interactions</strong> while inspecting.',
+		'Use a <strong>delete-all flow</strong> with configurable delay.',
+		'Copy <strong>structured annotation output</strong> for developer and AI-assisted workflows.',
+		'Mount the inspector only in <strong>dev mode</strong> with <strong>`browser && dev`</strong>.'
+	];
+
+	const props = [
+		{
+			name: 'workspaceRoot',
+			type: 'string | null',
+			description: 'Absolute project root for source lookup and editor links.'
+		},
+		{
+			name: 'selector',
+			type: 'string | null',
+			description: 'Optional selector to scope inspectable elements.'
+		},
+		{
+			name: 'vscodeScheme',
+			type: "'vscode' | 'vscode-insiders'",
+			description: 'Choose the VS Code URL scheme for open-in-editor actions.'
+		},
+		{
+			name: 'openSourceOnClick',
+			type: 'boolean',
+			description: 'Open source directly on click instead of only showing metadata.'
+		},
+		{
+			name: 'deleteAllDelayMs',
+			type: 'number',
+			description: 'Confirmation delay for delete-all notes.'
+		},
+		{
+			name: 'toolbarPosition',
+			type: "'top-left' | 'top-center' | 'top-right' | 'mid-right' | 'mid-left' | 'bottom-left' | 'bottom-center' | 'bottom-right'",
+			description: 'Initial preset for the floating toolbar position.'
+		}
+	];
+
+	const shortcuts = [
+		{
+			key: 'i',
+			label: 'Toggle inspector',
+			description: 'Open or close the inspector toolbar and annotation mode.'
+		},
+		{
+			key: 'c',
+			label: 'Copy all notes',
+			description: 'Copy notes as Markdown when at least one note exists.'
+		},
+		{
+			key: 'r',
+			label: 'Reset toolbar position',
+			description: 'Move the floating toolbar back to its default bottom-right placement.'
+		},
+		{
+			key: 'o',
+			label: 'Open source',
+			description: 'Open the currently hovered source location when the inspector is active.'
+		},
+		{
+			key: 'esc',
+			label: 'Cancel current action',
+			description: 'Clear transient selections, close the composer, or close settings/delete state.'
+		},
+		{
+			key: 'shift + ctrl/cmd + click',
+			label: 'Build a group selection',
+			description:
+				'Add or remove elements from a grouped annotation target before releasing the modifiers.'
+		}
+	];
 </script>
 
-<main class="page">
-	<div class="browser">
-		<div class="browser-bar">
-			<div class="dots">
-				<span></span>
-				<span></span>
-				<span></span>
-			</div>
-			<span class="address text-xs text-orange-400">Demo Playground</span>
-		</div>
+<MetaTags {...metaTags} />
 
-		<div class="browser-body playground-container">
-			<HoverSourceCard />
-
-			<section aria-labelledby="install-guide-title" class="install-guide">
-				<div class="install-copy">
-					<p class="demo-eyebrow">Package Setup</p>
-					<h2 id="install-guide-title">Install `sv-agentation` and mount it only in dev mode</h2>
-					<p class="demo-description">
-						The docs app now consumes the monorepo package through the public `sv-agentation`
-						entrypoint. Use one of these install commands, then mount `Agentation` behind `browser
-						&& dev`.
-					</p>
-				</div>
-
-				<div class="install-command-grid">
-					{#each installCommands as item (item.label)}
-						<div class="install-command-card">
-							<span class="install-command-label">{item.label}</span>
-							<code>{item.command}</code>
-						</div>
-					{/each}
-				</div>
-
-				<pre class="install-code"><code>{usageSnippet}</code></pre>
-			</section>
-
-			<section
-				aria-labelledby="pause-demo-title"
-				class:pause-demo-frozen={!freezeDemoRunning}
-				class="pause-demo"
-			>
-				<div class="pause-demo-heading">
-					<h2 id="pause-demo-title">Animation pause demo</h2>
-					<div aria-hidden="true" class="pause-demo-rule"></div>
-				</div>
-
-				<p class="demo-description">
-					{#if freezeDemoRunning}
-						Click <span class="demo-inline-control">||</span> in the toolbar to freeze this animation.
-					{:else}
-						Click the toolbar play button to resume this animation.
-					{/if}
-				</p>
-
-				<div aria-hidden="true" class="pause-demo-stage">
-					<div class="pause-demo-track">
-						<div class:paused={!freezeDemoRunning} class="pause-demo-runner"></div>
-					</div>
-				</div>
-			</section>
-
-			<section
-				bind:this={interactionDemoElement}
-				aria-labelledby="interaction-demo-title"
-				class:blocked-demo={blockFeedbackVisible}
-				class="interaction-demo"
-			>
-				{#if blockFeedbackTick > 0}
-					{#key blockFeedbackTick}
-						<div aria-hidden="true" class="demo-blocked-flash"></div>
-					{/key}
+<main class="min-h-screen bg-background px-5 py-10 text-foreground sm:px-6 sm:py-12">
+	<div class="mx-auto flex w-full max-w-[42rem] flex-col">
+		<header class="flex items-start justify-between gap-4">
+			<div class="flex min-w-0 flex-col items-start">
+				{#if mode.current === 'dark'}
+					<img
+						class="mt-1 size-9 shrink-0"
+						src={asset('/main-favicon-light.svg')}
+						alt="Svelte Agentation logo"
+					/>
+				{:else}
+					<img
+						class="mt-1 size-9 shrink-0"
+						src={asset('/main-favicon.svg')}
+						alt="Svelte Agentation logo"
+					/>
 				{/if}
-
-				<div class="demo-copy">
-					<p class="demo-eyebrow">Inspector Demo</p>
-					<h2 id="interaction-demo-title">Block page interactions</h2>
-					<p class="demo-description">
-						With inspect mode on and this setting enabled, clicking these controls should annotate
-						them instead of firing their normal action.
-					</p>
-				</div>
-
-				<div class="demo-actions">
-					<button class="demo-button primary-demo" type="button" onclick={() => demoClicks++}>
-						Clicked {demoClicks}
-						{demoClicks === 1 ? 'time' : 'times'}
-					</button>
-
-					<button
-						aria-pressed={demoSubscribed}
-						class="demo-button secondary-demo"
-						type="button"
-						onclick={() => (demoSubscribed = !demoSubscribed)}
+				<div class="min-w-0">
+					<div class="flex items-center gap-3">
+						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
+						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
+							Alpha
+						</Badge>
+					</div>
+					<Paragraph
+						class="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground sm:text-[0.95rem]"
 					>
-						{demoSubscribed ? 'Subscribed' : 'Subscribe'}
+						Highly inspired from Agentation. Inspect DOM elements and jump to source while staying
+						inside your Svelte dev workflow.
+					</Paragraph>
+				</div>
+			</div>
+
+			<Button
+				variant="outline"
+				size="icon-sm"
+				class="mt-1 shrink-0 rounded-full border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+				aria-label={mode.current === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+				onclick={() => toggleMode()}
+			>
+				{#if mode.current === 'dark'}
+					<SunIcon class="size-4" />
+				{:else}
+					<MoonIcon class="size-4" />
+				{/if}
+			</Button>
+		</header>
+
+		<!-- <section
+			aria-label="Preview"
+			class="mt-9 overflow-hidden rounded-2xl border border-border bg-card/35"
+		>
+			<div class="flex items-center gap-3 border-b border-border px-4 py-3">
+				<div class="flex gap-1.5">
+					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
+					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
+					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
+				</div>
+				<span class="font-mono text-[0.74rem] text-muted-foreground/70">localhost:5173</span>
+			</div>
+
+			<div class="px-4 py-7 sm:px-5 sm:py-8">
+				<div class="relative grid max-w-[28rem] gap-3 px-2 py-2 sm:px-3">
+					<p class="font-mono text-[0.72rem] text-muted-foreground">
+						Hero - src/routes/+page.svelte:18
+					</p>
+					<h2
+						class="text-[1.65rem] font-medium tracking-tight text-foreground italic sm:text-[1.8rem]"
+					>
+						Svelte Agentation
+					</h2>
+					<p class="max-w-[24rem] text-[0.93rem] leading-7 text-muted-foreground">
+						Inspect any element, reveal its source, and stay inside your current dev flow.
+					</p>
+					<div
+						class="pointer-events-none absolute top-[3rem] right-2 left-1 h-[4.25rem] border border-ring/50 bg-accent/40 sm:right-3 sm:left-3"
+					></div>
+					<button
+						type="button"
+						class="w-fit border border-border bg-secondary px-4 py-2 text-sm text-foreground"
+					>
+						Inspect source
 					</button>
 				</div>
+			</div>
+		</section> -->
 
-				<div aria-live="polite" class="demo-feedback">
-					{#if blockFeedbackVisible}
-						{#key blockFeedbackTick}
-							<span class="demo-feedback-badge">Interaction blocked by inspector</span>
-						{/key}
-					{/if}
-				</div>
-			</section>
+		<div class="mt-7 flex flex-wrap items-center gap-3">
+			<Button href={githubUrl} target="_blank" rel="noreferrer" variant="outline" class="text-xs">
+				<svg viewBox="0 0 1024 1024" fill="none"
+					><path
+						fill-rule="evenodd"
+						clip-rule="evenodd"
+						d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z"
+						transform="scale(64)"
+						fill="currentColor"
+					/></svg
+				>
+				<span>Star on GitHub</span>
+			</Button>
+
+			<CopyButton text={installationPrompt} variant="secondary" class="rounded-md text-xs">
+				Copy Prompt
+			</CopyButton>
 		</div>
+
+		<Divider class="my-10" />
+
+		<section aria-labelledby="installation-title" class="grid gap-3">
+			<H2 id="installation-title" class="mt-0 text-[1.2rem]">Installation</H2>
+			<PMCommand command="add" args={['sv-agentation']} />
+			<div class="mt-0 rounded-md border border-border bg-card p-3">
+				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
+				<p class="mt-2 text-sm leading-6 text-muted-foreground">
+					The toolbar is active on this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate
+					it.
+				</p>
+			</div>
+		</section>
+
+		<Divider class="my-10" />
+
+		<section aria-labelledby="usage-title" class="flex flex-col">
+			<H2 id="usage-title" class="mt-0 text-[1.2rem]">Usage</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				Mount the component only in development and only in the browser.
+			</Paragraph>
+			<Code.Root
+				code={usageSnippet}
+				lang="svelte"
+				class="mt-1 rounded-xl border-border bg-card/40 pr-12 text-sm [&_pre.shiki]:text-[0.82rem]"
+			>
+				<Code.CopyButton />
+			</Code.Root>
+		</section>
+
+		<Divider class="my-10" />
+
+		<section aria-labelledby="features-title" class="flex flex-col">
+			<H2 id="features-title" class="text-[1.2rem]">Features</H2>
+			<Paragraph class="mt-3 mb-1 text-sm leading-6">
+				Everything listed here reflects the current supported surface of <Strong class="text-sm"
+					>sv-agentation</Strong
+				>.
+			</Paragraph>
+			<OrderedList class="mt-2 space-y-2 pl-5 text-sm leading-6">
+				{#each features as feature}
+					<ListItem>{@html feature}</ListItem>
+				{/each}
+			</OrderedList>
+		</section>
+
+		<Divider class="my-10" />
+
+		<section aria-labelledby="props-title" class="flex flex-col">
+			<H2 id="props-title" class="text-[1.2rem]">Props</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				The public component API is intentionally small, but it includes the core controls needed
+				for editor opening, selection scoping, and toolbar behavior.
+			</Paragraph>
+			<Table class="mt-2 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+				<Thead>
+					<Tr class="border-b border-border">
+						<Th>Prop</Th>
+						<Th>Type</Th>
+						<Th>Description</Th>
+					</Tr>
+				</Thead>
+				<Tbody>
+					{#each props as prop}
+						<Tr class="border-b border-border last:border-b-0">
+							<Td><code>{prop.name}</code></Td>
+							<Td><code>{prop.type}</code></Td>
+							<Td>{prop.description}</Td>
+						</Tr>
+					{/each}
+				</Tbody>
+			</Table>
+		</section>
+
+		<Divider class="my-10" />
+
+		<section aria-labelledby="shortcuts-title" class="flex flex-col">
+			<H2 id="shortcuts-title" class="mt-0 text-[1.2rem]">Shortcuts</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				These are the keyboard shortcuts and selection gestures currently used by the inspector.
+			</Paragraph>
+			<Table class="mt-2 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+				<Thead>
+					<Tr class="border-b border-border">
+						<Th>Shortcut</Th>
+						<Th>Action</Th>
+						<Th>Description</Th>
+					</Tr>
+				</Thead>
+				<Tbody>
+					{#each shortcuts as shortcut}
+						<Tr class="border-b border-border last:border-b-0">
+							<Td>
+								<div class="flex flex-wrap items-center gap-1.5">
+									{#each shortcut.key.split(' + ') as keyPart}
+										<Kbd>{keyPart}</Kbd>
+									{/each}
+								</div>
+							</Td>
+							<Td>{shortcut.label}</Td>
+							<Td>{shortcut.description}</Td>
+						</Tr>
+					{/each}
+				</Tbody>
+			</Table>
+		</section>
+
+		<Divider class="my-10" />
+
+		<footer class="mt-12 grid gap-3 pt-1">
+			<H2 class="mt-0 text-[1.2rem]">Inspiration & Footer</H2>
+			<p class="inline-flex items-center gap-2 text-[0.82rem] text-muted-foreground">
+				<SparklesIcon class="size-3.5" />
+				<span>Inspiration : Highly inspired from Agentation</span>
+			</p>
+			<div class="flex flex-wrap gap-4">
+				<Link class="text-[0.86rem]" href={githubUrl}>GitHub</Link>
+				<Link class="text-[0.86rem]" href={npmxUrl}>npmx</Link>
+				<Link class="text-[0.86rem]" href={npmjsUrl}>npmjs</Link>
+				<Link class="text-[0.86rem]" href={llmsUrl}>llms.txt</Link>
+			</div>
+		</footer>
 	</div>
 </main>
-
-<style>
-	:global(body) {
-		margin: 0;
-		background: #080808;
-		color: #f2ecdf;
-		/* font-family: Georgia, 'Times New Roman', serif; */
-	}
-
-	.page {
-		min-height: 100vh;
-		padding: 2rem 1rem;
-		background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), #080808;
-	}
-
-	.browser {
-		max-width: 980px;
-		margin: 0 auto;
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 16px;
-		background: #0a0a0a;
-		box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
-		overflow: hidden;
-	}
-
-	.browser-bar {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.9rem 1rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-	}
-
-	.dots {
-		display: flex;
-		gap: 0.35rem;
-	}
-
-	.dots span {
-		width: 8px;
-		height: 8px;
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.12);
-	}
-
-	.address {
-		font-size: 0.95rem;
-	}
-
-	.browser-body {
-		display: grid;
-		gap: 1.5rem;
-		padding: 4.5rem 2rem 3rem;
-	}
-
-	.pause-demo,
-	.interaction-demo,
-	.install-guide {
-		position: relative;
-		display: grid;
-		gap: 1rem;
-		padding: 1.2rem;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 20px;
-		background:
-			linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 55%), rgba(255, 255, 255, 0.02);
-		overflow: hidden;
-		transition:
-			border-color 180ms ease,
-			box-shadow 180ms ease,
-			transform 180ms ease;
-	}
-
-	.pause-demo.pause-demo-frozen {
-		border-color: rgba(98, 127, 255, 0.3);
-		box-shadow:
-			0 0 0 1px rgba(98, 127, 255, 0.12),
-			0 20px 40px rgba(72, 102, 235, 0.12);
-	}
-
-	.interaction-demo.blocked-demo {
-		border-color: rgba(242, 159, 103, 0.42);
-		box-shadow:
-			0 0 0 1px rgba(242, 159, 103, 0.16),
-			0 24px 46px rgba(242, 159, 103, 0.14);
-		transform: translateY(-1px);
-	}
-
-	.demo-blocked-flash {
-		position: absolute;
-		inset: -1px;
-		border-radius: inherit;
-		border: 1px solid rgba(242, 159, 103, 0.48);
-		box-shadow:
-			0 0 0 0 rgba(242, 159, 103, 0.22),
-			inset 0 0 0 1px rgba(242, 159, 103, 0.18);
-		pointer-events: none;
-		animation: demo-blocked-flash 680ms cubic-bezier(0.19, 1, 0.22, 1);
-	}
-
-	.pause-demo-heading {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.pause-demo-heading h2 {
-		margin: 0;
-		font-size: clamp(1.05rem, 1.9vw, 1.2rem);
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.pause-demo-rule {
-		height: 1px;
-		flex: 1;
-		background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-	}
-
-	.demo-copy {
-		display: grid;
-		gap: 0.45rem;
-		max-width: 42rem;
-	}
-
-	.install-copy {
-		display: grid;
-		gap: 0.45rem;
-	}
-
-	.install-command-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.75rem;
-	}
-
-	.install-command-card {
-		display: grid;
-		gap: 0.35rem;
-		padding: 0.85rem 0.95rem;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 16px;
-		background: rgba(255, 255, 255, 0.04);
-	}
-
-	.install-command-label {
-		color: rgba(242, 236, 223, 0.68);
-		font-size: 0.76rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.install-command-card code,
-	.install-code code {
-		font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-		font-size: 0.82rem;
-	}
-
-	.install-code {
-		margin: 0;
-		padding: 1rem 1.05rem;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 18px;
-		background: rgba(0, 0, 0, 0.28);
-		overflow-x: auto;
-		color: #f6f1e8;
-	}
-
-	.demo-eyebrow {
-		margin: 0;
-		color: #f29f67;
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-	}
-
-	.interaction-demo h2 {
-		margin: 0;
-		font-size: clamp(1.1rem, 2vw, 1.35rem);
-	}
-
-	.demo-description {
-		margin: 0;
-		color: rgba(242, 236, 223, 0.76);
-		font-size: 0.95rem;
-		line-height: 1.5;
-	}
-
-	.demo-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.75rem;
-	}
-
-	.demo-feedback {
-		min-height: 1.8rem;
-	}
-
-	.demo-feedback-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0.35rem 0.7rem;
-		border: 1px solid rgba(242, 159, 103, 0.28);
-		border-radius: 999px;
-		background: rgba(242, 159, 103, 0.12);
-		color: #ffd7b8;
-		box-shadow: 0 12px 24px rgba(242, 159, 103, 0.12);
-		font-size: 0.82rem;
-		font-weight: 700;
-		letter-spacing: 0.01em;
-		animation: demo-feedback-badge 360ms cubic-bezier(0.2, 0.88, 0.24, 1);
-	}
-
-	.demo-inline-control {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 1.6rem;
-		padding: 0.05rem 0.35rem;
-		margin: 0 0.12rem;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.05);
-		color: #f6f1e8;
-		font-size: 0.8em;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-	}
-
-	.pause-demo-stage {
-		padding: 0.4rem 0 0.15rem;
-	}
-
-	.pause-demo-track {
-		position: relative;
-		height: 6px;
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.08);
-		overflow: hidden;
-	}
-
-	.pause-demo-runner {
-		position: absolute;
-		top: 50%;
-		left: 0;
-		width: clamp(7rem, 30%, 12.5rem);
-		height: 100%;
-		border-radius: inherit;
-		background: linear-gradient(90deg, #6f89ff, #6c8dff 55%, #7ea0ff);
-		box-shadow:
-			0 0 0 1px rgba(122, 149, 255, 0.18),
-			0 0 22px rgba(108, 141, 255, 0.28);
-		transform: translate(-100%, -50%);
-		animation: pause-demo-slide 2200ms cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-		will-change: transform;
-	}
-
-	.pause-demo-runner.paused {
-		animation-play-state: paused;
-	}
-
-	.demo-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 11rem;
-		padding: 0.8rem 1rem;
-		border-radius: 999px;
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition:
-			transform 180ms ease,
-			box-shadow 180ms ease,
-			background 180ms ease,
-			border-color 180ms ease;
-	}
-
-	.demo-button:hover {
-		transform: translateY(-1px);
-	}
-
-	.primary-demo {
-		border: 1px solid rgba(242, 159, 103, 0.3);
-		background: linear-gradient(135deg, rgba(242, 159, 103, 0.28), rgba(242, 159, 103, 0.12));
-		color: #fff3e8;
-		box-shadow: 0 16px 30px rgba(242, 159, 103, 0.14);
-	}
-
-	.secondary-demo {
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		background: rgba(255, 255, 255, 0.04);
-		color: #f2ecdf;
-	}
-
-	.secondary-demo[aria-pressed='true'] {
-		border-color: rgba(122, 211, 165, 0.35);
-		background: linear-gradient(135deg, rgba(122, 211, 165, 0.2), rgba(122, 211, 165, 0.08));
-		color: #f5fff9;
-	}
-
-	@keyframes demo-blocked-flash {
-		0% {
-			opacity: 0;
-			transform: scale(0.985);
-			box-shadow:
-				0 0 0 0 rgba(242, 159, 103, 0.28),
-				inset 0 0 0 0 rgba(242, 159, 103, 0.18);
-		}
-
-		28% {
-			opacity: 1;
-			transform: scale(1);
-			box-shadow:
-				0 0 0 10px rgba(242, 159, 103, 0.14),
-				inset 0 0 0 1px rgba(242, 159, 103, 0.24);
-		}
-
-		100% {
-			opacity: 0;
-			transform: scale(1.018);
-			box-shadow:
-				0 0 0 18px rgba(242, 159, 103, 0),
-				inset 0 0 0 1px rgba(242, 159, 103, 0);
-		}
-	}
-
-	@keyframes demo-feedback-badge {
-		0% {
-			opacity: 0;
-			transform: translateY(6px) scale(0.96);
-		}
-
-		100% {
-			opacity: 1;
-			transform: translateY(0) scale(1);
-		}
-	}
-
-	@keyframes pause-demo-slide {
-		0% {
-			transform: translate(-100%, -50%);
-		}
-
-		100% {
-			transform: translate(210%, -50%);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.pause-demo,
-		.interaction-demo,
-		.demo-button,
-		.pause-demo-runner,
-		.demo-blocked-flash,
-		.demo-feedback-badge {
-			animation: none;
-			transition: none;
-		}
-	}
-
-	@media (max-width: 640px) {
-		.browser-body {
-			padding: 3rem 1.25rem 2rem;
-		}
-
-		.install-command-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.pause-demo-heading {
-			align-items: flex-start;
-			flex-direction: column;
-			gap: 0.5rem;
-		}
-
-		.pause-demo-rule {
-			width: 100%;
-		}
-
-		.demo-button {
-			width: 100%;
-		}
-	}
-</style>
