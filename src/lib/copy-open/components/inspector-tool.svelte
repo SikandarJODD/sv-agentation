@@ -136,21 +136,26 @@
 
 		const viewportPadding = 8;
 		const panelGap = 10;
-		const layerRect = toolbarLayerElement.getBoundingClientRect();
 		const panelWidth = settingsPanelElement.offsetWidth;
 		const panelHeight = settingsPanelElement.scrollHeight;
-		const spaceAbove = Math.max(0, layerRect.top - viewportPadding - panelGap);
-		const spaceBelow = Math.max(0, window.innerHeight - layerRect.bottom - viewportPadding - panelGap);
+		const layerHeight = toolbarLayerElement.offsetHeight;
+		const targetLeft = toolbar.position.x;
+		const targetTop = toolbar.position.y;
+		const spaceAbove = Math.max(0, targetTop - viewportPadding - panelGap);
+		const spaceBelow = Math.max(
+			0,
+			window.innerHeight - (targetTop + layerHeight) - viewportPadding - panelGap
+		);
 		const shouldPlaceBelow = spaceAbove < panelHeight && spaceBelow > spaceAbove;
 		const nextPlacement = shouldPlaceBelow ? 'below' : 'above';
 		const availableHeight = nextPlacement === 'below' ? spaceBelow : spaceAbove;
 		const clampedLeft = Math.min(
-			Math.max(layerRect.left, viewportPadding),
+			Math.max(targetLeft, viewportPadding),
 			Math.max(viewportPadding, window.innerWidth - panelWidth - viewportPadding)
 		);
 
 		settingsPanelPlacement = nextPlacement;
-		settingsPanelOffsetX = Math.round(clampedLeft - layerRect.left);
+		settingsPanelOffsetX = Math.round(clampedLeft - targetLeft);
 		settingsPanelMaxHeight = Math.max(0, Math.floor(availableHeight));
 	};
 	const handleSettingsViewportChange = () => {
@@ -458,8 +463,8 @@
 		z-index: 10000;
 		pointer-events: none;
 		transition:
-			left 220ms cubic-bezier(0.22, 1, 0.36, 1),
-			top 220ms cubic-bezier(0.22, 1, 0.36, 1);
+			left 320ms cubic-bezier(0.2, 0.92, 0.24, 1),
+			top 320ms cubic-bezier(0.2, 0.92, 0.24, 1);
 		will-change: left, top;
 	}
 
