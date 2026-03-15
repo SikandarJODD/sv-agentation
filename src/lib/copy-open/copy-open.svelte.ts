@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { resolveElementInfo } from 'element-source';
 
 import type {
@@ -49,6 +50,7 @@ import {
 	createDefaultToolbarPosition,
 	createEmptySourceInfo,
 	createGroupAnchorFromElements,
+	DEFAULT_DELETE_ALL_DELAY_MS,
 	DEFAULT_NOTES_SETTINGS,
 	formatNotesAsMarkdown,
 	getComposerPlaceholder,
@@ -57,14 +59,15 @@ import {
 	readStoredMarkerColor,
 	readStoredNotes,
 	readStoredSettings,
-	readStoredThemeMode,
 	readStoredToolbarPosition,
+	readStoredThemeMode,
 	renderNote,
+	sanitizeDeleteAllDelayMs,
 	writeStoredMarkerColor,
 	writeStoredNotes,
 	writeStoredSettings,
-	writeStoredThemeMode,
-	writeStoredToolbarPosition
+	writeStoredToolbarPosition,
+	writeStoredThemeMode
 } from './utils/notes';
 import {
 	markerFromFallback,
@@ -79,7 +82,8 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
 	selector: null,
 	vscodeScheme: 'vscode',
-	openSourceOnClick: false
+	openSourceOnClick: false,
+	deleteAllDelayMs: DEFAULT_DELETE_ALL_DELAY_MS
 };
 
 const DRAG_THRESHOLD = 8;
@@ -113,6 +117,13 @@ type UserSelectSnapshot = {
 	documentWebkitUserSelect: string;
 };
 
+type DeleteAllState = {
+	active: boolean;
+	durationMs: number;
+	remainingMs: number;
+	progress: number;
+};
+
 const createToolbarState = (): ToolbarState => ({
 	expanded: false,
 	dragging: false,
@@ -123,7 +134,18 @@ const createToolbarState = (): ToolbarState => ({
 	position: createDefaultToolbarPosition()
 });
 
-const buildAnchorFromClick = (target: Element, clientX: number, clientY: number): ElementNoteAnchor | null => {
+const createDeleteAllState = (durationMs = DEFAULT_DELETE_ALL_DELAY_MS): DeleteAllState => ({
+	active: false,
+	durationMs,
+	remainingMs: durationMs,
+	progress: 0
+});
+
+const buildAnchorFromClick = (
+	target: Element,
+	clientX: number,
+	clientY: number
+): ElementNoteAnchor | null => {
 	const domPath = buildDomPath(target);
 	if (domPath === null) return null;
 
@@ -145,6 +167,7 @@ export class CopyOpenController {
 	hoverInfo = $state<InspectorHoverInfo | null>(null);
 	copied = $state(false);
 	toolbar = $state<ToolbarState>(createToolbarState());
+	deleteAllState = $state<DeleteAllState>(createDeleteAllState());
 	settings = $state<NotesSettings>(DEFAULT_NOTES_SETTINGS);
 	notes = $state<InspectorNote[]>([]);
 	renderedNotes = $state<RenderedInspectorNote[]>([]);
@@ -159,8 +182,12 @@ export class CopyOpenController {
 	#selector: string | null = DEFAULT_OPTIONS.selector;
 	#vscodeScheme: VsCodeScheme = DEFAULT_OPTIONS.vscodeScheme;
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
+	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
 	#copyResetTimer: ReturnType<typeof setTimeout> | null = null;
 	#toolbarCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
+	#deleteAllCommitTimer: ReturnType<typeof setTimeout> | null = null;
+	#deleteAllFrame: number | null = null;
+	#deleteAllDeadline = 0;
 	#toolbarDrag: ToolbarDragState = { pointerId: null, offsetX: 0, offsetY: 0, width: 0, height: 0 };
 	#pageStorageKey = 'unknown-page';
 	#groupSelectionItems: GroupSelectionItem[] = [];
@@ -177,16 +204,14 @@ export class CopyOpenController {
 
 	constructor(options: Partial<InspectorRuntimeOptions> = {}) {
 		this.updateOptions(options);
+		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 
 		if (typeof window !== 'undefined') {
 			this.#pageStorageKey = getPageStorageKey();
-			this.toolbar = {
-				...this.toolbar,
-				position: readStoredToolbarPosition()
-			};
 			const storedSettings = readStoredSettings();
 			const themeMode = readStoredThemeMode() ?? DEFAULT_NOTES_SETTINGS.themeMode;
 			const markerColor = readStoredMarkerColor() ?? DEFAULT_NOTES_SETTINGS.markerColor;
+			const storedToolbarPosition = readStoredToolbarPosition(this.#pageStorageKey);
 
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
@@ -196,6 +221,12 @@ export class CopyOpenController {
 				themeMode,
 				markerColor
 			};
+			this.#setToolbar({
+				position: clampToolbarPosition(
+					storedToolbarPosition ?? createDefaultToolbarPosition(),
+					this.toolbar.expanded
+				)
+			});
 			this.notes = readStoredNotes(this.#pageStorageKey);
 			this.refreshRenderedNotes();
 		}
@@ -216,6 +247,22 @@ export class CopyOpenController {
 
 		if ('openSourceOnClick' in options) {
 			this.#openSourceOnClick = options.openSourceOnClick ?? DEFAULT_OPTIONS.openSourceOnClick;
+		}
+
+		if ('deleteAllDelayMs' in options) {
+			const nextDeleteAllDelayMs = sanitizeDeleteAllDelayMs(options.deleteAllDelayMs);
+			const currentDeleteAllState = untrack(() => this.deleteAllState);
+
+			if (nextDeleteAllDelayMs !== this.#deleteAllDelayMs) {
+				this.#deleteAllDelayMs = nextDeleteAllDelayMs;
+			}
+
+			if (
+				nextDeleteAllDelayMs !== currentDeleteAllState.durationMs &&
+				!currentDeleteAllState.active
+			) {
+				this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
+			}
 		}
 	}
 
@@ -238,6 +285,9 @@ export class CopyOpenController {
 
 	toggleToolbar = () => {
 		const expanded = !this.toolbar.expanded;
+		if (!expanded) {
+			this.cancelDeleteAll();
+		}
 		const nextPosition = alignToolbarPositionForStateChange(
 			this.toolbar.position,
 			this.toolbar.expanded,
@@ -250,10 +300,11 @@ export class CopyOpenController {
 			confirmDeleteAll: false,
 			position: nextPosition
 		});
-		writeStoredToolbarPosition(nextPosition);
+		this.#persistToolbarPosition(nextPosition);
 	};
 
 	closeToolbar = () => {
+		this.cancelDeleteAll();
 		const nextPosition = alignToolbarPositionForStateChange(this.toolbar.position, true, false);
 
 		this.#setToolbar({
@@ -262,7 +313,7 @@ export class CopyOpenController {
 			confirmDeleteAll: false,
 			position: nextPosition
 		});
-		writeStoredToolbarPosition(nextPosition);
+		this.#persistToolbarPosition(nextPosition);
 	};
 
 	toggleSettings = () => {
@@ -277,18 +328,29 @@ export class CopyOpenController {
 	};
 
 	requestDeleteAll = () => {
-		this.confirmDeleteAll();
+		if (this.notes.length === 0) return;
+		if (this.deleteAllState.active) {
+			this.cancelDeleteAll();
+			return;
+		}
+
+		this.#startDeleteAll();
 	};
 
 	cancelDeleteAll = () => {
+		this.#clearDeleteAllTimers();
+		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 		this.#setToolbar({ confirmDeleteAll: false });
 	};
 
 	confirmDeleteAll = () => {
+		this.#clearDeleteAllTimers();
+		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 		this.notes = [];
 		this.renderedNotes = [];
 		this.activeNoteId = null;
 		this.closeComposer();
+		this.#clearTransientSelections();
 		this.#persistNotes();
 		this.#setToolbar({
 			confirmDeleteAll: false
@@ -383,7 +445,13 @@ export class CopyOpenController {
 			return;
 		}
 
-		if (this.enabled && this.#mouseDownState && (event.buttons & 1) === 1 && !this.composer && !this.#isGroupingModifiersHeld()) {
+		if (
+			this.enabled &&
+			this.#mouseDownState &&
+			(event.buttons & 1) === 1 &&
+			!this.composer &&
+			!this.#isGroupingModifiersHeld()
+		) {
 			this.#updateDragSelection(event);
 			if (this.#dragActive) {
 				this.clearHover();
@@ -419,11 +487,13 @@ export class CopyOpenController {
 
 	handlePointerUp = (event: PointerEvent) => {
 		if (!this.toolbar.dragging) return;
-		if (this.#toolbarDrag.pointerId !== null && event.pointerId !== this.#toolbarDrag.pointerId) return;
+		if (this.#toolbarDrag.pointerId !== null && event.pointerId !== this.#toolbarDrag.pointerId)
+			return;
 
+		const nextPosition = this.toolbar.position;
 		this.#toolbarDrag = { pointerId: null, offsetX: 0, offsetY: 0, width: 0, height: 0 };
 		this.#setToolbar({ dragging: false });
-		writeStoredToolbarPosition(this.toolbar.position);
+		this.#persistToolbarPosition(nextPosition);
 	};
 
 	handleMouseUpCapture = async (event: MouseEvent) => {
@@ -467,10 +537,16 @@ export class CopyOpenController {
 			this.clearHover();
 		}
 
+		const nextPosition = clampToolbarPosition(this.toolbar.position, this.toolbar.expanded);
+		const positionChanged =
+			nextPosition.x !== this.toolbar.position.x || nextPosition.y !== this.toolbar.position.y;
+
 		this.#setToolbar({
-			position: clampToolbarPosition(this.toolbar.position, this.toolbar.expanded)
+			position: nextPosition
 		});
-		writeStoredToolbarPosition(this.toolbar.position);
+		if (positionChanged) {
+			this.#persistToolbarPosition(nextPosition);
+		}
 		this.refreshRenderedNotes();
 		this.#refreshComposerLayout();
 		this.#refreshSelectionPreview();
@@ -652,7 +728,7 @@ export class CopyOpenController {
 
 		const now = new Date().toISOString();
 		const existingNote = this.composer.noteId
-			? this.notes.find((note) => note.id === this.composer?.noteId) ?? null
+			? (this.notes.find((note) => note.id === this.composer?.noteId) ?? null)
 			: null;
 
 		const nextNote: InspectorNote = {
@@ -706,6 +782,10 @@ export class CopyOpenController {
 			this.activeNoteId = null;
 		}
 
+		if (this.notes.length === 0) {
+			this.cancelDeleteAll();
+		}
+
 		this.#persistNotes();
 	};
 
@@ -714,6 +794,7 @@ export class CopyOpenController {
 	};
 
 	destroy() {
+		this.cancelDeleteAll();
 		this.#clearCopyResetTimer();
 		this.#clearToolbarCopyResetTimer();
 		this.#setDragUserSelectSuppressed(false);
@@ -730,6 +811,64 @@ export class CopyOpenController {
 	#persistNotes() {
 		if (typeof window === 'undefined') return;
 		writeStoredNotes(this.#pageStorageKey, this.notes);
+	}
+
+	#persistToolbarPosition(position: ToolbarCoordinates = this.toolbar.position) {
+		if (typeof window === 'undefined') return;
+		writeStoredToolbarPosition(this.#pageStorageKey, position);
+	}
+
+	#startDeleteAll() {
+		if (typeof window === 'undefined') return;
+
+		this.#clearDeleteAllTimers();
+		const durationMs = this.#deleteAllDelayMs;
+		this.#deleteAllDeadline = Date.now() + durationMs;
+		this.deleteAllState = {
+			active: true,
+			durationMs,
+			remainingMs: durationMs,
+			progress: 0
+		};
+		this.#deleteAllCommitTimer = window.setTimeout(() => {
+			this.#deleteAllCommitTimer = null;
+			this.confirmDeleteAll();
+		}, durationMs);
+		this.#syncDeleteAllProgress();
+	}
+
+	#syncDeleteAllProgress = () => {
+		if (typeof window === 'undefined' || !this.deleteAllState.active) return;
+
+		const remainingMs = Math.max(0, this.#deleteAllDeadline - Date.now());
+		const progress =
+			this.deleteAllState.durationMs <= 0 ? 1 : 1 - remainingMs / this.deleteAllState.durationMs;
+
+		this.deleteAllState = {
+			...this.deleteAllState,
+			remainingMs,
+			progress
+		};
+
+		if (remainingMs <= 0) {
+			this.#deleteAllFrame = null;
+			return;
+		}
+
+		this.#deleteAllFrame = window.requestAnimationFrame(this.#syncDeleteAllProgress);
+	};
+
+	#clearDeleteAllTimers() {
+		if (typeof window !== 'undefined' && this.#deleteAllFrame !== null) {
+			window.cancelAnimationFrame(this.#deleteAllFrame);
+		}
+		if (this.#deleteAllCommitTimer !== null) {
+			clearTimeout(this.#deleteAllCommitTimer);
+		}
+
+		this.#deleteAllFrame = null;
+		this.#deleteAllCommitTimer = null;
+		this.#deleteAllDeadline = 0;
 	}
 
 	#isGroupingModifiersHeld() {
@@ -773,7 +912,9 @@ export class CopyOpenController {
 
 		const existingIndex = this.#groupSelectionItems.findIndex((item) => item.domPath === domPath);
 		if (existingIndex >= 0) {
-			this.#groupSelectionItems = this.#groupSelectionItems.filter((_, index) => index !== existingIndex);
+			this.#groupSelectionItems = this.#groupSelectionItems.filter(
+				(_, index) => index !== existingIndex
+			);
 		} else {
 			this.#groupSelectionItems = [...this.#groupSelectionItems, { element: target, domPath }];
 		}
@@ -795,7 +936,13 @@ export class CopyOpenController {
 		if (elements.length === 1) {
 			const target = elements[0];
 			const rect = target.getBoundingClientRect();
-			await this.#openElementComposer(target, rect.left + rect.width / 2, rect.top + rect.height / 2, null, '');
+			await this.#openElementComposer(
+				target,
+				rect.left + rect.width / 2,
+				rect.top + rect.height / 2,
+				null,
+				''
+			);
 			return;
 		}
 
@@ -825,15 +972,17 @@ export class CopyOpenController {
 		const now = Date.now();
 		if (now - this.#lastDragUpdate >= DRAG_UPDATE_THROTTLE) {
 			this.#lastDragUpdate = now;
-			highlightRects = this.#findSelectableElementsInRect({ left, top, width, height }).map((element) => {
-				const rect = element.getBoundingClientRect();
-				return {
-					left: rect.left,
-					top: rect.top,
-					width: rect.width,
-					height: rect.height
-				};
-			});
+			highlightRects = this.#findSelectableElementsInRect({ left, top, width, height }).map(
+				(element) => {
+					const rect = element.getBoundingClientRect();
+					return {
+						left: rect.left,
+						top: rect.top,
+						width: rect.width,
+						height: rect.height
+					};
+				}
+			);
 		} else if (this.dragSelection) {
 			highlightRects = this.dragSelection.highlightRects;
 		}
@@ -879,7 +1028,9 @@ export class CopyOpenController {
 	}
 
 	#findSelectableElementsInRect(selection: RectBox) {
-		const selector = this.#selector ? `${this.#selector}, ${this.#selector} ${DRAG_CANDIDATE_SELECTOR}` : DRAG_CANDIDATE_SELECTOR;
+		const selector = this.#selector
+			? `${this.#selector}, ${this.#selector} ${DRAG_CANDIDATE_SELECTOR}`
+			: DRAG_CANDIDATE_SELECTOR;
 		const allCandidates = Array.from(document.querySelectorAll(selector))
 			.filter((element): element is Element => element instanceof Element)
 			.filter((element) => !isInspectorUiTarget(element))
@@ -929,8 +1080,16 @@ export class CopyOpenController {
 				: await this.#resolveHoverInfo(target, clientX, clientY);
 
 		const rect = target.getBoundingClientRect();
-		const markerLeft = clampNumber(rect.left + rect.width * anchor.relativeX, 12, window.innerWidth - 12);
-		const markerTop = clampNumber(rect.top + rect.height * anchor.relativeY, 12, window.innerHeight - 12);
+		const markerLeft = clampNumber(
+			rect.left + rect.width * anchor.relativeX,
+			12,
+			window.innerWidth - 12
+		);
+		const markerTop = clampNumber(
+			rect.top + rect.height * anchor.relativeY,
+			12,
+			window.innerHeight - 12
+		);
 
 		this.#lastTarget = target;
 		this.hoverInfo = hoverInfo;
@@ -965,14 +1124,21 @@ export class CopyOpenController {
 	async #openTextComposerFromSelection(selection: ReturnType<typeof serializeTextSelection>) {
 		if (!selection) return false;
 
-		const sourceInfo = await this.#resolveSourceInfo(selection.commonAncestor, selection.markerLeft, selection.markerTop);
+		const sourceInfo = await this.#resolveSourceInfo(
+			selection.commonAncestor,
+			selection.markerLeft,
+			selection.markerTop
+		);
 		this.activeNoteId = null;
 		this.noteDraft = '';
 		this.composer = buildComposerState({
 			noteId: null,
 			noteKind: 'text',
 			initialValue: '',
-			targetSummary: buildTextTargetSummary(selection.commonAncestor, selection.anchor.selectedText),
+			targetSummary: buildTextTargetSummary(
+				selection.commonAncestor,
+				selection.anchor.selectedText
+			),
 			targetLabel: buildTextTargetLabel(selection.commonAncestor),
 			placeholder: getComposerPlaceholder('text'),
 			accentColor: this.settings.markerColor,
@@ -1055,8 +1221,13 @@ export class CopyOpenController {
 			targetSummary: note.targetSummary,
 			targetLabel: note.targetLabel,
 			placeholder:
-				note.kind === 'group' ? getComposerPlaceholder('group', note.anchor.selectedDomPaths.length) : getComposerPlaceholder(note.kind),
-			accentColor: note.kind === 'group' || note.kind === 'area' ? GROUP_SELECTION_COLOR : this.settings.markerColor,
+				note.kind === 'group'
+					? getComposerPlaceholder('group', note.anchor.selectedDomPaths.length)
+					: getComposerPlaceholder(note.kind),
+			accentColor:
+				note.kind === 'group' || note.kind === 'area'
+					? GROUP_SELECTION_COLOR
+					: this.settings.markerColor,
 			markerLeft,
 			markerTop,
 			outlineRects,
@@ -1107,22 +1278,37 @@ export class CopyOpenController {
 
 				const rect = target.getBoundingClientRect();
 				const anchor = this.composer.anchor as ElementNoteAnchor;
-				const markerLeft = clampNumber(rect.left + rect.width * anchor.relativeX, 12, window.innerWidth - 12);
-				const markerTop = clampNumber(rect.top + rect.height * anchor.relativeY, 12, window.innerHeight - 12);
-				this.#updateComposerPosition(markerLeft, markerTop, [
-					{
-						left: rect.left,
-						top: rect.top,
-						width: rect.width,
-						height: rect.height
-					}
-				], []);
+				const markerLeft = clampNumber(
+					rect.left + rect.width * anchor.relativeX,
+					12,
+					window.innerWidth - 12
+				);
+				const markerTop = clampNumber(
+					rect.top + rect.height * anchor.relativeY,
+					12,
+					window.innerHeight - 12
+				);
+				this.#updateComposerPosition(
+					markerLeft,
+					markerTop,
+					[
+						{
+							left: rect.left,
+							top: rect.top,
+							width: rect.width,
+							height: rect.height
+						}
+					],
+					[]
+				);
 				return;
 			}
 			case 'text': {
 				const resolved = resolveTextSelection(this.composer.anchor as TextSelectionAnchor);
 				if (!resolved) {
-					const fallback = markerFromFallback((this.composer.anchor as TextSelectionAnchor).fallbackMarker);
+					const fallback = markerFromFallback(
+						(this.composer.anchor as TextSelectionAnchor).fallbackMarker
+					);
 					this.#updateComposerPosition(fallback.markerLeft, fallback.markerTop, [], []);
 					return;
 				}
@@ -1138,7 +1324,9 @@ export class CopyOpenController {
 			case 'group': {
 				const resolved = resolveGroupSelection(this.composer.anchor as GroupSelectionAnchor);
 				if (!resolved) {
-					const fallback = markerFromFallback((this.composer.anchor as GroupSelectionAnchor).fallbackMarker);
+					const fallback = markerFromFallback(
+						(this.composer.anchor as GroupSelectionAnchor).fallbackMarker
+					);
 					this.#updateComposerPosition(fallback.markerLeft, fallback.markerTop, [], []);
 					return;
 				}
@@ -1148,12 +1336,22 @@ export class CopyOpenController {
 			}
 			case 'area': {
 				const resolved = resolveAreaSelection(this.composer.anchor as AreaSelectionAnchor);
-				this.#updateComposerPosition(resolved.markerLeft, resolved.markerTop, [resolved.bounds], []);
+				this.#updateComposerPosition(
+					resolved.markerLeft,
+					resolved.markerTop,
+					[resolved.bounds],
+					[]
+				);
 			}
 		}
 	}
 
-	#updateComposerPosition(markerLeft: number, markerTop: number, outlineRects: RectBox[], highlightRects: RectBox[]) {
+	#updateComposerPosition(
+		markerLeft: number,
+		markerTop: number,
+		outlineRects: RectBox[],
+		highlightRects: RectBox[]
+	) {
 		if (!this.composer) return;
 
 		this.composer = buildComposerState({
@@ -1202,7 +1400,9 @@ export class CopyOpenController {
 				return;
 			}
 			case 'group': {
-				const target = resolveDomPath(note.anchor.anchorDomPath) ?? resolveDomPath(note.anchor.selectedDomPaths[0] ?? '');
+				const target =
+					resolveDomPath(note.anchor.anchorDomPath) ??
+					resolveDomPath(note.anchor.selectedDomPaths[0] ?? '');
 				target?.scrollIntoView({
 					block: 'center',
 					inline: 'nearest',
@@ -1219,7 +1419,11 @@ export class CopyOpenController {
 		}
 	}
 
-	async #resolveSourceInfo(target: Element, clientX: number, clientY: number): Promise<NoteSourceInfo> {
+	async #resolveSourceInfo(
+		target: Element,
+		clientX: number,
+		clientY: number
+	): Promise<NoteSourceInfo> {
 		try {
 			const hoverInfo = await this.#resolveHoverInfo(target, clientX, clientY);
 			return buildSourceInfoFromHoverInfo(hoverInfo);
@@ -1343,7 +1547,8 @@ export class CopyOpenController {
 		document.body.style.userSelect = this.#dragUserSelectSnapshot.bodyUserSelect;
 		document.body.style.webkitUserSelect = this.#dragUserSelectSnapshot.bodyWebkitUserSelect;
 		document.documentElement.style.userSelect = this.#dragUserSelectSnapshot.documentUserSelect;
-		document.documentElement.style.webkitUserSelect = this.#dragUserSelectSnapshot.documentWebkitUserSelect;
+		document.documentElement.style.webkitUserSelect =
+			this.#dragUserSelectSnapshot.documentWebkitUserSelect;
 		this.#dragUserSelectSnapshot = null;
 	}
 

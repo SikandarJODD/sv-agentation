@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { fade, scale } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	import { fade, scale, slide } from 'svelte/transition';
 	import {
 		Check,
 		Copy,
@@ -9,6 +10,7 @@
 		Moon,
 		PanelBottom,
 		Play,
+		RotateCcw,
 		Settings,
 		SunMedium,
 		Trash2,
@@ -20,14 +22,13 @@
 
 	let {
 		active,
+		deleteAllState,
 		notes,
 		settings,
 		toolbar,
 		onCloseToolbar,
 		onCopyNotes,
-		onDeleteAllCancel,
-		onDeleteAllConfirm,
-		onDeleteAllRequest,
+		onDeleteAll,
 		onSetBlockPageInteractions,
 		onSetMarkerColor,
 		onToggle,
@@ -38,14 +39,18 @@
 		onToolbarPointerDown
 	}: {
 		active: boolean;
+		deleteAllState: {
+			active: boolean;
+			durationMs: number;
+			remainingMs: number;
+			progress: number;
+		};
 		notes: InspectorNote[];
 		settings: NotesSettings;
 		toolbar: ToolbarState;
 		onCloseToolbar: () => void;
 		onCopyNotes: () => Promise<boolean>;
-		onDeleteAllCancel: () => void;
-		onDeleteAllConfirm: () => void;
-		onDeleteAllRequest: () => void;
+		onDeleteAll: () => void;
 		onSetBlockPageInteractions: (value: boolean) => void;
 		onSetMarkerColor: (color: string) => void;
 		onToggle: () => void;
@@ -70,9 +75,38 @@
 
 	const settingsPanelWidth = `${EXPANDED_TOOLBAR_WIDTH}px`;
 	const getNoteCountLabel = () => (notes.length > 99 ? '99+' : `${notes.length}`);
+	const launcherTransition = {
+		duration: 140,
+		easing: cubicOut
+	};
+	const toolbarTransition = {
+		axis: 'x' as const,
+		duration: 190,
+		easing: cubicOut
+	};
+	const panelTransition = {
+		axis: 'y' as const,
+		duration: 180,
+		easing: cubicOut
+	};
+	const badgeTransition = {
+		duration: 140,
+		start: 0.86,
+		opacity: 0,
+		easing: cubicOut
+	};
+	const getDeleteAllRemainingSeconds = (state: typeof deleteAllState) =>
+		Math.max(1, Math.ceil(state.remainingMs / 1000));
+	const getDeleteAllProgressDegrees = (state: typeof deleteAllState) =>
+		`${Math.max(0, Math.min(360, state.progress * 360)).toFixed(1)}deg`;
+	const getDeleteAllTitle = (state: typeof deleteAllState) =>
+		state.active
+			? `Cancel delete all notes (${getDeleteAllRemainingSeconds(state)}s left)`
+			: 'Delete all notes';
 </script>
 
 <div
+	class:dragging={toolbar.dragging}
 	class="toolbar-layer"
 	data-inspector-ui
 	style={`left:${toolbar.position.x}px;top:${toolbar.position.y}px;--settings-panel-width:${settingsPanelWidth};`}
@@ -81,8 +115,8 @@
 		<div
 			class="panel settings-panel"
 			data-inspector-ui
-			in:scale={{ duration: 180, start: 0.94 }}
-			out:fade={{ duration: 150 }}
+			in:slide={panelTransition}
+			out:slide={{ ...panelTransition, duration: 130 }}
 		>
 			<div class="settings-head" data-inspector-ui>
 				<div class="brand" data-inspector-ui>
@@ -92,8 +126,9 @@
 				<div class="settings-meta" data-inspector-ui>
 					<span class="version" data-inspector-ui>v2.3.3</span>
 					<button
-						aria-label={
-							settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+						aria-label={settings.themeMode === 'dark'
+							? 'Switch to light mode'
+							: 'Switch to dark mode'}
 						class="theme-toggle"
 						data-inspector-ui
 						title={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -158,32 +193,13 @@
 		</div>
 	{/if}
 
-	{#if toolbar.confirmDeleteAll}
-		<div
-			class="panel confirm-panel"
-			data-inspector-ui
-			in:scale={{ duration: 160, start: 0.96 }}
-			out:fade={{ duration: 140 }}
-		>
-			<p data-inspector-ui>Delete all notes for this page?</p>
-			<div class="confirm-actions" data-inspector-ui>
-				<button class="text-action" data-inspector-ui type="button" onclick={onDeleteAllCancel}>
-					Cancel
-				</button>
-				<button class="danger-action" data-inspector-ui type="button" onclick={onDeleteAllConfirm}>
-					Delete all
-				</button>
-			</div>
-		</div>
-	{/if}
-
 	{#if toolbar.expanded}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="toolbar-shell"
 			data-inspector-ui
-			in:scale={{ duration: 180, start: 0.96 }}
-			out:fade={{ duration: 150 }}
+			in:slide={toolbarTransition}
+			out:slide={{ ...toolbarTransition, duration: 145 }}
 			onpointerdown={handleSurfacePointerDown}
 		>
 			<div class="toolbar" data-inspector-ui>
@@ -233,14 +249,39 @@
 				</button>
 
 				<button
-					class="toolbar-button"
+					aria-label={getDeleteAllTitle(deleteAllState)}
+					class:pending-delete={deleteAllState.active}
+					class="toolbar-button delete-button"
 					data-inspector-ui
 					disabled={notes.length === 0}
-					title="Delete all notes"
+					style={deleteAllState.active
+						? `--delete-progress:${getDeleteAllProgressDegrees(deleteAllState)};`
+						: undefined}
+					title={getDeleteAllTitle(deleteAllState)}
 					type="button"
-					onclick={onDeleteAllRequest}
+					onclick={onDeleteAll}
 				>
-					<Trash2 size={16} />
+					{#if deleteAllState.active}
+						<span aria-hidden="true" class="delete-progress-ring" data-inspector-ui></span>
+						<span aria-hidden="true" class="delete-progress-face" data-inspector-ui></span>
+					{/if}
+					<span class="delete-icon" data-inspector-ui>
+						{#if deleteAllState.active}
+							<RotateCcw size={15} />
+						{:else}
+							<Trash2 size={16} />
+						{/if}
+					</span>
+					{#if deleteAllState.active}
+						<span
+							class="delete-countdown"
+							data-inspector-ui
+							in:scale={badgeTransition}
+							out:scale={{ ...badgeTransition, duration: 110 }}
+						>
+							{getDeleteAllRemainingSeconds(deleteAllState)}s
+						</span>
+					{/if}
 				</button>
 
 				<button
@@ -269,7 +310,13 @@
 		</div>
 	{:else}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="launcher-shell" data-inspector-ui onpointerdown={handleSurfacePointerDown}>
+		<div
+			class="launcher-shell"
+			data-inspector-ui
+			in:fade={launcherTransition}
+			out:fade={{ ...launcherTransition, duration: 120 }}
+			onpointerdown={handleSurfacePointerDown}
+		>
 			<button
 				aria-label="Open toolbar"
 				class="launcher-button"
@@ -292,6 +339,14 @@
 		position: fixed;
 		z-index: 10000;
 		pointer-events: none;
+		transition:
+			left 220ms cubic-bezier(0.22, 1, 0.36, 1),
+			top 220ms cubic-bezier(0.22, 1, 0.36, 1);
+		will-change: left, top;
+	}
+
+	.toolbar-layer.dragging {
+		transition: none;
 	}
 
 	.toolbar-shell,
@@ -303,6 +358,8 @@
 	.toolbar-shell,
 	.launcher-shell {
 		position: relative;
+		transform-origin: right bottom;
+		will-change: transform, opacity;
 	}
 
 	.launcher-shell {
@@ -421,6 +478,81 @@
 		box-shadow: inset 0 0 0 1px rgba(20, 206, 76, 0.22);
 	}
 
+	.delete-button {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.delete-button.pending-delete {
+		color: var(--inspector-danger);
+		background: transparent;
+		box-shadow: none;
+	}
+
+	.delete-button.pending-delete:hover:not(:disabled) {
+		color: var(--inspector-danger);
+		background: transparent;
+		box-shadow: none;
+		transform: translateY(-0.5px);
+	}
+
+	.delete-progress-ring,
+	.delete-progress-face {
+		position: absolute;
+		border-radius: 999px;
+		pointer-events: none;
+	}
+
+	.delete-progress-ring {
+		inset: 0;
+		z-index: -2;
+		background: conic-gradient(
+			from -90deg,
+			color-mix(in srgb, var(--inspector-danger) 92%, transparent) 0deg var(--delete-progress),
+			color-mix(in srgb, var(--inspector-danger) 18%, transparent) var(--delete-progress) 360deg
+		);
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--inspector-danger) 22%, transparent),
+			0 10px 18px color-mix(in srgb, var(--inspector-danger) 12%, transparent);
+	}
+
+	.delete-progress-face {
+		inset: 1.5px;
+		z-index: -1;
+		background: var(--inspector-toolbar-surface);
+	}
+
+	.delete-icon {
+		position: relative;
+		z-index: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.delete-countdown {
+		position: absolute;
+		top: -5px;
+		right: -8px;
+		z-index: 2;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 24px;
+		height: 18px;
+		padding: 0 6px;
+		border: 1px solid color-mix(in srgb, var(--inspector-danger) 26%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--inspector-danger) 94%, #ffffff 6%);
+		color: #ffffff;
+		box-shadow: 0 8px 16px color-mix(in srgb, var(--inspector-danger) 20%, transparent);
+		font-size: 0.64rem;
+		font-weight: 700;
+		line-height: 1;
+		letter-spacing: -0.01em;
+		pointer-events: none;
+	}
+
 	.divider {
 		width: 1px;
 		height: 18px;
@@ -445,10 +577,6 @@
 		width: min(var(--settings-panel-width), calc(100vw - 16px));
 		padding: 12px 14px 13px;
 		border-radius: 24px;
-	}
-
-	.confirm-panel {
-		width: 264px;
 	}
 
 	.settings-head {
@@ -620,45 +748,6 @@
 		border-right: 1.5px solid var(--inspector-checkbox-check);
 		border-bottom: 1.5px solid var(--inspector-checkbox-check);
 		transform: rotate(45deg);
-	}
-
-	.confirm-panel p {
-		margin: 0;
-		font-size: 0.92rem;
-		line-height: 1.5;
-		color: var(--inspector-text-muted);
-	}
-
-	.confirm-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 10px;
-		margin-top: 16px;
-	}
-
-	.text-action,
-	.danger-action {
-		border: none;
-		background: transparent;
-		font: inherit;
-		cursor: pointer;
-		transition:
-			color 160ms ease,
-			opacity 160ms ease;
-	}
-
-	.text-action {
-		color: var(--inspector-text-muted);
-	}
-
-	.danger-action {
-		color: var(--inspector-danger);
-		font-weight: 600;
-	}
-
-	.text-action:hover,
-	.danger-action:hover {
-		opacity: 0.82;
 	}
 
 	@media (max-width: 640px) {

@@ -26,13 +26,14 @@ import {
 } from './selection';
 
 const STORAGE_PREFIX = 'copy-open';
-const TOOLBAR_POSITION_STORAGE_KEY = `${STORAGE_PREFIX}:toolbar-position:v1`;
 const SETTINGS_STORAGE_KEY = `${STORAGE_PREFIX}:settings:v1`;
 const NOTES_STORAGE_PREFIX = `${STORAGE_PREFIX}:notes:v1:`;
+const TOOLBAR_STORAGE_PREFIX = `${STORAGE_PREFIX}:toolbar:v1:`;
 const THEME_MODE_STORAGE_KEY = 'sv-agentation-theme-mode';
 const MARKER_COLOR_STORAGE_KEY = 'sv-agentation-marker-color';
 
 const TOOLBAR_MARGIN = 8;
+export const DEFAULT_DELETE_ALL_DELAY_MS = 3000;
 export const COLLAPSED_TOOLBAR_SIZE = 52;
 export const EXPANDED_TOOLBAR_WIDTH = 266;
 export const EXPANDED_TOOLBAR_HEIGHT = 52;
@@ -131,6 +132,26 @@ export const getPageStorageKey = () => {
 export const buildNotesStorageKey = (pageStorageKey: string) =>
 	`${NOTES_STORAGE_PREFIX}${encodeURIComponent(pageStorageKey)}`;
 
+export const buildToolbarStorageKey = (pageStorageKey: string) =>
+	`${TOOLBAR_STORAGE_PREFIX}${encodeURIComponent(pageStorageKey)}`;
+
+export const sanitizeDeleteAllDelayMs = (value: number | null | undefined) =>
+	typeof value === 'number' && Number.isFinite(value) && value > 0
+		? value
+		: DEFAULT_DELETE_ALL_DELAY_MS;
+
+const isToolbarCoordinates = (value: unknown): value is ToolbarCoordinates => {
+	if (!value || typeof value !== 'object') return false;
+
+	const candidate = value as Partial<ToolbarCoordinates>;
+	return (
+		typeof candidate.x === 'number' &&
+		Number.isFinite(candidate.x) &&
+		typeof candidate.y === 'number' &&
+		Number.isFinite(candidate.y)
+	);
+};
+
 export const createDefaultToolbarPosition = (): ToolbarCoordinates => {
 	if (typeof window === 'undefined') {
 		return { x: TOOLBAR_MARGIN, y: TOOLBAR_MARGIN };
@@ -162,8 +183,16 @@ export const clampToolbarPosition = (
 	);
 
 	return {
-		x: clampNumber(position.x, TOOLBAR_MARGIN, Math.max(TOOLBAR_MARGIN, window.innerWidth - width - TOOLBAR_MARGIN)),
-		y: clampNumber(position.y, TOOLBAR_MARGIN, Math.max(TOOLBAR_MARGIN, window.innerHeight - height - TOOLBAR_MARGIN))
+		x: clampNumber(
+			position.x,
+			TOOLBAR_MARGIN,
+			Math.max(TOOLBAR_MARGIN, window.innerWidth - width - TOOLBAR_MARGIN)
+		),
+		y: clampNumber(
+			position.y,
+			TOOLBAR_MARGIN,
+			Math.max(TOOLBAR_MARGIN, window.innerHeight - height - TOOLBAR_MARGIN)
+		)
 	};
 };
 
@@ -188,16 +217,6 @@ export const alignToolbarPositionForStateChange = (
 			height: toHeight
 		}
 	);
-};
-
-export const readStoredToolbarPosition = () => {
-	const storedPosition = readStoredJson<ToolbarCoordinates>(TOOLBAR_POSITION_STORAGE_KEY);
-	if (!storedPosition) return createDefaultToolbarPosition();
-	return clampToolbarPosition(storedPosition, false);
-};
-
-export const writeStoredToolbarPosition = (position: ToolbarCoordinates) => {
-	writeStoredJson(TOOLBAR_POSITION_STORAGE_KEY, position);
 };
 
 export const readStoredThemeMode = () => {
@@ -264,6 +283,18 @@ export const readStoredSettings = () => {
 				? storedSettings.outputDetail
 				: DEFAULT_NOTES_SETTINGS.outputDetail
 	} satisfies NotesSettings;
+};
+
+export const readStoredToolbarPosition = (pageStorageKey: string) => {
+	const storedPosition = readStoredJson<unknown>(buildToolbarStorageKey(pageStorageKey));
+	return isToolbarCoordinates(storedPosition) ? storedPosition : null;
+};
+
+export const writeStoredToolbarPosition = (
+	pageStorageKey: string,
+	position: ToolbarCoordinates
+) => {
+	writeStoredJson(buildToolbarStorageKey(pageStorageKey), position);
 };
 
 export const writeStoredSettings = (settings: NotesSettings) => {
@@ -367,9 +398,13 @@ const isValidNote = (value: unknown): value is InspectorNote => {
 		case 'text':
 			return typeof (candidate as TextInspectorNote).anchor?.commonAncestorPath === 'string';
 		case 'group':
-			return Array.isArray((candidate.anchor as { selectedDomPaths?: unknown[] })?.selectedDomPaths);
+			return Array.isArray(
+				(candidate.anchor as { selectedDomPaths?: unknown[] })?.selectedDomPaths
+			);
 		case 'area':
-			return typeof (candidate.anchor as { bounds?: { left?: unknown } })?.bounds?.left === 'number';
+			return (
+				typeof (candidate.anchor as { bounds?: { left?: unknown } })?.bounds?.left === 'number'
+			);
 		default:
 			return false;
 	}
@@ -478,8 +513,16 @@ const resolveElementNotePosition = (note: ElementInspectorNote): ResolvedNotePos
 	if (!target) return null;
 
 	const rect = target.getBoundingClientRect();
-	const markerLeft = clampNumber(rect.left + rect.width * note.anchor.relativeX, 12, window.innerWidth - 12);
-	const markerTop = clampNumber(rect.top + rect.height * note.anchor.relativeY, 12, window.innerHeight - 12);
+	const markerLeft = clampNumber(
+		rect.left + rect.width * note.anchor.relativeX,
+		12,
+		window.innerWidth - 12
+	);
+	const markerTop = clampNumber(
+		rect.top + rect.height * note.anchor.relativeY,
+		12,
+		window.innerHeight - 12
+	);
 	const bounds = {
 		left: rect.left,
 		top: rect.top,
@@ -547,15 +590,13 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 		return {
 			...note,
 			resolution: position ? 'resolved' : 'unresolved',
-			position:
-				position ??
-				{
-					markerLeft: clampNumber(note.anchor.viewportX, 12, window.innerWidth - 12),
-					markerTop: clampNumber(note.anchor.viewportY, 12, window.innerHeight - 12),
-					bounds: null,
-					outlineRects: [],
-					highlightRects: []
-				}
+			position: position ?? {
+				markerLeft: clampNumber(note.anchor.viewportX, 12, window.innerWidth - 12),
+				markerTop: clampNumber(note.anchor.viewportY, 12, window.innerHeight - 12),
+				bounds: null,
+				outlineRects: [],
+				highlightRects: []
+			}
 		};
 	}
 
@@ -564,14 +605,12 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 		return {
 			...note,
 			resolution: position ? 'resolved' : 'unresolved',
-			position:
-				position ??
-				{
-					...markerFromFallback(note.anchor.fallbackMarker),
-					bounds: null,
-					outlineRects: [],
-					highlightRects: []
-				}
+			position: position ?? {
+				...markerFromFallback(note.anchor.fallbackMarker),
+				bounds: null,
+				outlineRects: [],
+				highlightRects: []
+			}
 		};
 	}
 
@@ -579,14 +618,12 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 	return {
 		...note,
 		resolution: (groupResult?.resolution ?? 'unresolved') as NoteResolutionState,
-		position:
-			groupResult?.position ??
-			{
-				...markerFromFallback(note.anchor.fallbackMarker),
-				bounds: null,
-				outlineRects: [],
-				highlightRects: []
-			}
+		position: groupResult?.position ?? {
+			...markerFromFallback(note.anchor.fallbackMarker),
+			bounds: null,
+			outlineRects: [],
+			highlightRects: []
+		}
 	};
 };
 
@@ -753,8 +790,11 @@ export const buildGroupSelectionFromRects = (rects: RectBox[]) => {
 	};
 };
 
-export const createAreaAnchorFromBounds = (bounds: RectBox, markerLeft: number, markerTop: number) =>
-	buildAreaSelectionAnchor(bounds, markerLeft, markerTop);
+export const createAreaAnchorFromBounds = (
+	bounds: RectBox,
+	markerLeft: number,
+	markerTop: number
+) => buildAreaSelectionAnchor(bounds, markerLeft, markerTop);
 
 export const createGroupAnchorFromElements = (
 	elements: Element[],

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 
 	import { CopyOpenController } from './copy-open.svelte';
 	import InspectorTool from './components/inspector-tool.svelte';
@@ -8,19 +8,24 @@
 	import NoteMarkers from './components/note-markers.svelte';
 	import SelectionPreview from './components/selection-preview.svelte';
 	import type { InspectorProps } from './types';
-	import { buildMarkerOutlineVars, GROUP_SELECTION_COLOR } from './utils/notes';
+	import {
+		buildMarkerOutlineVars,
+		DEFAULT_DELETE_ALL_DELAY_MS,
+		GROUP_SELECTION_COLOR
+	} from './utils/notes';
 
 	let {
 		workspaceRoot = null,
 		selector = null,
 		vscodeScheme = 'vscode',
-		openSourceOnClick = true
+		openSourceOnClick = true,
+		deleteAllDelayMs = DEFAULT_DELETE_ALL_DELAY_MS
 	}: InspectorProps = $props();
 
 	const controller = new CopyOpenController();
 	const getInspectorThemeStyle = (markerColor: string) => {
 		const outline = buildMarkerOutlineVars(markerColor);
-	return [
+		return [
 			`--inspector-marker-color:${markerColor}`,
 			`--inspector-marker-foreground:${outline.foreground}`,
 			`--inspector-outline-border:${outline.border}`,
@@ -33,12 +38,16 @@
 	};
 
 	$effect(() => {
-		controller.updateOptions({
+		const nextOptions = {
 			workspaceRoot,
 			selector,
 			vscodeScheme,
-			openSourceOnClick
-		});
+			openSourceOnClick,
+			deleteAllDelayMs
+		};
+
+		// This effect should react to incoming props only, not controller state read during sync.
+		untrack(() => controller.updateOptions(nextOptions));
 	});
 
 	onDestroy(() => {
@@ -69,14 +78,13 @@
 >
 	<InspectorTool
 		active={controller.enabled}
+		deleteAllState={controller.deleteAllState}
 		notes={controller.notes}
 		settings={controller.settings}
 		toolbar={controller.toolbar}
 		onCloseToolbar={controller.closeToolbar}
 		onCopyNotes={controller.copyNotes}
-		onDeleteAllCancel={controller.cancelDeleteAll}
-		onDeleteAllConfirm={controller.confirmDeleteAll}
-		onDeleteAllRequest={controller.requestDeleteAll}
+		onDeleteAll={controller.requestDeleteAll}
 		onSetBlockPageInteractions={controller.setBlockPageInteractions}
 		onSetMarkerColor={controller.setMarkerColor}
 		onToggle={controller.toggle}
@@ -109,10 +117,7 @@
 	/>
 
 	{#if controller.enabled && !controller.composer}
-		<HoverCard
-			hoverInfo={controller.hoverInfo}
-			onOpen={controller.open}
-		/>
+		<HoverCard hoverInfo={controller.hoverInfo} onOpen={controller.open} />
 	{/if}
 </div>
 
@@ -148,15 +153,9 @@
 		--inspector-kbd-bg: rgba(255, 255, 255, 0.05);
 		--inspector-kbd-border: rgba(255, 255, 255, 0.12);
 		--inspector-kbd-text: rgba(255, 255, 255, 0.8);
-		--inspector-shadow-toolbar:
-			0 18px 34px rgba(0, 0, 0, 0.18),
-			0 12px 22px rgba(0, 0, 0, 0.14);
-		--inspector-shadow-panel:
-			0 20px 40px rgba(0, 0, 0, 0.2),
-			0 12px 20px rgba(0, 0, 0, 0.12);
-		--inspector-shadow-composer:
-			0 18px 34px rgba(0, 0, 0, 0.2),
-			0 10px 18px rgba(0, 0, 0, 0.14);
+		--inspector-shadow-toolbar: 0 18px 34px rgba(0, 0, 0, 0.18), 0 12px 22px rgba(0, 0, 0, 0.14);
+		--inspector-shadow-panel: 0 20px 40px rgba(0, 0, 0, 0.2), 0 12px 20px rgba(0, 0, 0, 0.12);
+		--inspector-shadow-composer: 0 18px 34px rgba(0, 0, 0, 0.2), 0 10px 18px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-overlay: 0 12px 22px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-marker: 0 4px 10px rgba(0, 0, 0, 0.08);
 		--inspector-marker-border: rgba(255, 255, 255, 0.92);
@@ -187,14 +186,11 @@
 		--inspector-kbd-border: rgba(15, 23, 42, 0.12);
 		--inspector-kbd-text: rgba(15, 23, 42, 0.78);
 		--inspector-shadow-toolbar:
-			0 18px 34px rgba(15, 23, 42, 0.08),
-			0 10px 20px rgba(15, 23, 42, 0.06);
+			0 18px 34px rgba(15, 23, 42, 0.08), 0 10px 20px rgba(15, 23, 42, 0.06);
 		--inspector-shadow-panel:
-			0 20px 40px rgba(15, 23, 42, 0.08),
-			0 10px 18px rgba(15, 23, 42, 0.06);
+			0 20px 40px rgba(15, 23, 42, 0.08), 0 10px 18px rgba(15, 23, 42, 0.06);
 		--inspector-shadow-composer:
-			0 16px 28px rgba(15, 23, 42, 0.1),
-			0 8px 16px rgba(15, 23, 42, 0.06);
+			0 16px 28px rgba(15, 23, 42, 0.1), 0 8px 16px rgba(15, 23, 42, 0.06);
 		--inspector-shadow-overlay: 0 12px 22px rgba(15, 23, 42, 0.08);
 		--inspector-shadow-marker: 0 4px 10px rgba(15, 23, 42, 0.1);
 		--inspector-marker-border: rgba(15, 23, 42, 0.18);

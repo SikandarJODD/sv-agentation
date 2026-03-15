@@ -15,6 +15,7 @@ export interface InspectorProps {
 	selector?: string | null;
 	vscodeScheme?: VsCodeScheme;
 	openSourceOnClick?: boolean;
+	deleteAllDelayMs?: number;
 }
 
 export interface InspectorRuntimeOptions {
@@ -22,6 +23,7 @@ export interface InspectorRuntimeOptions {
 	selector: string | null;
 	vscodeScheme: VsCodeScheme;
 	openSourceOnClick: boolean;
+	deleteAllDelayMs: number;
 }
 
 export interface InspectorHoverInfo {
