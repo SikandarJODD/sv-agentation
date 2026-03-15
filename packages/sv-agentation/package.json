@@ -2,6 +2,15 @@
 	"name": "sv-agentation",
 	"version": "0.0.1",
 	"description": "Dev-mode Svelte inspector for annotating elements, text selections, groups, and areas in the browser.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SikandarJODD/sv-agentation.git"
+	},
+	"homepage": "https://github.com/SikandarJODD/sv-agentation#readme",
+	"bugs": {
+		"url": "https://github.com/SikandarJODD/sv-agentation/issues"
+	},
 	"type": "module",
 	"files": [
 		"dist",
@@ -26,9 +35,6 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"pack:tarball": "pnpm pack --pack-destination ../../.artifacts",
 		"prepack": "pnpm run build"
-	},
-	"publishConfig": {
-		"provenance": true
 	},
 	"peerDependencies": {
 		"svelte": "^5.0.0"

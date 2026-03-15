@@ -28,6 +28,11 @@ Primary component export: `Agentation`
 
 Before the first public release, re-check npm name availability for `sv-agentation`.
 
+Helpful guides in this repo:
+
+- `PACKAGE-RELEASE-GUIDE.md`
+- `DOCS-UPDATE-WORKFLOW.md`
+
 ## Cloudflare Pages
 
 The docs app is prepared for Cloudflare Pages from `apps/web`.
@@ -39,3 +44,7 @@ Recommended settings:
 - Build command: `pnpm build`
 
 Cloudflare deployment is intentionally separate from npm publishing.
+
+## License
+
+MIT

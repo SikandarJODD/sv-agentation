@@ -1,6 +1,15 @@
 {
 	"name": "sv-agentation-workspace",
 	"private": true,
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SikandarJODD/sv-agentation.git"
+	},
+	"homepage": "https://github.com/SikandarJODD/sv-agentation#readme",
+	"bugs": {
+		"url": "https://github.com/SikandarJODD/sv-agentation/issues"
+	},
 	"packageManager": "pnpm@10.24.0",
 	"scripts": {
 		"dev": "pnpm --filter sv-agentation prepare && pnpm --filter @sv-agentation/web dev",
