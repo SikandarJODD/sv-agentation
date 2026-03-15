@@ -55,7 +55,6 @@ import {
 	formatNotesAsMarkdown,
 	getComposerPlaceholder,
 	getPageStorageKey,
-	GROUP_SELECTION_COLOR,
 	readStoredMarkerColor,
 	readStoredNotes,
 	readStoredSettings,
@@ -1014,7 +1013,7 @@ export class CopyOpenController {
 			targetSummary: buildAreaTargetSummary(),
 			targetLabel: buildAreaTargetLabel(selection),
 			placeholder: getComposerPlaceholder('area'),
-			accentColor: GROUP_SELECTION_COLOR,
+			accentColor: this.settings.markerColor,
 			markerLeft: visuals.markerLeft,
 			markerTop: visuals.markerTop,
 			outlineRects: [selection],
@@ -1192,7 +1191,7 @@ export class CopyOpenController {
 			targetSummary: buildGroupTargetSummary(elements),
 			targetLabel: buildGroupTargetLabel(elements),
 			placeholder: getComposerPlaceholder('group', elements.length),
-			accentColor: GROUP_SELECTION_COLOR,
+			accentColor: this.settings.markerColor,
 			markerLeft: visuals.markerLeft,
 			markerTop: visuals.markerTop,
 			outlineRects: anchorData.rects,
@@ -1224,10 +1223,7 @@ export class CopyOpenController {
 				note.kind === 'group'
 					? getComposerPlaceholder('group', note.anchor.selectedDomPaths.length)
 					: getComposerPlaceholder(note.kind),
-			accentColor:
-				note.kind === 'group' || note.kind === 'area'
-					? GROUP_SELECTION_COLOR
-					: this.settings.markerColor,
+			accentColor: this.settings.markerColor,
 			markerLeft,
 			markerTop,
 			outlineRects,

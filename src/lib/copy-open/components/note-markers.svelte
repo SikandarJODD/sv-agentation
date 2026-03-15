@@ -7,17 +7,25 @@
 
 	let {
 		activeNoteId,
+		composerNoteId,
 		notes,
 		visible,
 		onOpenNote
 	}: {
 		activeNoteId: string | null;
+		composerNoteId: string | null;
 		notes: RenderedInspectorNote[];
 		visible: boolean;
 		onOpenNote: (noteId: string) => Promise<boolean>;
 	} = $props();
 
 	let hoveredNoteId = $state<string | null>(null);
+
+	$effect(() => {
+		if (!visible) {
+			hoveredNoteId = null;
+		}
+	});
 
 	const handleOpenNote = async (event: MouseEvent, noteId: string) => {
 		event.preventDefault();
@@ -28,6 +36,8 @@
 	const setHoveredNote = (noteId: string | null) => {
 		hoveredNoteId = noteId;
 	};
+
+	const isEditingNote = (noteId: string) => composerNoteId === noteId;
 
 	const getPreviewStyle = (note: RenderedInspectorNote) => {
 		if (!note.position || typeof window === 'undefined') {
@@ -59,48 +69,60 @@
 	};
 </script>
 
-{#if visible}
-	{#each notes as note, index (note.id)}
-		{#if note.position}
-			<button
-				aria-label={`Open note ${index + 1}`}
-				class:active-marker={activeNoteId === note.id}
-				class:group-marker={note.kind === 'group' || note.kind === 'area'}
-				class:unresolved-marker={note.resolution === 'unresolved'}
-				class="marker"
-				data-inspector-ui
-				style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;`}
-				type="button"
-				onclick={(event) => handleOpenNote(event, note.id)}
-				onmouseenter={() => setHoveredNote(note.id)}
-				onmouseleave={() => setHoveredNote(null)}
-				onfocus={() => setHoveredNote(note.id)}
-				onblur={() => setHoveredNote(null)}
-				in:scale={markerEnter}
-				out:scale={markerExit}
-			>
-				{#if hoveredNoteId === note.id || activeNoteId === note.id}
-					<PenLine size={11} />
-				{:else}
-					<span>{index + 1}</span>
-				{/if}
-			</button>
+{#each notes as note, index (note.id)}
+	{#if note.position}
+		<button
+			aria-hidden={!visible}
+			aria-label={`Open note ${index + 1}`}
+			class:active-marker={activeNoteId === note.id}
+			class:group-marker={note.kind === 'group' || note.kind === 'area'}
+			class:marker-hidden={!visible}
+			class:unresolved-marker={note.resolution === 'unresolved'}
+			class="marker"
+			data-inspector-ui
+			disabled={!visible}
+			style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;`}
+			type="button"
+			onclick={(event) => handleOpenNote(event, note.id)}
+			onmouseenter={() => setHoveredNote(note.id)}
+			onmouseleave={() => setHoveredNote(null)}
+			onfocus={() => setHoveredNote(note.id)}
+			onblur={() => setHoveredNote(null)}
+			in:scale={markerEnter}
+			out:scale={markerExit}
+		>
+			<span class="marker-content" data-inspector-ui>
+				{#key `${note.id}:${isEditingNote(note.id) ? 'edit' : 'count'}`}
+					<span
+						class="marker-value"
+						data-inspector-ui
+						in:fade={{ duration: 120 }}
+						out:fade={{ duration: 90 }}
+					>
+						{#if isEditingNote(note.id)}
+							<PenLine size={11} />
+						{:else}
+							<span>{index + 1}</span>
+						{/if}
+					</span>
+				{/key}
+			</span>
+		</button>
 
-			{#if hoveredNoteId === note.id}
-				<div
-					class="note-preview"
-					data-inspector-ui
-					style={getPreviewStyle(note)}
-					in:scale={{ duration: 150, start: 0.96 }}
-					out:fade={{ duration: 120 }}
-				>
-					<div class="note-preview-title" data-inspector-ui>{note.targetSummary}</div>
-					<div class="note-preview-body" data-inspector-ui>{note.note}</div>
-				</div>
-			{/if}
+		{#if visible && hoveredNoteId === note.id}
+			<div
+				class="note-preview"
+				data-inspector-ui
+				style={getPreviewStyle(note)}
+				in:scale={{ duration: 150, start: 0.96 }}
+				out:fade={{ duration: 120 }}
+			>
+				<div class="note-preview-title" data-inspector-ui>{note.targetSummary}</div>
+				<div class="note-preview-body" data-inspector-ui>{note.note}</div>
+			</div>
 		{/if}
-	{/each}
-{/if}
+	{/if}
+{/each}
 
 <style>
 	.marker {
@@ -124,13 +146,38 @@
 		cursor: pointer;
 		will-change: transform, opacity;
 		transition:
+			opacity 180ms ease,
 			transform 180ms ease,
 			box-shadow 180ms ease,
 			filter 180ms ease;
 	}
 
+	.marker-content,
+	.marker-value {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.marker-content {
+		transition:
+			opacity 160ms ease,
+			transform 160ms ease;
+	}
+
 	.marker.group-marker {
 		background: var(--inspector-group-color);
+	}
+
+	.marker.marker-hidden {
+		opacity: 0;
+		pointer-events: none;
+		transform: translate(-50%, -50%) scale(0.9);
+	}
+
+	.marker.marker-hidden .marker-content {
+		opacity: 0;
+		transform: scale(0.78);
 	}
 
 	.marker:hover {
@@ -145,6 +192,10 @@
 
 	.marker.unresolved-marker {
 		opacity: 0.78;
+	}
+
+	.marker.marker-hidden.unresolved-marker {
+		opacity: 0;
 	}
 
 	.note-preview {

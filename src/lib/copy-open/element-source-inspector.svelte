@@ -10,8 +10,7 @@
 	import type { InspectorProps } from './types';
 	import {
 		buildMarkerOutlineVars,
-		DEFAULT_DELETE_ALL_DELAY_MS,
-		GROUP_SELECTION_COLOR
+		DEFAULT_DELETE_ALL_DELAY_MS
 	} from './utils/notes';
 
 	let {
@@ -31,9 +30,9 @@
 			`--inspector-outline-border:${outline.border}`,
 			`--inspector-outline-bg:${outline.background}`,
 			`--inspector-outline-inner:${outline.inner}`,
-			`--inspector-group-color:${GROUP_SELECTION_COLOR}`,
-			`--inspector-group-outline-border:color-mix(in srgb, ${GROUP_SELECTION_COLOR} 72%, transparent)`,
-			`--inspector-group-outline-bg:color-mix(in srgb, ${GROUP_SELECTION_COLOR} 6%, transparent)`
+			`--inspector-group-color:${markerColor}`,
+			`--inspector-group-outline-border:color-mix(in srgb, ${markerColor} 72%, transparent)`,
+			`--inspector-group-outline-bg:color-mix(in srgb, ${markerColor} 6%, transparent)`
 		].join(';');
 	};
 
@@ -97,6 +96,7 @@
 
 	<NoteMarkers
 		activeNoteId={controller.activeNoteId}
+		composerNoteId={controller.composer?.noteId ?? null}
 		notes={controller.renderedNotes}
 		onOpenNote={controller.openNote}
 		visible={controller.toolbar.notesVisible}

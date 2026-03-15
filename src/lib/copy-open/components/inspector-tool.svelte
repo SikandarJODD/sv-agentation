@@ -8,6 +8,7 @@
 		Eye,
 		EyeOff,
 		Moon,
+		Pause,
 		PanelBottom,
 		Play,
 		RotateCcw,
@@ -85,8 +86,9 @@
 		easing: cubicOut
 	};
 	const panelTransition = {
-		axis: 'y' as const,
-		duration: 180,
+		duration: 170,
+		start: 0.96,
+		opacity: 0,
 		easing: cubicOut
 	};
 	const badgeTransition = {
@@ -115,8 +117,8 @@
 		<div
 			class="panel settings-panel"
 			data-inspector-ui
-			in:slide={panelTransition}
-			out:slide={{ ...panelTransition, duration: 130 }}
+			in:scale={panelTransition}
+			out:scale={{ ...panelTransition, duration: 130 }}
 		>
 			<div class="settings-head" data-inspector-ui>
 				<div class="brand" data-inspector-ui>
@@ -204,15 +206,20 @@
 		>
 			<div class="toolbar" data-inspector-ui>
 				<button
+					aria-label={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
 					aria-pressed={active}
 					class:active-button={active}
 					class="toolbar-button primary"
 					data-inspector-ui
-					title={active ? 'Stop annotation mode (I)' : 'Start annotation mode (I)'}
+					title={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
 					type="button"
 					onclick={onToggle}
 				>
-					<Play size={16} />
+					{#if active}
+						<Pause size={16} />
+					{:else}
+						<Play size={16} />
+					{/if}
 				</button>
 
 				<div class="divider" data-inspector-ui></div>
