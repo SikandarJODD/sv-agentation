@@ -39,6 +39,7 @@ export const EXPANDED_TOOLBAR_WIDTH = 266;
 export const EXPANDED_TOOLBAR_HEIGHT = 52;
 export const COMPOSER_WIDTH = 280;
 export const COMPOSER_HEIGHT = 180;
+export const CLAMPED_TOOLBAR_MARGIN = TOOLBAR_MARGIN;
 const PANEL_GAP = 20;
 export const GROUP_SELECTION_COLOR = '#14CE4C';
 export const NO_SOURCE_VALUE = 'no-source-found';
@@ -199,17 +200,36 @@ export const clampToolbarPosition = (
 export const alignToolbarPositionForStateChange = (
 	position: ToolbarCoordinates,
 	fromExpanded: boolean,
-	toExpanded: boolean
+	toExpanded: boolean,
+	alignment: {
+		horizontal: 'left' | 'center' | 'right';
+		vertical: 'top' | 'middle' | 'bottom';
+	} = {
+		horizontal: 'right',
+		vertical: 'bottom'
+	}
 ) => {
 	const fromWidth = fromExpanded ? EXPANDED_TOOLBAR_WIDTH : COLLAPSED_TOOLBAR_SIZE;
 	const fromHeight = fromExpanded ? EXPANDED_TOOLBAR_HEIGHT : COLLAPSED_TOOLBAR_SIZE;
 	const toWidth = toExpanded ? EXPANDED_TOOLBAR_WIDTH : COLLAPSED_TOOLBAR_SIZE;
 	const toHeight = toExpanded ? EXPANDED_TOOLBAR_HEIGHT : COLLAPSED_TOOLBAR_SIZE;
+	const horizontalDelta =
+		alignment.horizontal === 'left'
+			? 0
+			: alignment.horizontal === 'center'
+				? (fromWidth - toWidth) / 2
+				: fromWidth - toWidth;
+	const verticalDelta =
+		alignment.vertical === 'top'
+			? 0
+			: alignment.vertical === 'middle'
+				? (fromHeight - toHeight) / 2
+				: fromHeight - toHeight;
 
 	return clampToolbarPosition(
 		{
-			x: position.x + (fromWidth - toWidth),
-			y: position.y + (fromHeight - toHeight)
+			x: position.x + horizontalDelta,
+			y: position.y + verticalDelta
 		},
 		toExpanded,
 		{

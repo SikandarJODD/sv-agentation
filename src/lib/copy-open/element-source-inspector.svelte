@@ -8,6 +8,7 @@
 	import NoteMarkers from './components/note-markers.svelte';
 	import SelectionPreview from './components/selection-preview.svelte';
 	import type { InspectorProps } from './types';
+	import { DEFAULT_INSPECTOR_POSITION } from './utils/position';
 	import {
 		buildMarkerOutlineVars,
 		DEFAULT_DELETE_ALL_DELAY_MS
@@ -18,7 +19,8 @@
 		selector = null,
 		vscodeScheme = 'vscode',
 		openSourceOnClick = true,
-		deleteAllDelayMs = DEFAULT_DELETE_ALL_DELAY_MS
+		deleteAllDelayMs = DEFAULT_DELETE_ALL_DELAY_MS,
+		toolbarPosition = DEFAULT_INSPECTOR_POSITION
 	}: InspectorProps = $props();
 
 	const controller = new CopyOpenController();
@@ -42,7 +44,8 @@
 			selector,
 			vscodeScheme,
 			openSourceOnClick,
-			deleteAllDelayMs
+			deleteAllDelayMs,
+			toolbarPosition
 		};
 
 		// This effect should react to incoming props only, not controller state read during sync.
@@ -86,12 +89,14 @@
 		onDeleteAll={controller.requestDeleteAll}
 		onSetBlockPageInteractions={controller.setBlockPageInteractions}
 		onSetMarkerColor={controller.setMarkerColor}
+		onSetToolbarPosition={controller.setToolbarPosition}
 		onToggle={controller.toggle}
 		onToggleNotesVisibility={controller.toggleNotesVisibility}
 		onToggleSettings={controller.toggleSettings}
 		onToggleThemeMode={controller.toggleThemeMode}
 		onToggleToolbar={controller.toggleToolbar}
 		onToolbarPointerDown={controller.handleToolbarPointerDown}
+		toolbarPosition={controller.toolbarPositionPreset}
 	/>
 
 	<NoteMarkers

@@ -16,6 +16,7 @@ export interface InspectorProps {
 	vscodeScheme?: VsCodeScheme;
 	openSourceOnClick?: boolean;
 	deleteAllDelayMs?: number;
+	toolbarPosition?: InspectorPosition;
 }
 
 export interface InspectorRuntimeOptions {
@@ -24,6 +25,7 @@ export interface InspectorRuntimeOptions {
 	vscodeScheme: VsCodeScheme;
 	openSourceOnClick: boolean;
 	deleteAllDelayMs: number;
+	toolbarPosition: InspectorPosition;
 }
 
 export interface InspectorHoverInfo {

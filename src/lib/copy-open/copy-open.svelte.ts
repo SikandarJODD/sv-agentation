@@ -9,6 +9,7 @@ import type {
 	GroupSelectionPreviewState,
 	InspectorHoverInfo,
 	InspectorNote,
+	InspectorPosition,
 	InspectorRuntimeOptions,
 	NoteComposerState,
 	NoteSourceInfo,
@@ -65,9 +66,18 @@ import {
 	writeStoredMarkerColor,
 	writeStoredNotes,
 	writeStoredSettings,
-	writeStoredToolbarPosition,
 	writeStoredThemeMode
 } from './utils/notes';
+import {
+	DEFAULT_INSPECTOR_POSITION,
+	getNearestInspectorPosition,
+	getToolbarAlignment,
+	getToolbarCoordinatesForPreset,
+	readStoredToolbarPlacement,
+	sanitizeInspectorPosition,
+	type ToolbarPositionMode,
+	writeStoredToolbarPlacement
+} from './utils/position';
 import {
 	markerFromFallback,
 	resolveAreaSelection,
@@ -82,7 +92,8 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	selector: null,
 	vscodeScheme: 'vscode',
 	openSourceOnClick: false,
-	deleteAllDelayMs: DEFAULT_DELETE_ALL_DELAY_MS
+	deleteAllDelayMs: DEFAULT_DELETE_ALL_DELAY_MS,
+	toolbarPosition: DEFAULT_INSPECTOR_POSITION
 };
 
 const DRAG_THRESHOLD = 8;
@@ -166,6 +177,7 @@ export class CopyOpenController {
 	hoverInfo = $state<InspectorHoverInfo | null>(null);
 	copied = $state(false);
 	toolbar = $state<ToolbarState>(createToolbarState());
+	toolbarPositionPreset = $state<InspectorPosition>(DEFAULT_INSPECTOR_POSITION);
 	deleteAllState = $state<DeleteAllState>(createDeleteAllState());
 	settings = $state<NotesSettings>(DEFAULT_NOTES_SETTINGS);
 	notes = $state<InspectorNote[]>([]);
@@ -182,6 +194,8 @@ export class CopyOpenController {
 	#vscodeScheme: VsCodeScheme = DEFAULT_OPTIONS.vscodeScheme;
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
 	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
+	#toolbarPositionMode: ToolbarPositionMode = 'preset';
+	#toolbarPositionDefault = DEFAULT_OPTIONS.toolbarPosition;
 	#copyResetTimer: ReturnType<typeof setTimeout> | null = null;
 	#toolbarCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
 	#deleteAllCommitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -210,7 +224,8 @@ export class CopyOpenController {
 			const storedSettings = readStoredSettings();
 			const themeMode = readStoredThemeMode() ?? DEFAULT_NOTES_SETTINGS.themeMode;
 			const markerColor = readStoredMarkerColor() ?? DEFAULT_NOTES_SETTINGS.markerColor;
-			const storedToolbarPosition = readStoredToolbarPosition(this.#pageStorageKey);
+			const storedToolbarPlacement = readStoredToolbarPlacement();
+			const legacyToolbarPosition = readStoredToolbarPosition(this.#pageStorageKey);
 
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
@@ -220,11 +235,32 @@ export class CopyOpenController {
 				themeMode,
 				markerColor
 			};
+			const initialToolbarPlacement =
+				storedToolbarPlacement ??
+				(legacyToolbarPosition
+					? {
+							mode: 'custom' as const,
+							preset: getNearestInspectorPosition(legacyToolbarPosition, false),
+							coordinates: clampToolbarPosition(legacyToolbarPosition, false)
+						}
+					: {
+							mode: 'preset' as const,
+							preset: this.#toolbarPositionDefault,
+							coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
+						});
+
+			this.#toolbarPositionMode = initialToolbarPlacement.mode;
+			this.toolbarPositionPreset = initialToolbarPlacement.preset;
 			this.#setToolbar({
-				position: clampToolbarPosition(
-					storedToolbarPosition ?? createDefaultToolbarPosition(),
-					this.toolbar.expanded
-				)
+				position:
+					initialToolbarPlacement.mode === 'preset'
+						? getToolbarCoordinatesForPreset(initialToolbarPlacement.preset, this.toolbar.expanded)
+						: clampToolbarPosition(initialToolbarPlacement.coordinates, this.toolbar.expanded)
+			});
+			this.#persistToolbarPlacement(this.toolbar.position, {
+				mode: initialToolbarPlacement.mode,
+				preset: initialToolbarPlacement.preset,
+				expanded: this.toolbar.expanded
 			});
 			this.notes = readStoredNotes(this.#pageStorageKey);
 			this.refreshRenderedNotes();
@@ -263,6 +299,10 @@ export class CopyOpenController {
 				this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 			}
 		}
+
+		if ('toolbarPosition' in options) {
+			this.#toolbarPositionDefault = sanitizeInspectorPosition(options.toolbarPosition);
+		}
 	}
 
 	toggle = () => {
@@ -290,7 +330,8 @@ export class CopyOpenController {
 		const nextPosition = alignToolbarPositionForStateChange(
 			this.toolbar.position,
 			this.toolbar.expanded,
-			expanded
+			expanded,
+			getToolbarAlignment(this.toolbarPositionPreset)
 		);
 
 		this.#setToolbar({
@@ -299,12 +340,17 @@ export class CopyOpenController {
 			confirmDeleteAll: false,
 			position: nextPosition
 		});
-		this.#persistToolbarPosition(nextPosition);
+		this.#persistToolbarPlacement(nextPosition, { expanded });
 	};
 
 	closeToolbar = () => {
 		this.cancelDeleteAll();
-		const nextPosition = alignToolbarPositionForStateChange(this.toolbar.position, true, false);
+		const nextPosition = alignToolbarPositionForStateChange(
+			this.toolbar.position,
+			true,
+			false,
+			getToolbarAlignment(this.toolbarPositionPreset)
+		);
 
 		this.#setToolbar({
 			expanded: false,
@@ -312,18 +358,38 @@ export class CopyOpenController {
 			confirmDeleteAll: false,
 			position: nextPosition
 		});
-		this.#persistToolbarPosition(nextPosition);
+		this.#persistToolbarPlacement(nextPosition, { expanded: false });
 	};
 
 	toggleSettings = () => {
 		const expanded = true;
 		const settingsOpen = !this.toolbar.settingsOpen;
+		const nextPosition = clampToolbarPosition(this.toolbar.position, expanded);
 		this.#setToolbar({
 			expanded,
 			settingsOpen,
 			confirmDeleteAll: false,
-			position: clampToolbarPosition(this.toolbar.position, expanded)
+			position: nextPosition
 		});
+		this.#persistToolbarPlacement(nextPosition, { expanded });
+	};
+
+	setToolbarPosition = (toolbarPosition: InspectorPosition) => {
+		const nextPosition = getToolbarCoordinatesForPreset(toolbarPosition, this.toolbar.expanded);
+		this.#toolbarPositionMode = 'preset';
+		this.toolbarPositionPreset = toolbarPosition;
+		this.#setToolbar({
+			position: nextPosition
+		});
+		this.#persistToolbarPlacement(nextPosition, {
+			mode: 'preset',
+			preset: toolbarPosition,
+			expanded: this.toolbar.expanded
+		});
+	};
+
+	resetToolbarPosition = () => {
+		this.setToolbarPosition(DEFAULT_INSPECTOR_POSITION);
 	};
 
 	requestDeleteAll = () => {
@@ -492,7 +558,10 @@ export class CopyOpenController {
 		const nextPosition = this.toolbar.position;
 		this.#toolbarDrag = { pointerId: null, offsetX: 0, offsetY: 0, width: 0, height: 0 };
 		this.#setToolbar({ dragging: false });
-		this.#persistToolbarPosition(nextPosition);
+		this.#persistToolbarPlacement(nextPosition, {
+			mode: 'custom',
+			expanded: this.toolbar.expanded
+		});
 	};
 
 	handleMouseUpCapture = async (event: MouseEvent) => {
@@ -544,7 +613,9 @@ export class CopyOpenController {
 			position: nextPosition
 		});
 		if (positionChanged) {
-			this.#persistToolbarPosition(nextPosition);
+			this.#persistToolbarPlacement(nextPosition, {
+				expanded: this.toolbar.expanded
+			});
 		}
 		this.refreshRenderedNotes();
 		this.#refreshComposerLayout();
@@ -642,6 +713,12 @@ export class CopyOpenController {
 			if (this.notes.length === 0) return;
 			event.preventDefault();
 			await this.copyNotes();
+			return;
+		}
+
+		if (key === 'r') {
+			event.preventDefault();
+			this.resetToolbarPosition();
 			return;
 		}
 
@@ -812,9 +889,39 @@ export class CopyOpenController {
 		writeStoredNotes(this.#pageStorageKey, this.notes);
 	}
 
-	#persistToolbarPosition(position: ToolbarCoordinates = this.toolbar.position) {
+	#persistToolbarPlacement(
+		position: ToolbarCoordinates = this.toolbar.position,
+		options?: {
+			mode?: ToolbarPositionMode;
+			preset?: InspectorPosition;
+			expanded?: boolean;
+		}
+	) {
 		if (typeof window === 'undefined') return;
-		writeStoredToolbarPosition(this.#pageStorageKey, position);
+
+		const expanded = options?.expanded ?? this.toolbar.expanded;
+		const nextMode = options?.mode ?? this.#toolbarPositionMode;
+		const nextPreset =
+			options?.preset ??
+			(nextMode === 'preset'
+				? this.toolbarPositionPreset
+				: getNearestInspectorPosition(position, expanded));
+		const storedCoordinates = expanded
+			? alignToolbarPositionForStateChange(
+					position,
+					true,
+					false,
+					getToolbarAlignment(nextPreset)
+				)
+			: position;
+
+		this.#toolbarPositionMode = nextMode;
+		this.toolbarPositionPreset = nextPreset;
+		writeStoredToolbarPlacement({
+			mode: nextMode,
+			preset: nextPreset,
+			coordinates: storedCoordinates
+		});
 	}
 
 	#startDeleteAll() {
