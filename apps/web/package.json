@@ -14,15 +14,17 @@
 	"devDependencies": {
 		"@internationalized/date": "^3.12.0",
 		"@lucide/svelte": "^0.561.0",
-		"@sveltejs/adapter-cloudflare": "^7.2.8",
+		"@sveltejs/adapter-static": "^3.0.8",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.1.18",
 		"bits-ui": "^2.16.3",
 		"clsx": "^2.1.1",
 		"mode-watcher": "^1.1.0",
+		"package-manager-detector": "^1.6.0",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.4.2",
+		"svelte-meta-tags": "^4.5.0",
 		"svelte-sonner": "^1.1.0",
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2",
@@ -32,7 +34,13 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@shikijs/langs": "^4.0.2",
+		"@shikijs/themes": "^4.0.2",
 		"element-source": "^0.0.4",
-		"sv-agentation": "workspace:*"
+		"isomorphic-dompurify": "2.25.0",
+		"runed": "^0.37.1",
+		"shiki": "^4.0.2",
+		"sv-agentation": "workspace:*",
+		"svelte-toolbelt": "^0.10.6"
 	}
 }

@@ -17,6 +17,8 @@ Thumbs.db
 # Env
 .env
 .env.*
+.dev.vars
+.dev.vars.*
 !.env.example
 !.env.test
 
@@ -27,3 +29,5 @@ vite.config.ts.timestamp-*
 apps/web/src/lib/output_images
 LOCAL-PUBLISH-COMMANDS.md
 LOCAL-WHAT-CHANGED.md
+
+/markdowns
