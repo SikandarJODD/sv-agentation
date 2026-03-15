@@ -99,7 +99,7 @@ pnpm changeset
 
 5. Write a short human-readable summary.
 6. Commit your changes, including the new `.changeset/*.md` file.
-7. Push your branch and merge it to `main`.
+7. Push your branch and merge it to `master`.
 8. GitHub Actions opens or updates the release PR.
 9. Merge the release PR.
 10. GitHub Actions publishes the new version to npm.
@@ -129,7 +129,7 @@ That is the version instruction for this repo.
 For the first publish:
 
 1. make sure the GitHub secret is named `NPM_TOKEN`
-2. commit and push the current repo state to `main`
+2. commit and push the current repo state to `master`
 3. let `.github/workflows/release.yml` run
 4. check the Actions tab for the publish result
 5. verify the package on npm
