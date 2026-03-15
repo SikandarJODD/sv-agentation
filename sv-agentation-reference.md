@@ -1,6 +1,6 @@
 # sv-agentation Reference
 
-Short reference for the current dev-mode inspector in `src/lib/copy-open`.
+Short reference for the current dev-mode inspector in `packages/sv-agentation/src/lib`.
 
 ## What It Does
 
@@ -34,6 +34,15 @@ Notes:
 - `O` works when inspect mode is active and the composer is not open
 - shortcuts ignore typing contexts like inputs and textareas
 
+## Install
+
+```sh
+npm install sv-agentation
+pnpm add sv-agentation
+yarn add sv-agentation
+bun add sv-agentation
+```
+
 ## Toolbar Settings
 
 - Output detail: currently `Standard`
@@ -65,7 +74,7 @@ Behavior:
 ## Public Props
 
 ```svelte
-<ElementSourceInspector
+<Agentation
 	workspaceRoot="/your/project/root"
 	selector="[data-demo-scope]"
 	vscodeScheme="vscode"
@@ -75,7 +84,11 @@ Behavior:
 />
 ```
 
-`ElementSourceInspector` props:
+Primary export: `Agentation`
+
+Compatibility aliases: `AgentationInspector`, `ElementSourceInspector`
+
+`Agentation` props:
 
 - `workspaceRoot?: string | null`
   - workspace root used for source path cleanup
@@ -98,10 +111,12 @@ Behavior:
 - toolbar placement: global local storage
 - theme mode: local storage
 - marker color: local storage
+- legacy `copy-open:*` storage keys still restore existing browser data
 
 ## Current Scope
 
 - built for local dev workflow
 - no cloud sync
 - no collaboration
-- no package publishing flow yet
+- packaged from `packages/sv-agentation`
+- production mounting strategy

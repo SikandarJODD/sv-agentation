@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check workspaces
+        run: pnpm check
+
+      - name: Build workspaces
+        run: pnpm build
+
+      - name: Pack sv-agentation tarball
+        run: pnpm package:pack
+
+      - name: Upload tarball artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sv-agentation-tarball
+          path: .artifacts/*.tgz

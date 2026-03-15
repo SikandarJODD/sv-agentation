@@ -1,42 +1,41 @@
-# sv
+# sv-agentation Workspace
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Monorepo for the `sv-agentation` Svelte package and its docs/demo app.
 
-## Creating a project
+## Workspace Layout
 
-If you're seeing this, you've probably already done this step. Congrats!
+- `packages/sv-agentation`: publishable Svelte 5 package
+- `apps/web`: SvelteKit docs and playground app
+- `.changeset`: versioning metadata for automated releases
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+## Common Commands
 
 ```sh
-# recreate this project
-pnpm dlx sv@0.12.7 create --template minimal --types ts --add tailwindcss="plugins:none" prettier --install pnpm .
+pnpm install
+pnpm dev
+pnpm check
+pnpm build
+pnpm package:pack
 ```
 
-## Developing
+`pnpm dev` starts the docs app in `apps/web`.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Publishing
 
-```sh
-npm run dev
+The npm package lives in `packages/sv-agentation` and is published through Changesets plus GitHub Actions trusted publishing.
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+Primary component export: `Agentation`
 
-## Building
+Before the first public release, re-check npm name availability for `sv-agentation`.
 
-To create a production version of your app:
+## Cloudflare Pages
 
-```sh
-npm run build
-```
+The docs app is prepared for Cloudflare Pages from `apps/web`.
 
-You can preview the production build with `npm run preview`.
+Recommended settings:
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Root directory: `apps/web`
+- Install command: `pnpm install --frozen-lockfile`
+- Build command: `pnpm build`
+
+Cloudflare deployment is intentionally separate from npm publishing.
