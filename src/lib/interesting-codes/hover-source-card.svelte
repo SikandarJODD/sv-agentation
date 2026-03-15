@@ -1,5 +1,5 @@
 <div class="flex flex-col gap-6">
-	<h1>Simple Svelte Demo</h1>
+	<h1>Svelte Updated Demo</h1>
 	<p class="text-lg text-muted-foreground">
 		Click any element to jump straight to its source.
 		<br />
@@ -11,12 +11,13 @@
 			<p>o : open in vs code</p>
 			<p>c : copy file name, line number, and column number to clipboard</p>
 			<p>i : inspect toggle on/off</p>
+			<p>md : mid coffee is good</p>
 		</div>
 		<div class="w-1/3 border border-dashed border-muted-foreground/40 p-4">
 			<!-- small rectangles with different size and bg colors with opacity 40 -->
 			<div class="flex flex-wrap gap-2">
 				<div class="h-8 w-16 bg-red-500/40"></div>
-				<div class="h-8 w-24 bg-green-500/40"></div>
+				<div class="h-8 w-24 bg-orange-500/40"></div>
 				<div class="h-8 w-20 bg-blue-500/40"></div>
 				<div class="h-10 w-24 bg-yellow-500/40"></div>
 				<div class="h-10 w-4 bg-purple-500/40"></div>

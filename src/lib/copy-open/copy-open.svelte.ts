@@ -86,6 +86,12 @@ import {
 	serializeTextSelection
 } from './utils/selection';
 import { buildHoverInfo, getHoverGeometry } from './utils/source';
+import {
+	INSPECTOR_ACTIVE_CHANGE_EVENT,
+	INSPECTOR_BLOCKED_INTERACTION_EVENT,
+	type InspectorActiveChangeDetail,
+	type InspectorBlockedInteractionDetail
+} from './events';
 
 const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
@@ -313,13 +319,14 @@ export class CopyOpenController {
 
 		if (this.enabled) {
 			this.#installCursorStyles();
-			return;
+		} else {
+			this.closeComposer();
+			this.clearHover();
+			this.#clearTransientSelections();
+			this.#removeCursorStyles();
 		}
 
-		this.closeComposer();
-		this.clearHover();
-		this.#clearTransientSelections();
-		this.#removeCursorStyles();
+		this.#dispatchInspectorActiveChange();
 	};
 
 	toggleToolbar = () => {
@@ -590,9 +597,7 @@ export class CopyOpenController {
 		const activeSelection = this.#getActiveTextSelection();
 		if (activeSelection) {
 			if (target && this.settings.blockPageInteractions && isInteractiveElement(target)) {
-				event.preventDefault();
-				event.stopPropagation();
-				event.stopImmediatePropagation();
+				this.#blockInteraction(event, target, 'selection');
 			}
 
 			await this.#openTextComposerFromSelection(activeSelection);
@@ -637,9 +642,7 @@ export class CopyOpenController {
 
 		if (this.composer) {
 			if (this.settings.blockPageInteractions && isInteractiveElement(target)) {
-				event.preventDefault();
-				event.stopPropagation();
-				event.stopImmediatePropagation();
+				this.#blockInteraction(event, target, 'click');
 			}
 			return;
 		}
@@ -656,9 +659,7 @@ export class CopyOpenController {
 		if (selection && !selection.isCollapsed && selection.toString().trim()) return;
 
 		if (this.settings.blockPageInteractions && isInteractiveElement(target)) {
-			event.preventDefault();
-			event.stopPropagation();
-			event.stopImmediatePropagation();
+			this.#blockInteraction(event, target, 'click');
 		}
 
 		await this.#openElementComposer(target, event.clientX, event.clientY, null, '');
@@ -907,12 +908,7 @@ export class CopyOpenController {
 				? this.toolbarPositionPreset
 				: getNearestInspectorPosition(position, expanded));
 		const storedCoordinates = expanded
-			? alignToolbarPositionForStateChange(
-					position,
-					true,
-					false,
-					getToolbarAlignment(nextPreset)
-				)
+			? alignToolbarPositionForStateChange(position, true, false, getToolbarAlignment(nextPreset))
 			: position;
 
 		this.#toolbarPositionMode = nextMode;
@@ -991,6 +987,39 @@ export class CopyOpenController {
 		this.#suppressNextClick = false;
 		this.#setDragUserSelectSuppressed(false);
 		window.getSelection()?.removeAllRanges();
+	}
+
+	#blockInteraction(
+		event: MouseEvent,
+		target: Element,
+		source: InspectorBlockedInteractionDetail['source']
+	) {
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent<InspectorBlockedInteractionDetail>(INSPECTOR_BLOCKED_INTERACTION_EVENT, {
+					detail: {
+						source,
+						target
+					}
+				})
+			);
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation();
+	}
+
+	#dispatchInspectorActiveChange() {
+		if (typeof window === 'undefined') return;
+
+		window.dispatchEvent(
+			new CustomEvent<InspectorActiveChangeDetail>(INSPECTOR_ACTIVE_CHANGE_EVENT, {
+				detail: {
+					active: this.enabled
+				}
+			})
+		);
 	}
 
 	#refreshSelectionPreview() {
