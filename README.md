@@ -35,15 +35,17 @@ Helpful guides in this repo:
 
 ## Cloudflare Pages
 
-The docs app is prepared for Cloudflare Pages from `apps/web`.
+The docs app in `apps/web` is prepared for Cloudflare Pages and should be deployed as a monorepo app.
 
 Recommended settings:
 
 - Root directory: `apps/web`
-- Install command: `pnpm install --frozen-lockfile`
-- Build command: `pnpm build`
+- Build command: `pnpm --filter @sv-agentation/web build`
+- Build output directory: `.svelte-kit/cloudflare`
 
 Cloudflare deployment is intentionally separate from npm publishing.
+
+See `CLOUDFLARE-PAGES-DEPLOYMENT.md` for the full deployment and custom-domain guide.
 
 ## License
 

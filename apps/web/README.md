@@ -10,10 +10,12 @@ pnpm --filter @sv-agentation/web dev
 
 ## Cloudflare Pages
 
-Use Cloudflare Pages with this workspace as the project root.
+Deploy this app to Cloudflare Pages as a monorepo app.
 
 - Root directory: `apps/web`
-- Install command: `pnpm install --frozen-lockfile`
-- Build command: `pnpm build`
+- Build command: `pnpm --filter @sv-agentation/web build`
+- Build output directory: `.svelte-kit/cloudflare`
 
-The docs app is deployed separately from the npm package release flow.
+The app depends on the local workspace package `sv-agentation`, so Cloudflare should install dependencies from the repo root rather than treating `apps/web` as a standalone repo.
+
+See `../../CLOUDFLARE-PAGES-DEPLOYMENT.md` for the full deployment and domain steps.
