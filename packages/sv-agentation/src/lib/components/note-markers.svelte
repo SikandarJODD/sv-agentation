@@ -3,21 +3,9 @@
 	import { fade, scale } from 'svelte/transition';
 	import { PenLine } from '@lucide/svelte';
 
-	import type { RenderedInspectorNote } from '../types';
+	import type { NoteMarkersProps } from '../internal/component-props';
 
-	let {
-		activeNoteId,
-		composerNoteId,
-		notes,
-		visible,
-		onOpenNote
-	}: {
-		activeNoteId: string | null;
-		composerNoteId: string | null;
-		notes: RenderedInspectorNote[];
-		visible: boolean;
-		onOpenNote: (noteId: string) => Promise<boolean>;
-	} = $props();
+	let { activeNoteId, composerNoteId, notes, visible, onOpenNote }: NoteMarkersProps = $props();
 
 	let hoveredNoteId = $state<string | null>(null);
 
@@ -39,7 +27,7 @@
 
 	const isEditingNote = (noteId: string) => composerNoteId === noteId;
 
-	const getPreviewStyle = (note: RenderedInspectorNote) => {
+	const getPreviewStyle = (note: NoteMarkersProps['notes'][number]) => {
 		if (!note.position || typeof window === 'undefined') {
 			return 'left:12px;top:12px;';
 		}

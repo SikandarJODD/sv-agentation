@@ -2,23 +2,9 @@
 	import { scale } from 'svelte/transition';
 	import { ChevronRight, Trash2 } from '@lucide/svelte';
 
-	import type { NoteComposerState } from '../types';
+	import type { NoteComposerProps } from '../internal/component-props';
 
-	let {
-		composer,
-		value,
-		onCancel,
-		onDelete,
-		onInput,
-		onSubmit
-	}: {
-		composer: NoteComposerState | null;
-		value: string;
-		onCancel: () => void;
-		onDelete: (noteId: string) => void;
-		onInput: (value: string) => void;
-		onSubmit: () => boolean;
-	} = $props();
+	let { composer, value, onCancel, onDelete, onInput, onSubmit }: NoteComposerProps = $props();
 
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 
@@ -58,13 +44,13 @@
 		onDelete(composer.noteId);
 	};
 
-	const getHasChanges = (composerState: NoteComposerState, nextValue: string) =>
+	const getHasChanges = (composerState: NonNullable<NoteComposerProps['composer']>, nextValue: string) =>
 		nextValue.trim() !== composerState.initialValue.trim();
 
-	const getCanSubmit = (composerState: NoteComposerState, nextValue: string) =>
+	const getCanSubmit = (composerState: NonNullable<NoteComposerProps['composer']>, nextValue: string) =>
 		nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
 
-	const getOutlineClass = (composerState: NoteComposerState) =>
+	const getOutlineClass = (composerState: NonNullable<NoteComposerProps['composer']>) =>
 		composerState.noteKind === 'group' || composerState.noteKind === 'area'
 			? 'outline dashed'
 			: 'outline solid';

@@ -6,6 +6,7 @@ import {
 	EXPANDED_TOOLBAR_WIDTH,
 	clampToolbarPosition
 } from './notes';
+import { readStoredJson, writeStoredJson } from './shared/storage';
 
 export type ToolbarPositionMode = 'preset' | 'custom';
 
@@ -21,8 +22,6 @@ type ToolbarAlignment = {
 };
 
 const STORAGE_KEY = 'sv-agentation:toolbar-placement:v2';
-const LEGACY_STORAGE_KEY = 'copy-open:toolbar-placement:v2';
-const LEGACY_PRESET_STORAGE_KEY = 'copy-open:inspector-position';
 const RIGHT_PRESET_INSET = TOOLBAR_MARGIN + 10;
 
 export const DEFAULT_INSPECTOR_POSITION: InspectorPosition = 'bottom-right';
@@ -45,28 +44,6 @@ export const INSPECTOR_POSITION_OPTIONS = INSPECTOR_POSITIONS.map((value) => ({
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 		.join(' ')
 }));
-
-const readStoredJson = <Value>(key: string) => {
-	if (typeof window === 'undefined') return null;
-
-	try {
-		const rawValue = window.localStorage.getItem(key);
-		if (!rawValue) return null;
-		return JSON.parse(rawValue) as Value;
-	} catch {
-		return null;
-	}
-};
-
-const writeStoredJson = (key: string, value: unknown) => {
-	if (typeof window === 'undefined') return;
-
-	try {
-		window.localStorage.setItem(key, JSON.stringify(value));
-	} catch {
-		return;
-	}
-};
 
 const isToolbarCoordinates = (value: unknown): value is ToolbarCoordinates => {
 	if (!value || typeof value !== 'object') return false;
@@ -218,36 +195,13 @@ export const getNearestInspectorPosition = (
 	return closestPosition;
 };
 
-const readLegacyPresetStorage = () => {
-	if (typeof window === 'undefined') return null;
-
-	try {
-		const rawValue = window.localStorage.getItem(LEGACY_PRESET_STORAGE_KEY);
-		return rawValue && isInspectorPosition(rawValue) ? rawValue : null;
-	} catch {
-		return null;
-	}
-};
-
 export const readStoredToolbarPlacement = () => {
 	const storedPlacement = readStoredJson<unknown>(STORAGE_KEY);
 	if (isToolbarPlacement(storedPlacement)) {
 		return storedPlacement;
 	}
 
-	const legacyPlacement = readStoredJson<unknown>(LEGACY_STORAGE_KEY);
-	if (isToolbarPlacement(legacyPlacement)) {
-		return legacyPlacement;
-	}
-
-	const legacyPreset = readLegacyPresetStorage();
-	if (!legacyPreset) return null;
-
-	return {
-		mode: 'preset',
-		preset: legacyPreset,
-		coordinates: getToolbarCoordinatesForPreset(legacyPreset, false)
-	} satisfies ToolbarPlacement;
+	return null;
 };
 
 export const writeStoredToolbarPlacement = (placement: ToolbarPlacement) => {

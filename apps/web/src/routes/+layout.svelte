@@ -5,7 +5,7 @@
 	import { Agentation } from 'sv-agentation';
 	import { asset } from '$app/paths';
 
-	// const workspaceRoot = 's:/advance_svelte/exp/svelte-learning';
+	const workspaceRoot = 's:/advance_svelte/exp/svelte-learning';
 
 	let { children } = $props();
 </script>
@@ -15,6 +15,6 @@
 <svelte:head><link rel="icon" href={asset('/main-favicon-light.svg')} /></svelte:head>
 {@render children()}
 
-{#if browser}
-	<Agentation />
+{#if browser && dev}
+	<Agentation {workspaceRoot} />
 {/if}

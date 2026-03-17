@@ -49,6 +49,30 @@ bun add sv-agentation
 
 Mount the inspector only in development and only in the browser.
 
+## Architecture
+
+```text
+Agentation
+  -> element-source-inspector.svelte
+  -> CopyOpenController
+      -> internal/controller-state.svelte.ts
+      -> internal/controller-selection.ts
+      -> internal/controller-composer.ts
+      -> internal/controller-browser.ts
+  -> components/*
+  -> utils/note-*.ts + utils/selection.ts + utils/source.ts
+```
+
+## Interaction Flow
+
+```text
+inspect / select
+  -> open composer
+  -> save note
+  -> persist to localStorage
+  -> render markers
+```
+
 ## Features
 
 1. Inspect DOM elements and resolve source file location.

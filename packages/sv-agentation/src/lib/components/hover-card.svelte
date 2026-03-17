@@ -1,15 +1,9 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
 
-	import type { InspectorHoverInfo } from '../types';
+	import type { HoverCardProps } from '../internal/component-props';
 
-	let {
-		hoverInfo,
-		onOpen
-	}: {
-		hoverInfo: InspectorHoverInfo | null;
-		onOpen: () => boolean;
-	} = $props();
+	let { hoverInfo, onOpen }: HoverCardProps = $props();
 
 	const handleOpenClick = (event: MouseEvent) => {
 		event.preventDefault();

@@ -3,8 +3,7 @@ import type { ElementInfo } from 'element-source';
 import type { InspectorHoverInfo, InspectorRuntimeOptions } from '../types';
 import { clampNumber, getElementTextPreview, getTagLabel } from './dom';
 import { buildVsCodeUrl } from './path';
-
-export const NO_SOURCE_VALUE = 'no-source-found';
+import { NO_SOURCE_VALUE } from './shared/constants';
 
 const VIEWPORT_GUTTER = 8;
 const MAX_HOVER_CARD_WIDTH = 312;

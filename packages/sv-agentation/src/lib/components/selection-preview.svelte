@@ -1,13 +1,7 @@
 <script lang="ts">
-	import type { DragSelectionState, GroupSelectionPreviewState } from '../types';
+	import type { SelectionPreviewProps } from '../internal/component-props';
 
-	let {
-		selectionPreview,
-		dragSelection
-	}: {
-		selectionPreview: GroupSelectionPreviewState | null;
-		dragSelection: DragSelectionState | null;
-	} = $props();
+	let { selectionPreview, dragSelection }: SelectionPreviewProps = $props();
 </script>
 
 {#if selectionPreview}

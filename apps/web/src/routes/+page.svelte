@@ -214,7 +214,7 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							Alpha
+							v0.1.0
 						</Badge>
 					</div>
 					<Paragraph
