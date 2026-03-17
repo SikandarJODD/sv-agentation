@@ -38,6 +38,7 @@ bun add sv-agentation
 	import { browser, dev } from '$app/environment';
 	import { Agentation } from 'sv-agentation';
 
+	// for open in vs code feature
 	const workspaceRoot = '/absolute/path/to/your/repo';
 </script>
 
@@ -47,6 +48,30 @@ bun add sv-agentation
 ```
 
 Mount the inspector only in development and only in the browser.
+
+## Architecture
+
+```text
+Agentation
+  -> element-source-inspector.svelte
+  -> CopyOpenController
+      -> internal/controller-state.svelte.ts
+      -> internal/controller-selection.ts
+      -> internal/controller-composer.ts
+      -> internal/controller-browser.ts
+  -> components/*
+  -> utils/note-*.ts + utils/selection.ts + utils/source.ts
+```
+
+## Interaction Flow
+
+```text
+inspect / select
+  -> open composer
+  -> save note
+  -> persist to localStorage
+  -> render markers
+```
 
 ## Features
 
@@ -86,21 +111,6 @@ Mount the inspector only in development and only in the browser.
 | `o` | Open source | Open the currently hovered source location when the inspector is active. |
 | `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
 | `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |
-
-## Public API
-
-- `Agentation`
-- `AgentationInspector`
-- `ElementSourceInspector`
-- `AGENTATION_ACTIVE_CHANGE_EVENT`
-- `AGENTATION_BLOCKED_INTERACTION_EVENT`
-- `COPY_OPEN_ACTIVE_CHANGE_EVENT`
-- `COPY_OPEN_BLOCKED_INTERACTION_EVENT`
-- `INSPECTOR_ACTIVE_CHANGE_EVENT`
-- `INSPECTOR_BLOCKED_INTERACTION_EVENT`
-- `AgentationProps`
-- `InspectorProps`
-- related exported `Inspector*` public types
 
 ## Notes
 

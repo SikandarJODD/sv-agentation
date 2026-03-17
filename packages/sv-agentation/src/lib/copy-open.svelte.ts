@@ -2,10 +2,7 @@ import { untrack } from 'svelte';
 import { resolveElementInfo } from 'element-source';
 
 import type {
-	AreaSelectionAnchor,
 	DragSelectionState,
-	ElementNoteAnchor,
-	GroupSelectionAnchor,
 	GroupSelectionPreviewState,
 	InspectorHoverInfo,
 	InspectorNote,
@@ -16,7 +13,6 @@ import type {
 	NotesSettings,
 	RectBox,
 	RenderedInspectorNote,
-	TextSelectionAnchor,
 	ToolbarCoordinates,
 	ToolbarState,
 	VsCodeScheme
@@ -27,39 +23,21 @@ import {
 	isInspectorUiTarget,
 	isInteractiveElement,
 	isTypingTarget,
-	matchesSelectorScope,
-	resolveDomPath,
 	resolveElementFromNode,
 	resolveInspectableTarget
 } from './utils/dom';
 import {
 	alignToolbarPositionForStateChange,
-	buildAreaComposerVisuals,
-	buildAreaTargetLabel,
-	buildAreaTargetSummary,
-	buildComposerState,
-	buildElementTargetLabel,
-	buildElementTargetSummary,
-	buildGroupSelectionFromRects,
-	buildGroupTargetLabel,
-	buildGroupTargetSummary,
 	buildSourceInfoFromHoverInfo,
-	buildTextTargetLabel,
-	buildTextTargetSummary,
 	clampToolbarPosition,
-	createAreaAnchorFromBounds,
-	createDefaultToolbarPosition,
 	createEmptySourceInfo,
-	createGroupAnchorFromElements,
 	DEFAULT_DELETE_ALL_DELAY_MS,
 	DEFAULT_NOTES_SETTINGS,
 	formatNotesAsMarkdown,
-	getComposerPlaceholder,
 	getPageStorageKey,
 	readStoredMarkerColor,
 	readStoredNotes,
 	readStoredSettings,
-	readStoredToolbarPosition,
 	readStoredThemeMode,
 	renderNote,
 	sanitizeDeleteAllDelayMs,
@@ -79,21 +57,49 @@ import {
 	writeStoredToolbarPlacement
 } from './utils/position';
 import {
-	markerFromFallback,
-	resolveAreaSelection,
-	resolveGroupSelection,
-	resolveTextSelection,
 	serializeTextSelection
 } from './utils/selection';
 import { buildHoverInfo, getHoverGeometry } from './utils/source';
+import type { InspectorBlockedInteractionDetail } from './events';
 import {
-	AGENTATION_ACTIVE_CHANGE_EVENT,
-	AGENTATION_BLOCKED_INTERACTION_EVENT,
-	COPY_OPEN_ACTIVE_CHANGE_EVENT,
-	COPY_OPEN_BLOCKED_INTERACTION_EVENT,
-	type InspectorActiveChangeDetail,
-	type InspectorBlockedInteractionDetail
-} from './events';
+	buildAnchorFromClick,
+	buildAreaComposer,
+	buildComposerFromExistingNote,
+	buildElementComposer,
+	buildGroupComposer,
+	buildNoteFromComposer,
+	buildTextComposer,
+	resolveComposerLayout,
+	scrollNoteIntoView,
+	updateComposerPosition
+} from './internal/controller-composer';
+import {
+	dispatchBlockedInteraction,
+	dispatchInspectorActiveChange,
+	installInspectorCursorStyles,
+	removeInspectorCursorStyles,
+	setDragUserSelectSuppressed
+} from './internal/controller-browser';
+import {
+	buildNextDragSelection,
+	findSelectableElementsInRect,
+	getActiveTextSelection,
+	resolvePendingGroupElements,
+	toggleGroupSelectionItems
+} from './internal/controller-selection';
+import {
+	buildSelectionPreview,
+	createDeleteAllState,
+	createModifierState,
+	createToolbarState,
+	DRAG_THRESHOLD,
+	type DeleteAllState,
+	type GroupSelectionItem,
+	type ModifierState,
+	type MouseDownState,
+	type ToolbarDragState,
+	type UserSelectSnapshot
+} from './internal/controller-state.svelte';
 
 const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
@@ -102,82 +108,6 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	openSourceOnClick: false,
 	deleteAllDelayMs: DEFAULT_DELETE_ALL_DELAY_MS,
 	toolbarPosition: DEFAULT_INSPECTOR_POSITION
-};
-
-const DRAG_THRESHOLD = 8;
-const DRAG_UPDATE_THROTTLE = 32;
-const DRAG_CANDIDATE_SELECTOR =
-	'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
-
-type ToolbarDragState = {
-	pointerId: number | null;
-	offsetX: number;
-	offsetY: number;
-	width: number;
-	height: number;
-};
-
-type MouseDownState = {
-	x: number;
-	y: number;
-	target: Element | null;
-};
-
-type GroupSelectionItem = {
-	element: Element;
-	domPath: string;
-};
-
-type UserSelectSnapshot = {
-	bodyUserSelect: string;
-	bodyWebkitUserSelect: string;
-	documentUserSelect: string;
-	documentWebkitUserSelect: string;
-};
-
-type DeleteAllState = {
-	active: boolean;
-	durationMs: number;
-	remainingMs: number;
-	progress: number;
-};
-
-const createToolbarState = (): ToolbarState => ({
-	expanded: false,
-	dragging: false,
-	settingsOpen: false,
-	confirmDeleteAll: false,
-	notesVisible: true,
-	copyFeedback: false,
-	position: createDefaultToolbarPosition()
-});
-
-const createDeleteAllState = (durationMs = DEFAULT_DELETE_ALL_DELAY_MS): DeleteAllState => ({
-	active: false,
-	durationMs,
-	remainingMs: durationMs,
-	progress: 0
-});
-
-const buildAnchorFromClick = (
-	target: Element,
-	clientX: number,
-	clientY: number
-): ElementNoteAnchor | null => {
-	const domPath = buildDomPath(target);
-	if (domPath === null) return null;
-
-	const rect = target.getBoundingClientRect();
-	const relativeX = rect.width > 0 ? clampNumber((clientX - rect.left) / rect.width, 0, 1) : 0.5;
-	const relativeY = rect.height > 0 ? clampNumber((clientY - rect.top) / rect.height, 0, 1) : 0.5;
-
-	return {
-		domPath,
-		relativeX,
-		relativeY,
-		viewportX: clientX,
-		viewportY: clientY
-	};
 };
 
 export class CopyOpenController {
@@ -216,10 +146,7 @@ export class CopyOpenController {
 	#dragActive = false;
 	#lastDragUpdate = 0;
 	#suppressNextClick = false;
-	#modifierState = {
-		shift: false,
-		metaOrCtrl: false
-	};
+	#modifierState: ModifierState = createModifierState();
 	#cursorStyleElement: HTMLStyleElement | null = null;
 	#dragUserSelectSnapshot: UserSelectSnapshot | null = null;
 
@@ -233,7 +160,6 @@ export class CopyOpenController {
 			const themeMode = readStoredThemeMode() ?? DEFAULT_NOTES_SETTINGS.themeMode;
 			const markerColor = readStoredMarkerColor() ?? DEFAULT_NOTES_SETTINGS.markerColor;
 			const storedToolbarPlacement = readStoredToolbarPlacement();
-			const legacyToolbarPosition = readStoredToolbarPosition(this.#pageStorageKey);
 
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
@@ -244,18 +170,11 @@ export class CopyOpenController {
 				markerColor
 			};
 			const initialToolbarPlacement =
-				storedToolbarPlacement ??
-				(legacyToolbarPosition
-					? {
-							mode: 'custom' as const,
-							preset: getNearestInspectorPosition(legacyToolbarPosition, false),
-							coordinates: clampToolbarPosition(legacyToolbarPosition, false)
-						}
-					: {
-							mode: 'preset' as const,
-							preset: this.#toolbarPositionDefault,
-							coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
-						});
+				storedToolbarPlacement ?? {
+					mode: 'preset' as const,
+					preset: this.#toolbarPositionDefault,
+					coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
+				};
 
 			this.#toolbarPositionMode = initialToolbarPlacement.mode;
 			this.toolbarPositionPreset = initialToolbarPlacement.preset;
@@ -320,15 +239,15 @@ export class CopyOpenController {
 		});
 
 		if (this.enabled) {
-			this.#installCursorStyles();
+			this.#cursorStyleElement = installInspectorCursorStyles(this.#cursorStyleElement);
 		} else {
 			this.closeComposer();
 			this.clearHover();
 			this.#clearTransientSelections();
-			this.#removeCursorStyles();
+			this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
 		}
 
-		this.#dispatchInspectorActiveChange();
+		dispatchInspectorActiveChange(this.enabled);
 	};
 
 	toggleToolbar = () => {
@@ -583,7 +502,10 @@ export class CopyOpenController {
 		this.#dragActive = false;
 		this.dragSelection = null;
 		this.#lastDragUpdate = 0;
-		this.#setDragUserSelectSuppressed(false);
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
+			false,
+			this.#dragUserSelectSnapshot
+		);
 
 		if (!this.enabled || this.composer) return;
 
@@ -748,10 +670,7 @@ export class CopyOpenController {
 	};
 
 	handleWindowBlur = () => {
-		this.#modifierState = {
-			shift: false,
-			metaOrCtrl: false
-		};
+		this.#modifierState = createModifierState();
 		this.#clearTransientSelections();
 	};
 
@@ -804,28 +723,15 @@ export class CopyOpenController {
 
 		const noteText = this.noteDraft.trim();
 		if (!noteText) return false;
-
-		const now = new Date().toISOString();
 		const existingNote = this.composer.noteId
 			? (this.notes.find((note) => note.id === this.composer?.noteId) ?? null)
 			: null;
-
-		const nextNote: InspectorNote = {
-			id: existingNote?.id ?? this.#createNoteId(),
-			kind: this.composer.noteKind,
-			note: noteText,
-			targetSummary: this.composer.targetSummary,
-			targetLabel: this.composer.targetLabel,
-			componentName: this.composer.componentName,
-			tagName: this.composer.tagName,
-			filePath: this.composer.filePath,
-			shortFileName: this.composer.shortFileName,
-			lineNumber: this.composer.lineNumber,
-			columnNumber: this.composer.columnNumber,
-			createdAt: existingNote?.createdAt ?? now,
-			updatedAt: now,
-			anchor: this.composer.anchor
-		} as InspectorNote;
+		const nextNote = buildNoteFromComposer({
+			composer: this.composer,
+			noteText,
+			existingNote,
+			createNoteId: () => this.#createNoteId()
+		});
 
 		this.notes = existingNote
 			? this.notes.map((note) => (note.id === nextNote.id ? nextNote : note))
@@ -844,7 +750,7 @@ export class CopyOpenController {
 		if (!note) return false;
 
 		this.activeNoteId = note.id;
-		await this.#scrollNoteIntoView(note);
+		await scrollNoteIntoView(note);
 		this.#setComposerFromExistingNote(note);
 		return true;
 	};
@@ -876,8 +782,11 @@ export class CopyOpenController {
 		this.cancelDeleteAll();
 		this.#clearCopyResetTimer();
 		this.#clearToolbarCopyResetTimer();
-		this.#setDragUserSelectSuppressed(false);
-		this.#removeCursorStyles();
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
+			false,
+			this.#dragUserSelectSnapshot
+		);
+		this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
 	}
 
 	#setToolbar(patch: Partial<ToolbarState>) {
@@ -987,7 +896,10 @@ export class CopyOpenController {
 		this.#dragActive = false;
 		this.#lastDragUpdate = 0;
 		this.#suppressNextClick = false;
-		this.#setDragUserSelectSuppressed(false);
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
+			false,
+			this.#dragUserSelectSnapshot
+		);
 		window.getSelection()?.removeAllRanges();
 	}
 
@@ -996,84 +908,24 @@ export class CopyOpenController {
 		target: Element,
 		source: InspectorBlockedInteractionDetail['source']
 	) {
-		if (typeof window !== 'undefined') {
-			for (const eventName of [
-				AGENTATION_BLOCKED_INTERACTION_EVENT,
-				COPY_OPEN_BLOCKED_INTERACTION_EVENT
-			] as const) {
-				window.dispatchEvent(
-					new CustomEvent<InspectorBlockedInteractionDetail>(eventName, {
-						detail: {
-							source,
-							target
-						}
-					})
-				);
-			}
-		}
-
+		dispatchBlockedInteraction(target, source);
 		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 	}
 
-	#dispatchInspectorActiveChange() {
-		if (typeof window === 'undefined') return;
-
-		for (const eventName of [
-			AGENTATION_ACTIVE_CHANGE_EVENT,
-			COPY_OPEN_ACTIVE_CHANGE_EVENT
-		] as const) {
-			window.dispatchEvent(
-				new CustomEvent<InspectorActiveChangeDetail>(eventName, {
-					detail: {
-						active: this.enabled
-					}
-				})
-			);
-		}
-	}
-
 	#refreshSelectionPreview() {
-		if (this.#groupSelectionItems.length === 0) {
-			this.selectionPreview = null;
-			return;
-		}
-
-		const rects = this.#groupSelectionItems
-			.filter((item) => document.contains(item.element))
-			.map((item) => item.element.getBoundingClientRect())
-			.map((rect) => ({
-				left: rect.left,
-				top: rect.top,
-				width: rect.width,
-				height: rect.height
-			}));
-
-		this.selectionPreview = rects.length > 0 ? { rects } : null;
+		this.selectionPreview = buildSelectionPreview(this.#groupSelectionItems);
 	}
 
 	#toggleGroupSelectionTarget(target: Element) {
-		const domPath = buildDomPath(target);
-		if (!domPath) return;
-
-		const existingIndex = this.#groupSelectionItems.findIndex((item) => item.domPath === domPath);
-		if (existingIndex >= 0) {
-			this.#groupSelectionItems = this.#groupSelectionItems.filter(
-				(_, index) => index !== existingIndex
-			);
-		} else {
-			this.#groupSelectionItems = [...this.#groupSelectionItems, { element: target, domPath }];
-		}
-
+		this.#groupSelectionItems = toggleGroupSelectionItems(this.#groupSelectionItems, target);
 		this.#refreshSelectionPreview();
 		this.clearHover();
 	}
 
 	async #openPendingGroupComposer() {
-		const elements = this.#groupSelectionItems
-			.filter((item) => document.contains(item.element))
-			.map((item) => item.element);
+		const elements = resolvePendingGroupElements(this.#groupSelectionItems);
 
 		this.#groupSelectionItems = [];
 		this.selectionPreview = null;
@@ -1099,48 +951,27 @@ export class CopyOpenController {
 	#updateDragSelection(event: PointerEvent) {
 		if (!this.#mouseDownState) return;
 
-		const left = Math.min(this.#mouseDownState.x, event.clientX);
-		const top = Math.min(this.#mouseDownState.y, event.clientY);
-		const width = Math.abs(event.clientX - this.#mouseDownState.x);
-		const height = Math.abs(event.clientY - this.#mouseDownState.y);
-		const isTwoDimensionalDrag = width >= DRAG_THRESHOLD && height >= DRAG_THRESHOLD;
-
-		if (!this.#dragActive && !isTwoDimensionalDrag) {
-			return;
-		}
+		const nextDragSelection = buildNextDragSelection({
+			mouseDownState: this.#mouseDownState,
+			event,
+			previousSelection: this.dragSelection,
+			dragActive: this.#dragActive,
+			lastDragUpdate: this.#lastDragUpdate,
+			selector: this.#selector
+		});
+		if (!nextDragSelection) return;
 
 		if (!this.#dragActive) {
 			this.#dragActive = true;
-			this.#setDragUserSelectSuppressed(true);
+			this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
+				true,
+				this.#dragUserSelectSnapshot
+			);
 			window.getSelection()?.removeAllRanges();
 		}
 
-		let highlightRects: RectBox[] = [];
-		const now = Date.now();
-		if (now - this.#lastDragUpdate >= DRAG_UPDATE_THROTTLE) {
-			this.#lastDragUpdate = now;
-			highlightRects = this.#findSelectableElementsInRect({ left, top, width, height }).map(
-				(element) => {
-					const rect = element.getBoundingClientRect();
-					return {
-						left: rect.left,
-						top: rect.top,
-						width: rect.width,
-						height: rect.height
-					};
-				}
-			);
-		} else if (this.dragSelection) {
-			highlightRects = this.dragSelection.highlightRects;
-		}
-
-		this.dragSelection = {
-			left,
-			top,
-			width,
-			height,
-			highlightRects
-		};
+		this.dragSelection = nextDragSelection.dragSelection;
+		this.#lastDragUpdate = nextDragSelection.lastDragUpdate;
 	}
 
 	async #finalizeDragSelection(selection: DragSelectionState) {
@@ -1152,63 +983,20 @@ export class CopyOpenController {
 			return;
 		}
 
-		const visuals = buildAreaComposerVisuals(selection);
-		const anchor = createAreaAnchorFromBounds(selection, visuals.markerLeft, visuals.markerTop);
-		this.composer = buildComposerState({
-			noteId: null,
-			noteKind: 'area',
-			initialValue: '',
-			targetSummary: buildAreaTargetSummary(),
-			targetLabel: buildAreaTargetLabel(selection),
-			placeholder: getComposerPlaceholder('area'),
-			accentColor: this.settings.markerColor,
-			markerLeft: visuals.markerLeft,
-			markerTop: visuals.markerTop,
-			outlineRects: [selection],
-			highlightRects: [],
-			selectedText: null,
-			anchor,
-			sourceInfo: createEmptySourceInfo()
+		this.composer = buildAreaComposer({
+			selection,
+			markerColor: this.settings.markerColor
 		});
 		this.noteDraft = '';
 		this.clearHover();
 	}
 
 	#findSelectableElementsInRect(selection: RectBox) {
-		const selector = this.#selector
-			? `${this.#selector}, ${this.#selector} ${DRAG_CANDIDATE_SELECTOR}`
-			: DRAG_CANDIDATE_SELECTOR;
-		const allCandidates = Array.from(document.querySelectorAll(selector))
-			.filter((element): element is Element => element instanceof Element)
-			.filter((element) => !isInspectorUiTarget(element))
-			.filter((element) => matchesSelectorScope(element, this.#selector));
-
-		const matching = allCandidates.filter((element) => {
-			const rect = element.getBoundingClientRect();
-			if (rect.width < 10 || rect.height < 10) return false;
-
-			return (
-				rect.left < selection.left + selection.width &&
-				rect.left + rect.width > selection.left &&
-				rect.top < selection.top + selection.height &&
-				rect.top + rect.height > selection.top
-			);
-		});
-
-		return matching.filter(
-			(element) => !matching.some((other) => other !== element && element.contains(other))
-		);
+		return findSelectableElementsInRect(selection, this.#selector);
 	}
 
 	#getActiveTextSelection() {
-		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
-
-		const serialized = serializeTextSelection(selection);
-		if (!serialized) return null;
-		if (isInspectorUiTarget(serialized.commonAncestor)) return null;
-		if (!matchesSelectorScope(serialized.commonAncestor, this.#selector)) return null;
-		return serialized;
+		return getActiveTextSelection(this.#selector);
 	}
 
 	async #openElementComposer(
@@ -1218,7 +1006,7 @@ export class CopyOpenController {
 		noteId: string | null,
 		initialValue: string
 	) {
-		const anchor = buildAnchorFromClick(target, clientX, clientY);
+		const anchor = buildAnchorFromClick(target, clientX, clientY, buildDomPath);
 		if (!anchor) return false;
 
 		const hoverInfo =
@@ -1226,44 +1014,17 @@ export class CopyOpenController {
 				? this.hoverInfo
 				: await this.#resolveHoverInfo(target, clientX, clientY);
 
-		const rect = target.getBoundingClientRect();
-		const markerLeft = clampNumber(
-			rect.left + rect.width * anchor.relativeX,
-			12,
-			window.innerWidth - 12
-		);
-		const markerTop = clampNumber(
-			rect.top + rect.height * anchor.relativeY,
-			12,
-			window.innerHeight - 12
-		);
-
 		this.#lastTarget = target;
 		this.hoverInfo = hoverInfo;
 		this.activeNoteId = noteId;
 		this.noteDraft = initialValue;
-		this.composer = buildComposerState({
+		this.composer = buildElementComposer({
+			target,
 			noteId,
-			noteKind: 'element',
 			initialValue,
-			targetSummary: buildElementTargetSummary(target),
-			targetLabel: buildElementTargetLabel(target),
-			placeholder: getComposerPlaceholder('element'),
-			accentColor: this.settings.markerColor,
-			markerLeft,
-			markerTop,
-			outlineRects: [
-				{
-					left: rect.left,
-					top: rect.top,
-					width: rect.width,
-					height: rect.height
-				}
-			],
-			highlightRects: [],
-			selectedText: null,
-			anchor,
-			sourceInfo: buildSourceInfoFromHoverInfo(hoverInfo)
+			hoverInfo,
+			markerColor: this.settings.markerColor,
+			anchor
 		});
 		return true;
 	}
@@ -1278,24 +1039,10 @@ export class CopyOpenController {
 		);
 		this.activeNoteId = null;
 		this.noteDraft = '';
-		this.composer = buildComposerState({
-			noteId: null,
-			noteKind: 'text',
-			initialValue: '',
-			targetSummary: buildTextTargetSummary(
-				selection.commonAncestor,
-				selection.anchor.selectedText
-			),
-			targetLabel: buildTextTargetLabel(selection.commonAncestor),
-			placeholder: getComposerPlaceholder('text'),
-			accentColor: this.settings.markerColor,
-			markerLeft: selection.markerLeft,
-			markerTop: selection.markerTop,
-			outlineRects: selection.bounds ? [selection.bounds] : [],
-			highlightRects: selection.rects,
-			selectedText: selection.anchor.selectedText,
-			anchor: selection.anchor,
-			sourceInfo
+		this.composer = buildTextComposer({
+			selection,
+			sourceInfo,
+			markerColor: this.settings.markerColor
 		});
 		window.getSelection()?.removeAllRanges();
 		this.clearHover();
@@ -1303,26 +1050,6 @@ export class CopyOpenController {
 	}
 
 	async #openGroupComposer(elements: Element[], anchorElement: Element) {
-		const rects = elements.map((element) => {
-			const rect = element.getBoundingClientRect();
-			return {
-				left: rect.left,
-				top: rect.top,
-				width: rect.width,
-				height: rect.height
-			};
-		});
-		const visuals = buildGroupSelectionFromRects(rects);
-		if (!visuals) return false;
-
-		const anchorData = createGroupAnchorFromElements(
-			elements,
-			anchorElement,
-			visuals.markerLeft,
-			visuals.markerTop
-		);
-		if (!anchorData) return false;
-
 		const anchorRect = anchorElement.getBoundingClientRect();
 		const sourceInfo = await this.#resolveSourceInfo(
 			anchorElement,
@@ -1332,162 +1059,32 @@ export class CopyOpenController {
 
 		this.activeNoteId = null;
 		this.noteDraft = '';
-		this.composer = buildComposerState({
-			noteId: null,
-			noteKind: 'group',
-			initialValue: '',
-			targetSummary: buildGroupTargetSummary(elements),
-			targetLabel: buildGroupTargetLabel(elements),
-			placeholder: getComposerPlaceholder('group', elements.length),
-			accentColor: this.settings.markerColor,
-			markerLeft: visuals.markerLeft,
-			markerTop: visuals.markerTop,
-			outlineRects: anchorData.rects,
-			highlightRects: [],
-			selectedText: null,
-			anchor: anchorData.anchor,
-			sourceInfo
-		});
+		this.composer =
+			buildGroupComposer({
+				elements,
+				anchorElement,
+				sourceInfo,
+				markerColor: this.settings.markerColor
+			}) ?? null;
+		if (!this.composer) return false;
 		this.clearHover();
 		return true;
 	}
 
 	#setComposerFromExistingNote(note: InspectorNote) {
-		const renderedNote = renderNote(note);
-		const fallbackMarker = this.#getFallbackMarkerForNote(note);
-		const markerLeft = renderedNote.position?.markerLeft ?? fallbackMarker.markerLeft;
-		const markerTop = renderedNote.position?.markerTop ?? fallbackMarker.markerTop;
-		const outlineRects = renderedNote.position?.outlineRects ?? [];
-		const highlightRects = renderedNote.position?.highlightRects ?? [];
-
 		this.noteDraft = note.note;
-		this.composer = buildComposerState({
-			noteId: note.id,
-			noteKind: note.kind,
-			initialValue: note.note,
-			targetSummary: note.targetSummary,
-			targetLabel: note.targetLabel,
-			placeholder:
-				note.kind === 'group'
-					? getComposerPlaceholder('group', note.anchor.selectedDomPaths.length)
-					: getComposerPlaceholder(note.kind),
-			accentColor: this.settings.markerColor,
-			markerLeft,
-			markerTop,
-			outlineRects,
-			highlightRects,
-			selectedText: note.kind === 'text' ? note.anchor.selectedText : null,
-			anchor: note.anchor,
-			sourceInfo: {
-				componentName: note.componentName,
-				tagName: note.tagName,
-				filePath: note.filePath,
-				shortFileName: note.shortFileName,
-				lineNumber: note.lineNumber,
-				columnNumber: note.columnNumber
-			}
+		this.composer = buildComposerFromExistingNote({
+			note,
+			markerColor: this.settings.markerColor
 		});
-	}
-
-	#getFallbackMarkerForNote(note: InspectorNote) {
-		switch (note.kind) {
-			case 'element':
-				return {
-					markerLeft: clampNumber(note.anchor.viewportX, 12, window.innerWidth - 12),
-					markerTop: clampNumber(note.anchor.viewportY, 12, window.innerHeight - 12)
-				};
-			case 'text':
-			case 'group':
-			case 'area':
-				return markerFromFallback(note.anchor.fallbackMarker);
-		}
 	}
 
 	#refreshComposerLayout() {
 		if (!this.composer) return;
-
-		switch (this.composer.noteKind) {
-			case 'element': {
-				const target = resolveDomPath((this.composer.anchor as ElementNoteAnchor).domPath);
-				if (!target) {
-					const anchor = this.composer.anchor as ElementNoteAnchor;
-					this.#updateComposerPosition(
-						clampNumber(anchor.viewportX, 12, window.innerWidth - 12),
-						clampNumber(anchor.viewportY, 12, window.innerHeight - 12),
-						[],
-						[]
-					);
-					return;
-				}
-
-				const rect = target.getBoundingClientRect();
-				const anchor = this.composer.anchor as ElementNoteAnchor;
-				const markerLeft = clampNumber(
-					rect.left + rect.width * anchor.relativeX,
-					12,
-					window.innerWidth - 12
-				);
-				const markerTop = clampNumber(
-					rect.top + rect.height * anchor.relativeY,
-					12,
-					window.innerHeight - 12
-				);
-				this.#updateComposerPosition(
-					markerLeft,
-					markerTop,
-					[
-						{
-							left: rect.left,
-							top: rect.top,
-							width: rect.width,
-							height: rect.height
-						}
-					],
-					[]
-				);
-				return;
-			}
-			case 'text': {
-				const resolved = resolveTextSelection(this.composer.anchor as TextSelectionAnchor);
-				if (!resolved) {
-					const fallback = markerFromFallback(
-						(this.composer.anchor as TextSelectionAnchor).fallbackMarker
-					);
-					this.#updateComposerPosition(fallback.markerLeft, fallback.markerTop, [], []);
-					return;
-				}
-
-				this.#updateComposerPosition(
-					resolved.markerLeft,
-					resolved.markerTop,
-					resolved.bounds ? [resolved.bounds] : [],
-					resolved.rects
-				);
-				return;
-			}
-			case 'group': {
-				const resolved = resolveGroupSelection(this.composer.anchor as GroupSelectionAnchor);
-				if (!resolved) {
-					const fallback = markerFromFallback(
-						(this.composer.anchor as GroupSelectionAnchor).fallbackMarker
-					);
-					this.#updateComposerPosition(fallback.markerLeft, fallback.markerTop, [], []);
-					return;
-				}
-
-				this.#updateComposerPosition(resolved.markerLeft, resolved.markerTop, resolved.rects, []);
-				return;
-			}
-			case 'area': {
-				const resolved = resolveAreaSelection(this.composer.anchor as AreaSelectionAnchor);
-				this.#updateComposerPosition(
-					resolved.markerLeft,
-					resolved.markerTop,
-					[resolved.bounds],
-					[]
-				);
-			}
-		}
+		this.composer = updateComposerPosition(
+			this.composer,
+			resolveComposerLayout(this.composer)
+		);
 	}
 
 	#updateComposerPosition(
@@ -1498,69 +1095,12 @@ export class CopyOpenController {
 	) {
 		if (!this.composer) return;
 
-		this.composer = buildComposerState({
-			noteId: this.composer.noteId,
-			noteKind: this.composer.noteKind,
-			initialValue: this.composer.initialValue,
-			targetSummary: this.composer.targetSummary,
-			targetLabel: this.composer.targetLabel,
-			placeholder: this.composer.placeholder,
-			accentColor: this.composer.accentColor,
+		this.composer = updateComposerPosition(this.composer, {
 			markerLeft,
 			markerTop,
 			outlineRects,
-			highlightRects,
-			selectedText: this.composer.selectedText,
-			anchor: this.composer.anchor,
-			sourceInfo: {
-				componentName: this.composer.componentName,
-				tagName: this.composer.tagName,
-				filePath: this.composer.filePath,
-				shortFileName: this.composer.shortFileName,
-				lineNumber: this.composer.lineNumber,
-				columnNumber: this.composer.columnNumber
-			}
+			highlightRects
 		});
-	}
-
-	async #scrollNoteIntoView(note: InspectorNote) {
-		switch (note.kind) {
-			case 'element': {
-				const target = resolveDomPath(note.anchor.domPath);
-				target?.scrollIntoView({
-					block: 'center',
-					inline: 'nearest',
-					behavior: 'smooth'
-				});
-				return;
-			}
-			case 'text': {
-				const target = resolveDomPath(note.anchor.commonAncestorPath);
-				target?.scrollIntoView({
-					block: 'center',
-					inline: 'nearest',
-					behavior: 'smooth'
-				});
-				return;
-			}
-			case 'group': {
-				const target =
-					resolveDomPath(note.anchor.anchorDomPath) ??
-					resolveDomPath(note.anchor.selectedDomPaths[0] ?? '');
-				target?.scrollIntoView({
-					block: 'center',
-					inline: 'nearest',
-					behavior: 'smooth'
-				});
-				return;
-			}
-			case 'area': {
-				window.scrollTo({
-					top: Math.max(0, note.anchor.bounds.top - window.innerHeight / 2),
-					behavior: 'smooth'
-				});
-			}
-		}
 	}
 
 	async #resolveSourceInfo(
@@ -1583,117 +1123,6 @@ export class CopyOpenController {
 			workspaceRoot: this.#workspaceRoot,
 			vscodeScheme: this.#vscodeScheme
 		});
-	}
-
-	#installCursorStyles() {
-		if (this.#cursorStyleElement) return;
-		const style = document.createElement('style');
-		style.id = 'sv-agentation-cursor-styles';
-		style.textContent = `
-			body * {
-				cursor: crosshair !important;
-			}
-			body p,
-			body span,
-			body h1,
-			body h2,
-			body h3,
-			body h4,
-			body h5,
-			body h6,
-			body li,
-			body td,
-			body th,
-			body label,
-			body blockquote,
-			body figcaption,
-			body caption,
-			body legend,
-			body dt,
-			body dd,
-			body pre,
-			body code,
-			body em,
-			body strong,
-			body b,
-			body i,
-			body u,
-			body s,
-			body a,
-			body time,
-			body address,
-			body cite,
-			body q,
-			body abbr,
-			body dfn,
-			body p *,
-			body span *,
-			body h1 *,
-			body h2 *,
-			body h3 *,
-			body h4 *,
-			body h5 *,
-			body h6 *,
-			body li *,
-			body a *,
-			body label *,
-			body pre *,
-			body code *,
-			body blockquote *,
-			body [contenteditable],
-			body [contenteditable] * {
-				cursor: text !important;
-			}
-			[data-inspector-ui],
-			[data-inspector-ui] * {
-				cursor: auto !important;
-			}
-			[data-inspector-ui] textarea,
-			[data-inspector-ui] input[type="text"],
-			[data-inspector-ui] input[type="url"] {
-				cursor: text !important;
-			}
-			[data-inspector-ui] button,
-			[data-inspector-ui] button *,
-			[data-inspector-ui] label,
-			[data-inspector-ui] label *,
-			[data-inspector-ui] a,
-			[data-inspector-ui] a * {
-				cursor: pointer !important;
-			}
-		`;
-		document.head.appendChild(style);
-		this.#cursorStyleElement = style;
-	}
-
-	#removeCursorStyles() {
-		this.#cursorStyleElement?.remove();
-		this.#cursorStyleElement = null;
-	}
-
-	#setDragUserSelectSuppressed(active: boolean) {
-		if (active) {
-			if (this.#dragUserSelectSnapshot) return;
-			this.#dragUserSelectSnapshot = {
-				bodyUserSelect: document.body.style.userSelect,
-				bodyWebkitUserSelect: document.body.style.webkitUserSelect,
-				documentUserSelect: document.documentElement.style.userSelect,
-				documentWebkitUserSelect: document.documentElement.style.webkitUserSelect
-			};
-			document.body.style.userSelect = 'none';
-			document.body.style.webkitUserSelect = 'none';
-			document.documentElement.style.userSelect = 'none';
-			document.documentElement.style.webkitUserSelect = 'none';
-			return;
-		}
-
-		if (!this.#dragUserSelectSnapshot) return;
-		document.body.style.userSelect = this.#dragUserSelectSnapshot.bodyUserSelect;
-		document.body.style.webkitUserSelect = this.#dragUserSelectSnapshot.bodyWebkitUserSelect;
-		document.documentElement.style.userSelect = this.#dragUserSelectSnapshot.documentUserSelect;
-		document.documentElement.style.webkitUserSelect =
-			this.#dragUserSelectSnapshot.documentWebkitUserSelect;
-		this.#dragUserSelectSnapshot = null;
 	}
 
 	clearHover = () => {

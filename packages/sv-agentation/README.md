@@ -48,6 +48,39 @@ bun add sv-agentation
 
 Mount the inspector only in development and only in the browser.
 
+## Architecture
+
+```text
+Agentation
+  -> element-source-inspector.svelte
+  -> CopyOpenController
+      -> internal/controller-state.svelte.ts
+      -> internal/controller-selection.ts
+      -> internal/controller-composer.ts
+      -> internal/controller-browser.ts
+  -> components/*
+  -> utils/note-*.ts + utils/selection.ts + utils/source.ts
+```
+
+## Interaction Flow
+
+```text
+inspect / select
+  -> open composer
+  -> save note
+  -> persist to localStorage
+  -> render markers
+```
+
+## Code Map
+
+- `src/lib/element-source-inspector.svelte`: public mount shell that syncs props into the controller.
+- `src/lib/copy-open.svelte.ts`: main orchestration class for runtime state and browser events.
+- `src/lib/internal/*`: controller-private helpers for state, selection flow, composer flow, and browser side effects.
+- `src/lib/components/*`: visible inspector UI.
+- `src/lib/utils/note-*.ts`: note storage, formatting, rendering, and layout helpers.
+- `src/lib/utils/selection.ts`: text/group/area anchor serialization and recovery.
+
 ## Features
 
 1. Inspect DOM elements and resolve source file location.
@@ -108,6 +141,7 @@ Mount the inspector only in development and only in the browser.
 - Intended for browser/dev-mode use, not production collaboration flows.
 - Highly inspired from Agentation.
 - Source-opening depends on `element-source` metadata and your `workspaceRoot` plus editor setup.
+- Internal state now uses a hybrid approach: `*.svelte.ts` for stateful controller helpers and plain `.ts` for pure transforms.
 
 ## Credits
 
