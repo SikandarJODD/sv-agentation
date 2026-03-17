@@ -18,21 +18,30 @@ import {
 	resolveTextSelection
 } from './selection';
 
+const isPointVisibleInViewport = (left: number, top: number) =>
+	left >= 0 && left <= window.innerWidth && top >= 0 && top <= window.innerHeight;
+
+const isRectVisibleInViewport = (bounds: RectBox | null) => {
+	if (!bounds) return false;
+
+	return (
+		bounds.left + bounds.width >= 0 &&
+		bounds.top + bounds.height >= 0 &&
+		bounds.left <= window.innerWidth &&
+		bounds.top <= window.innerHeight
+	);
+};
+
+const isResolvedPositionVisible = (bounds: RectBox | null, markerLeft: number, markerTop: number) =>
+	isRectVisibleInViewport(bounds) || isPointVisibleInViewport(markerLeft, markerTop);
+
 const resolveElementNotePosition = (note: Extract<InspectorNote, { kind: 'element' }>): ResolvedNotePosition | null => {
 	const target = resolveDomPath(note.anchor.domPath);
 	if (!target) return null;
 
 	const rect = target.getBoundingClientRect();
-	const markerLeft = clampNumber(
-		rect.left + rect.width * note.anchor.relativeX,
-		12,
-		window.innerWidth - 12
-	);
-	const markerTop = clampNumber(
-		rect.top + rect.height * note.anchor.relativeY,
-		12,
-		window.innerHeight - 12
-	);
+	const markerLeft = rect.left + rect.width * note.anchor.relativeX;
+	const markerTop = rect.top + rect.height * note.anchor.relativeY;
 	const bounds = {
 		left: rect.left,
 		top: rect.top,
@@ -45,7 +54,8 @@ const resolveElementNotePosition = (note: Extract<InspectorNote, { kind: 'elemen
 		markerTop,
 		bounds,
 		outlineRects: [bounds],
-		highlightRects: []
+		highlightRects: [],
+		visibleInViewport: isResolvedPositionVisible(bounds, markerLeft, markerTop)
 	};
 };
 
@@ -58,7 +68,12 @@ const resolveTextNotePosition = (note: TextInspectorNote) => {
 		markerTop: resolved.markerTop,
 		bounds: resolved.bounds,
 		outlineRects: resolved.bounds ? [resolved.bounds] : [],
-		highlightRects: resolved.rects
+		highlightRects: resolved.rects,
+		visibleInViewport: isResolvedPositionVisible(
+			resolved.bounds,
+			resolved.markerLeft,
+			resolved.markerTop
+		)
 	};
 };
 
@@ -72,7 +87,12 @@ const resolveGroupNotePosition = (note: Extract<InspectorNote, { kind: 'group' |
 				markerTop: resolved.markerTop,
 				bounds: resolved.bounds,
 				outlineRects: resolved.rects,
-				highlightRects: []
+				highlightRects: [],
+				visibleInViewport: isResolvedPositionVisible(
+					resolved.bounds,
+					resolved.markerLeft,
+					resolved.markerTop
+				)
 			} satisfies ResolvedNotePosition,
 			resolution:
 				resolved.resolvedCount === note.anchor.selectedDomPaths.length ? 'resolved' : 'partial'
@@ -85,7 +105,12 @@ const resolveGroupNotePosition = (note: Extract<InspectorNote, { kind: 'group' |
 		markerTop: resolved.markerTop,
 		bounds: resolved.bounds,
 		outlineRects: [resolved.bounds],
-		highlightRects: []
+		highlightRects: [],
+		visibleInViewport: isResolvedPositionVisible(
+			resolved.bounds,
+			resolved.markerLeft,
+			resolved.markerTop
+		)
 	};
 
 	return {
@@ -105,7 +130,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 				markerTop: clampNumber(note.anchor.viewportY, 12, window.innerHeight - 12),
 				bounds: null,
 				outlineRects: [],
-				highlightRects: []
+				highlightRects: [],
+				visibleInViewport: true
 			}
 		};
 	}
@@ -119,7 +145,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 				...markerFromFallback(note.anchor.fallbackMarker),
 				bounds: null,
 				outlineRects: [],
-				highlightRects: []
+				highlightRects: [],
+				visibleInViewport: true
 			}
 		};
 	}
@@ -132,7 +159,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 			...markerFromFallback(note.anchor.fallbackMarker),
 			bounds: null,
 			outlineRects: [],
-			highlightRects: []
+			highlightRects: [],
+			visibleInViewport: true
 		}
 	};
 };

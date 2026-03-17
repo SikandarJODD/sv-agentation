@@ -57,23 +57,26 @@ export const getBoundsFromRects = (rects: RectBox[]): RectBox | null => {
 	};
 };
 
-export const getMarkerFromRects = (rects: RectBox[], fallbackBounds: RectBox | null) => {
-	const lastRect = rects.at(-1) ?? fallbackBounds;
-	const markerLeft = clampNumber(
-		(lastRect?.left ?? window.innerWidth / 2) + (lastRect?.width ?? 0),
-		MARKER_GUTTER,
-		window.innerWidth - MARKER_GUTTER
-	);
-	const markerTop = clampNumber(
-		(lastRect?.top ?? window.innerHeight / 2) + (lastRect?.height ?? 0),
-		MARKER_GUTTER,
-		window.innerHeight - MARKER_GUTTER
-	);
+const clampMarkerToViewport = (markerLeft: number, markerTop: number) => ({
+	markerLeft: clampNumber(markerLeft, MARKER_GUTTER, window.innerWidth - MARKER_GUTTER),
+	markerTop: clampNumber(markerTop, MARKER_GUTTER, window.innerHeight - MARKER_GUTTER)
+});
 
-	return {
-		markerLeft,
-		markerTop
-	};
+export const getMarkerFromRects = (
+	rects: RectBox[],
+	fallbackBounds: RectBox | null,
+	clampToViewport = true
+) => {
+	const lastRect = rects.at(-1) ?? fallbackBounds;
+	const markerLeft = (lastRect?.left ?? window.innerWidth / 2) + (lastRect?.width ?? 0);
+	const markerTop = (lastRect?.top ?? window.innerHeight / 2) + (lastRect?.height ?? 0);
+
+	return clampToViewport
+		? clampMarkerToViewport(markerLeft, markerTop)
+		: {
+				markerLeft,
+				markerTop
+			};
 };
 
 const toFallbackMarker = (markerLeft: number, markerTop: number): NoteMarkerFallback => ({
@@ -81,18 +84,17 @@ const toFallbackMarker = (markerLeft: number, markerTop: number): NoteMarkerFall
 	yAbsolute: markerTop + window.scrollY
 });
 
-export const markerFromFallback = (fallback: NoteMarkerFallback) => ({
-	markerLeft: clampNumber(
-		(fallback.xPercent / 100) * window.innerWidth,
-		MARKER_GUTTER,
-		window.innerWidth - MARKER_GUTTER
-	),
-	markerTop: clampNumber(
-		fallback.yAbsolute - window.scrollY,
-		MARKER_GUTTER,
-		window.innerHeight - MARKER_GUTTER
-	)
-});
+export const markerFromFallback = (fallback: NoteMarkerFallback, clampToViewport = true) => {
+	const markerLeft = (fallback.xPercent / 100) * window.innerWidth;
+	const markerTop = fallback.yAbsolute - window.scrollY;
+
+	return clampToViewport
+		? clampMarkerToViewport(markerLeft, markerTop)
+		: {
+				markerLeft,
+				markerTop
+			};
+};
 
 const getOffsetWithinAncestor = (ancestor: Element, container: Node, offset: number) => {
 	const range = document.createRange();
@@ -261,7 +263,7 @@ export const resolveTextSelection = (anchor: TextSelectionAnchor): ResolvedTextS
 	const rects = getRangeRects(range);
 	if (rects.length === 0) return null;
 	const bounds = getBoundsFromRects(rects);
-	const { markerLeft, markerTop } = getMarkerFromRects(rects, bounds);
+	const { markerLeft, markerTop } = getMarkerFromRects(rects, bounds, false);
 
 	return {
 		range,
@@ -331,7 +333,11 @@ export const resolveGroupSelection = (
 	const bounds = getBoundsFromRects(rects);
 	const anchorElement = resolveDomPath(anchor.anchorDomPath);
 	const anchorRect = anchorElement ? rectToBox(anchorElement.getBoundingClientRect()) : bounds;
-	const { markerLeft, markerTop } = getMarkerFromRects(anchorRect ? [anchorRect] : [], bounds);
+	const { markerLeft, markerTop } = getMarkerFromRects(
+		anchorRect ? [anchorRect] : [],
+		bounds,
+		false
+	);
 
 	return {
 		rects,
@@ -353,7 +359,7 @@ export const buildAreaSelectionAnchor = (
 
 export const resolveAreaSelection = (anchor: AreaSelectionAnchor) => {
 	const bounds = absoluteToViewportRect(anchor.bounds);
-	const { markerLeft, markerTop } = markerFromFallback(anchor.fallbackMarker);
+	const { markerLeft, markerTop } = markerFromFallback(anchor.fallbackMarker, false);
 
 	return {
 		bounds,

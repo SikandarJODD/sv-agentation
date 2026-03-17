@@ -1,19 +1,19 @@
 <script lang="ts">
-	import GithubIcon from '@lucide/svelte/icons/github';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import SunIcon from '@lucide/svelte/icons/sun';
 	import { mode, toggleMode } from 'mode-watcher';
 	import { MetaTags, type MetaTagsProps } from 'svelte-meta-tags';
 	import {
+		CodeSpan,
 		Divider,
 		H1,
 		H2,
+		Highlight,
 		Link,
 		ListItem,
 		OrderedList,
 		Paragraph,
-		Strong,
 		Table,
 		Tbody,
 		Td,
@@ -28,13 +28,13 @@
 	import { Kbd } from '$lib/components/ui/kbd';
 	import PMCommand from '$lib/components/ui/pm-command/pm-command.svelte';
 	import { asset } from '$app/paths';
-	import { page } from '$app/state';
 
 	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
 	let siteUrl = 'https://sv-agentation.com';
 	const githubUrl = 'https://github.com/SikandarJODD/sv-agentation';
 	const npmxUrl = 'https://npmx.dev/package/sv-agentation';
 	let llmsUrl = 'https://sv-agentation.com/llms.txt';
+	const changelogUrl = '/changelog';
 
 	let metaTags: MetaTagsProps = {
 		title: 'Svelte Agentation',
@@ -71,13 +71,58 @@
   import { Agentation } from 'sv-agentation';
 
   //  provide the absolute path to your project
-  //  to open directly in vs code
+  //  to open directly in vs code (optional)
   const workspaceRoot = '/absolute/path/to/your/repo';
 <\/script>
 
 {#if browser && dev}
   <Agentation {workspaceRoot} />
 {/if}`;
+
+	const behaviorSnippet = `<Agentation
+  {workspaceRoot}
+  outputMode="detailed"
+  pauseAnimations={true}
+  includeComponentContext={true}
+  includeComputedStyles={false}
+  clearOnCopy={false}
+/>`;
+
+	const callbacksSnippet = `<script lang="ts">
+  import {
+    Agentation,
+    type AgentationAnnotationSnapshot,
+    type AgentationExportPayload
+  } from 'sv-agentation';
+
+  let copied = $state('');
+
+  const handleAnnotationAdd = (
+    annotation: AgentationAnnotationSnapshot
+  ) => {
+    console.log('added', annotation.targetLabel);
+  };
+
+  const handleCopy = (
+    markdown: string,
+    payload: AgentationExportPayload
+  ) => {
+    copied = markdown;
+    console.log(payload.annotations.length);
+  };
+<\/script>
+
+<Agentation
+  {workspaceRoot}
+  copyToClipboard={false}
+  onAnnotationAdd={handleAnnotationAdd}
+  onCopy={handleCopy}
+/>`;
+
+	const advancedSessionSnippet = `<Agentation
+  {workspaceRoot}
+  pageSessionKey="/docs/reference"
+/>`;
 
 	const installationPrompt = `Install sv-agentation in this SvelteKit project and wire it into the app shell.
 
@@ -107,23 +152,16 @@ Use this example:
 4. If needed, set workspaceRoot to the absolute path of the repo so source links open correctly.`;
 
 	const features = [
-		'Inspect <strong>DOM elements</strong> and resolve source file location.',
-		// 'Jump to source with <strong>VS Code</strong> or <strong>VS Code Insiders</strong> URL schemes.',
-		'Annotate <strong>individual elements</strong> directly in the page.',
-		'Annotate <strong>selected text ranges</strong>.',
-		'Annotate <strong>grouped selections</strong> across multiple elements.',
-		'Annotate <strong>selected page areas</strong>.',
-		'Use a <strong>draggable floating toolbar</strong>.',
-		'Choose <strong>toolbar position presets</strong>.',
-		'Toggle the <strong>inspector theme</strong> inside the tool UI.',
-		'Toggle <strong>marker visibility</strong> for notes.',
-		'Block <strong>normal page interactions</strong> while inspecting.',
-		'Use a <strong>delete-all flow</strong> with configurable delay.',
-		'Copy <strong>structured annotation output</strong> for developer and AI-assisted workflows.',
-		'Mount the inspector only in <strong>dev mode</strong> with <strong>`browser && dev`</strong>.'
+		'Inspect source-aware DOM elements and jump to their files quickly.',
+		'Annotate elements, text ranges, grouped targets, and selected areas.',
+		'Keep notes isolated per page automatically as routes change.',
+		'Copy output in compact, standard, detailed, or forensic modes.',
+		'Use the denser floating toolbar with compact settings and output cycling.',
+		'Hook into local callbacks for note events and copy output.',
+		'Mount it only in development with browser-only setup.'
 	];
 
-	const props = [
+	const coreProps = [
 		{
 			name: 'workspaceRoot',
 			type: 'string | null',
@@ -153,6 +191,108 @@ Use this example:
 			name: 'toolbarPosition',
 			type: "'top-left' | 'top-center' | 'top-right' | 'mid-right' | 'mid-left' | 'bottom-left' | 'bottom-center' | 'bottom-right'",
 			description: 'Initial preset for the floating toolbar position.'
+		},
+		{
+			name: 'pageSessionKey',
+			type: 'string | null',
+			description: 'Optional advanced override for route scoping. Normal usage does not need this.'
+		}
+	];
+
+	const behaviorProps = [
+		{
+			name: 'outputMode',
+			type: "'compact' | 'standard' | 'detailed' | 'forensic'",
+			description: 'Controls how much annotation context is copied.'
+		},
+		{
+			name: 'pauseAnimations',
+			type: 'boolean',
+			description: 'Pauses host-page animations while the inspector is active.'
+		},
+		{
+			name: 'clearOnCopy',
+			type: 'boolean',
+			description: 'Clears current page notes after a successful copy.'
+		},
+		{
+			name: 'includeComponentContext',
+			type: 'boolean',
+			description: 'Includes component-chain context when available.'
+		},
+		{
+			name: 'includeComputedStyles',
+			type: 'boolean',
+			description: 'Includes computed-style metadata when the output mode allows it.'
+		},
+		{
+			name: 'copyToClipboard',
+			type: 'boolean',
+			description: 'Lets you intercept copy output without writing to the clipboard.'
+		}
+	];
+
+	const callbackProps = [
+		{
+			name: 'onAnnotationAdd',
+			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			description: 'Fires when a new annotation is saved.'
+		},
+		{
+			name: 'onAnnotationUpdate',
+			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			description: 'Fires when an existing annotation is edited.'
+		},
+		{
+			name: 'onAnnotationDelete',
+			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			description: 'Fires when one annotation is removed.'
+		},
+		{
+			name: 'onAnnotationsClear',
+			type: '(annotations: AgentationAnnotationSnapshot[]) => void',
+			description: 'Fires after the current page notes are cleared.'
+		},
+		{
+			name: 'onCopy',
+			type: '(markdown: string, payload: AgentationExportPayload) => void',
+			description: 'Receives the generated markdown and structured export payload.'
+		}
+	];
+
+	const examples = [
+		{
+			title: 'Behavior controls',
+			copy: 'Set a default output mode, pause animations, and keep component context enabled for richer local reviews.',
+			code: behaviorSnippet
+		},
+		{
+			title: 'Lifecycle callbacks',
+			copy: 'Use annotation and copy callbacks to feed your own local tooling, metrics, or AI workflow prompts.',
+			code: callbacksSnippet
+		},
+		{
+			title: 'Advanced session override',
+			copy: 'Use pageSessionKey only when you want to manually scope notes. Most apps can rely on automatic route tracking.',
+			code: advancedSessionSnippet
+		}
+	];
+
+	const propGroups = [
+		{
+			title: 'Core Props',
+			description: 'Mounting, source opening, and route/session controls.',
+			rows: coreProps
+		},
+		{
+			title: 'Behavior Props',
+			description: 'Copy output, toolbar behavior, and capture detail controls.',
+			rows: behaviorProps
+		},
+		{
+			title: 'Lifecycle Callbacks',
+			description: 'Local integration hooks for notes and copy output.',
+			rows: callbackProps
 		}
 	];
 
@@ -193,19 +333,19 @@ Use this example:
 
 <MetaTags {...metaTags} />
 
-<main class="min-h-screen bg-background px-5 py-10 text-foreground sm:px-6 sm:py-12">
-	<div class="mx-auto flex w-full max-w-[42rem] flex-col">
+<main class="min-h-screen bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10">
+	<div class="mx-auto flex w-full max-w-2xl flex-col">
 		<header class="flex items-start justify-between gap-4">
 			<div class="flex min-w-0 flex-col items-start">
 				{#if mode.current === 'dark'}
 					<img
-						class="mt-1 size-9 shrink-0"
+						class="mt-1 size-12 shrink-0"
 						src={asset('/main-favicon-light.svg')}
 						alt="Svelte Agentation logo"
 					/>
 				{:else}
 					<img
-						class="mt-1 size-9 shrink-0"
+						class="mt-1 size-12 shrink-0"
 						src={asset('/main-favicon.svg')}
 						alt="Svelte Agentation logo"
 					/>
@@ -214,14 +354,15 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							v0.1.0
+							v0.2.1
 						</Badge>
 					</div>
 					<Paragraph
-						class="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground sm:text-[0.95rem]"
+						class="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-[0.95rem]"
 					>
-						Svelte Agentation turns UI annotations into structured context that AI coding agents can understand and act on.
-						Click any element, add a note, and paste the output into Claude Code, Cursor, or any AI tool.
+						Svelte Agentation turns UI annotations into structured context that AI coding agents can
+						understand and act on. Click any element, add a note, and paste the output into Claude
+						Code, Cursor, or any AI tool.
 					</Paragraph>
 				</div>
 			</div>
@@ -280,8 +421,20 @@ Use this example:
 			</div>
 		</section> -->
 
-		<div class="mt-7 flex flex-wrap items-center gap-3">
-			<Button href={githubUrl} target="_blank" rel="noreferrer" variant="outline" class="text-xs">
+		<div class="mt-7 flex w-full flex-wrap items-center justify-between">
+			<div class="flex gap-3">
+				<CopyButton
+					size="sm"
+					text={installationPrompt}
+					variant="secondary"
+					class="rounded-md text-xs"
+				>
+					Copy Prompt
+				</CopyButton>
+
+				<Button size="sm" href={changelogUrl} variant="secondary" class="text-xs">Changelog</Button>
+			</div>
+			<Button href={githubUrl} size='sm' target="_blank" rel="noreferrer" variant="outline" class="text-xs">
 				<svg viewBox="0 0 1024 1024" fill="none"
 					><path
 						fill-rule="evenodd"
@@ -293,13 +446,9 @@ Use this example:
 				>
 				<span>Star on GitHub</span>
 			</Button>
-
-			<CopyButton text={installationPrompt} variant="secondary" class="rounded-md text-xs">
-				Copy Prompt
-			</CopyButton>
 		</div>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
 
 		<section aria-labelledby="installation-title" class="grid gap-3">
 			<H2 id="installation-title" class="mt-0 text-[1.2rem]">Installation</H2>
@@ -307,18 +456,19 @@ Use this example:
 			<div class="mt-0 rounded-md border border-border bg-card p-3">
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
-					The toolbar is active on this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate
-					it.
+					The <Highlight class="px-1 text-sm font-normal" tone="green">toolbar</Highlight> is active on
+					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it.
 				</p>
 			</div>
 		</section>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
 
 		<section aria-labelledby="usage-title" class="flex flex-col">
 			<H2 id="usage-title" class="mt-0 text-[1.2rem]">Usage</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				Mount the component only in development and only in the browser.
+				Mount the component only in development and only in the browser. Route-scoped sessions are
+				now automatic, so the default setup stays small.
 			</Paragraph>
 			<Code.Root
 				code={usageSnippet}
@@ -329,51 +479,103 @@ Use this example:
 			</Code.Root>
 		</section>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
 
 		<section aria-labelledby="features-title" class="flex flex-col">
 			<H2 id="features-title" class="text-[1.2rem]">Features</H2>
 			<Paragraph class="mt-3 mb-1 text-sm leading-6">
-				Everything listed here reflects the current supported surface of <Strong class="text-sm"
-					>sv-agentation</Strong
-				>.
+				The current release focuses on page-based annotations, compact toolbar settings, and copy
+				modes that fit local AI workflows.
 			</Paragraph>
 			<OrderedList class="mt-2 space-y-2 pl-5 text-sm leading-6">
 				{#each features as feature}
-					<ListItem>{@html feature}</ListItem>
+					<ListItem>{feature}</ListItem>
 				{/each}
 			</OrderedList>
 		</section>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
 
 		<section aria-labelledby="props-title" class="flex flex-col">
 			<H2 id="props-title" class="text-[1.2rem]">Props</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				The public component API is intentionally small, but it includes the core controls needed
-				for editor opening, selection scoping, and toolbar behavior.
+				The public API now covers copy modes, route-aware sessions, and local callbacks without
+				pushing routing work onto the host app.
 			</Paragraph>
-			<Table class="mt-2 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
-				<Thead>
-					<Tr class="border-b border-border">
-						<Th>Prop</Th>
-						<Th>Type</Th>
-						<Th>Description</Th>
-					</Tr>
-				</Thead>
-				<Tbody>
-					{#each props as prop}
-						<Tr class="border-b border-border last:border-b-0">
-							<Td><code>{prop.name}</code></Td>
-							<Td><code>{prop.type}</code></Td>
-							<Td>{prop.description}</Td>
-						</Tr>
-					{/each}
-				</Tbody>
-			</Table>
+			<div class="mt-3 grid gap-8">
+				{#each propGroups as group}
+					<div class="grid gap-3">
+						<div class="grid gap-1">
+							<h3 class="text-sm font-medium text-foreground">{group.title}</h3>
+							<p class="text-sm leading-6 text-muted-foreground">{group.description}</p>
+						</div>
+						<Table class="text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+							<Thead>
+								<Tr class="border-b border-border">
+									<Th>Prop</Th>
+									<Th>Type</Th>
+									<Th>Description</Th>
+								</Tr>
+							</Thead>
+							<Tbody>
+								{#each group.rows as prop}
+									<Tr class="border-b border-border last:border-b-0">
+										<Td>
+											<CodeSpan
+												class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground"
+											>
+												{prop.name}
+											</CodeSpan>
+										</Td>
+										<Td>
+											<CodeSpan
+												class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
+											>
+												{prop.type}
+											</CodeSpan>
+										</Td>
+										<Td>{prop.description}</Td>
+									</Tr>
+								{/each}
+							</Tbody>
+						</Table>
+					</div>
+				{/each}
+			</div>
 		</section>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
+
+		<section aria-labelledby="examples-title" class="flex flex-col">
+			<H2 id="examples-title" class="text-[1.2rem]">Examples</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				These examples focus on the newer surface area added after the first alpha: <Highlight
+					class="mx-1 px-1 text-sm font-normal"
+					tone="aqua">page-based annotations</Highlight
+				>, richer copy behavior, and callback-driven local integrations.
+			</Paragraph>
+			<div class="mt-3 grid gap-8">
+				{#each examples as example}
+					<section class="grid gap-3">
+						<div class="grid gap-1">
+							<h3 class="text-sm font-medium text-foreground">{example.title}</h3>
+							<p class="text-sm leading-6 text-muted-foreground">{example.copy}</p>
+						</div>
+						<Code.Overflow collapsed={false}>
+							<Code.Root
+								code={example.code}
+								lang="svelte"
+								class="rounded-xl border-border bg-card/40 pr-12 text-sm [&_pre.shiki]:text-[0.82rem]"
+							>
+								<Code.CopyButton />
+							</Code.Root>
+						</Code.Overflow>
+					</section>
+				{/each}
+			</div>
+		</section>
+
+		<Divider class="my-8" />
 
 		<section aria-labelledby="shortcuts-title" class="flex flex-col">
 			<H2 id="shortcuts-title" class="mt-0 text-[1.2rem]">Shortcuts</H2>
@@ -406,24 +608,25 @@ Use this example:
 			</Table>
 		</section>
 
-		<Divider class="my-10" />
+		<Divider class="my-8" />
 
-		<footer class="mt-12 grid gap-3 pt-1">
-			<H2 class="mt-0 text-[1.2rem]">Inspiration & Footer</H2>
+		<footer class="mt-10 grid gap-3 pt-1">
+			<H2 class="mt-0 text-[1rem]">Inspiration</H2>
 			<p class="inline-flex items-center gap-2 text-[0.82rem] text-muted-foreground">
-				<SparklesIcon class="size-3.5" />
-				<span>Highly inspired from Agentation</span>
+				<!-- <SparklesIcon class="size-3.5" /> -->
+				<span>Highly inspired from <Link class="no-underline" target="_blank" href="https://www.agentation.com">Agentation.com</Link></span>
 			</p>
 			<div class="flex flex-wrap gap-4">
 				<Link class="text-[0.86rem]" href={githubUrl}>GitHub</Link>
+				<Link class="text-[0.86rem]" href={changelogUrl}>Changelog</Link>
 				<Link class="text-[0.86rem]" href={npmxUrl}>npmx</Link>
 				<Link class="text-[0.86rem]" href={npmjsUrl}>npmjs</Link>
 				<Link class="text-[0.86rem]" href={llmsUrl}>llms.txt</Link>
 			</div>
-			<p class="text-[0.82rem] leading-6 text-muted-foreground">
+			<!-- <p class="text-[0.82rem] leading-6 text-muted-foreground">
 				Credits: this project is highly inspired by
 				<Link class="text-[0.82rem]" href="https://www.agentation.com">Agentation.com</Link>.
-			</p>
+			</p> -->
 		</footer>
 	</div>
 </main>

@@ -17,6 +17,8 @@ import Td from "./Td.svelte";
 import Th from "./Th.svelte";
 import Thead from "./Thead.svelte";
 import Tr from "./Tr.svelte";
+import Highlight from "./Highlight.svelte";
+import CodeSpan from "./CodeSpan.svelte";
 
 export {
 	H1,
@@ -32,6 +34,8 @@ export {
 	Step,
 	Steps,
 	Strong,
+	Highlight,
+	CodeSpan,
 	Table,
 	Tbody,
 	Td,

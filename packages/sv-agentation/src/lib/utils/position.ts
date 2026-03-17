@@ -6,6 +6,7 @@ import {
 	EXPANDED_TOOLBAR_WIDTH,
 	clampToolbarPosition
 } from './notes';
+import { buildToolbarStorageKey, getLegacyPageStorageKey, getPageStorageKey } from './note-storage';
 import { readStoredJson, writeStoredJson } from './shared/storage';
 
 export type ToolbarPositionMode = 'preset' | 'custom';
@@ -195,15 +196,32 @@ export const getNearestInspectorPosition = (
 	return closestPosition;
 };
 
-export const readStoredToolbarPlacement = () => {
-	const storedPlacement = readStoredJson<unknown>(STORAGE_KEY);
+export const readStoredToolbarPlacement = (pageSessionKey?: string | null) => {
+	const currentPageStorageKey = getPageStorageKey(pageSessionKey);
+	const scopedStorageKey = buildToolbarStorageKey(currentPageStorageKey);
+	const storedPlacement = readStoredJson<unknown>(scopedStorageKey);
 	if (isToolbarPlacement(storedPlacement)) {
 		return storedPlacement;
+	}
+
+	const legacyPageStorageKey = getLegacyPageStorageKey(pageSessionKey);
+	if (legacyPageStorageKey) {
+		const legacyScopedPlacement = readStoredJson<unknown>(buildToolbarStorageKey(legacyPageStorageKey));
+		if (isToolbarPlacement(legacyScopedPlacement)) {
+			writeStoredJson(scopedStorageKey, legacyScopedPlacement);
+			return legacyScopedPlacement;
+		}
+	}
+
+	const globalPlacement = readStoredJson<unknown>(STORAGE_KEY);
+	if (isToolbarPlacement(globalPlacement)) {
+		writeStoredJson(scopedStorageKey, globalPlacement);
+		return globalPlacement;
 	}
 
 	return null;
 };
 
-export const writeStoredToolbarPlacement = (placement: ToolbarPlacement) => {
-	writeStoredJson(STORAGE_KEY, placement);
+export const writeStoredToolbarPlacement = (pageStorageKey: string, placement: ToolbarPlacement) => {
+	writeStoredJson(buildToolbarStorageKey(pageStorageKey), placement);
 };

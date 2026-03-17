@@ -204,7 +204,7 @@
 		border: 1px solid var(--inspector-border);
 		border-radius: 999px;
 		background: var(--inspector-toolbar-surface);
-		box-shadow: var(--inspector-shadow-toolbar);
+		box-shadow: none;
 		backdrop-filter: blur(18px);
 	}
 

@@ -30,14 +30,21 @@ export {
 	buildTextTargetSummary,
 	createEmptySourceInfo,
 	formatLocation,
-	formatNotesAsMarkdown,
 	getComposerPlaceholder,
 	truncateText
 } from './note-formatting';
+export {
+	buildExportPayload,
+	formatExportPayloadAsMarkdown,
+	formatNotesAsMarkdown
+} from './note-export';
 export { buildComposerState, renderNote } from './note-rendering';
 export {
 	buildNotesStorageKey,
+	buildToolbarStorageKey,
 	getPageStorageKey,
+	getLegacyPageStorageKey,
+	normalizePageSessionKey,
 	isNoteSourceInfo,
 	readStoredMarkerColor,
 	readStoredNotes,
@@ -49,4 +56,9 @@ export {
 	writeStoredSettings,
 	writeStoredThemeMode
 } from './note-storage';
+export {
+	buildAnnotationSnapshot,
+	captureAnnotationContext,
+	filterAnnotationSnapshotForMode
+} from './note-capture';
 export { NO_SOURCE_VALUE } from './shared/constants';

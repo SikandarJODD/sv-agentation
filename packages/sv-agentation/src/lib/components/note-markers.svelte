@@ -58,7 +58,7 @@
 </script>
 
 {#each notes as note, index (note.id)}
-	{#if note.position}
+	{#if note.position?.visibleInViewport}
 		<button
 			aria-hidden={!visible}
 			aria-label={`Open note ${index + 1}`}

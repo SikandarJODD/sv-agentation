@@ -37,7 +37,11 @@ export const DEFAULT_NOTES_SETTINGS: NotesSettings = {
 	markerColor: '#14CE4C',
 	themeMode: 'dark',
 	blockPageInteractions: true,
-	outputDetail: 'standard'
+	outputMode: 'standard',
+	pauseAnimations: false,
+	clearOnCopy: false,
+	includeComponentContext: true,
+	includeComputedStyles: true
 };
 
 const normalizeHexColor = (value: string) => {

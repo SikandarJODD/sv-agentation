@@ -36,7 +36,7 @@
 	{variant}
 	{size}
 	{tabindex}
-	class={cn('flex items-center gap-2', className)}
+	class={cn('flex items-center gap-2', className, "[&_svg:not([class*='size-'])]:size-3.5")}
 	type="button"
 	name="copy"
 	onclick={async () => {
@@ -60,7 +60,7 @@
 			{#if icon}
 				{@render icon()}
 			{:else}
-				<CopyIcon tabindex={-1} />
+				<CopyIcon tabindex={-1} strokeWidth={1.4} />
 			{/if}
 			<span class="sr-only">Copy</span>
 		</div>

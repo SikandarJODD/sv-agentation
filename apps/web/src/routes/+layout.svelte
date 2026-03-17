@@ -5,7 +5,7 @@
 	import { Agentation } from 'sv-agentation';
 	import { asset } from '$app/paths';
 
-	const workspaceRoot = 's:/advance_svelte/exp/svelte-learning';
+	const workspaceRoot = 's:/advance_svelte/exp/svelte-learning/apps/web';
 
 	let { children } = $props();
 </script>

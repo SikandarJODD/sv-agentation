@@ -69,17 +69,15 @@
 		border-radius: 999px;
 		background: var(--inspector-toolbar-surface);
 		color: var(--inspector-text-primary);
-		box-shadow: var(--inspector-shadow-toolbar);
+		box-shadow: none;
 		cursor: pointer;
 		transition:
 			transform 180ms ease,
-			box-shadow 180ms ease,
 			background 180ms ease;
 	}
 
 	.launcher-button:hover {
 		transform: translateY(-1px);
-		box-shadow: var(--inspector-shadow-panel);
 		background: var(--inspector-toolbar-surface);
 	}
 
@@ -97,7 +95,6 @@
 		border-radius: 999px;
 		background: var(--inspector-marker-color);
 		color: var(--inspector-marker-foreground);
-		box-shadow: 0 8px 18px rgba(8, 10, 15, 0.2);
 		font-size: 0.71rem;
 		font-weight: 700;
 		line-height: 1;
