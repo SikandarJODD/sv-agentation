@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 
 	import { CopyOpenController } from './copy-open.svelte';
 	import InspectorTool from './components/inspector-tool.svelte';
@@ -9,18 +9,36 @@
 	import SelectionPreview from './components/selection-preview.svelte';
 	import type { InspectorProps } from './types';
 	import { DEFAULT_INSPECTOR_POSITION } from './utils/position';
-	import { buildMarkerOutlineVars, DEFAULT_DELETE_ALL_DELAY_MS } from './utils/notes';
+	import {
+		buildMarkerOutlineVars,
+		DEFAULT_DELETE_ALL_DELAY_MS,
+		DEFAULT_NOTES_SETTINGS
+	} from './utils/notes';
+	import { observePathnameChanges } from './internal/controller-browser';
 
 	let {
 		workspaceRoot = null,
+		pageSessionKey = null,
 		selector = null,
 		vscodeScheme = 'vscode',
 		openSourceOnClick = true,
 		deleteAllDelayMs = DEFAULT_DELETE_ALL_DELAY_MS,
-		toolbarPosition = DEFAULT_INSPECTOR_POSITION
+		toolbarPosition = DEFAULT_INSPECTOR_POSITION,
+		outputMode = DEFAULT_NOTES_SETTINGS.outputMode,
+		pauseAnimations = DEFAULT_NOTES_SETTINGS.pauseAnimations,
+		clearOnCopy = DEFAULT_NOTES_SETTINGS.clearOnCopy,
+		includeComponentContext = DEFAULT_NOTES_SETTINGS.includeComponentContext,
+		includeComputedStyles = DEFAULT_NOTES_SETTINGS.includeComputedStyles,
+		copyToClipboard = true,
+		onAnnotationAdd,
+		onAnnotationUpdate,
+		onAnnotationDelete,
+		onAnnotationsClear,
+		onCopy
 	}: InspectorProps = $props();
 
 	const controller = new CopyOpenController();
+	let autoPageSessionKey = $state<string | null>(null);
 	const getInspectorThemeStyle = (markerColor: string) => {
 		const outline = buildMarkerOutlineVars(markerColor);
 		return [
@@ -35,14 +53,36 @@
 		].join(';');
 	};
 
+	onMount(() => {
+		if (typeof window === 'undefined') return;
+
+		autoPageSessionKey = window.location.pathname || '/';
+		return observePathnameChanges((pathname) => {
+			autoPageSessionKey = pathname || '/';
+		});
+	});
+
 	$effect(() => {
+		const effectivePageSessionKey = pageSessionKey ?? autoPageSessionKey;
 		const nextOptions = {
 			workspaceRoot,
+			pageSessionKey: effectivePageSessionKey,
 			selector,
 			vscodeScheme,
 			openSourceOnClick,
 			deleteAllDelayMs,
-			toolbarPosition
+			toolbarPosition,
+			outputMode,
+			pauseAnimations,
+			clearOnCopy,
+			includeComponentContext,
+			includeComputedStyles,
+			copyToClipboard,
+			onAnnotationAdd,
+			onAnnotationUpdate,
+			onAnnotationDelete,
+			onAnnotationsClear,
+			onCopy
 		};
 
 		// This effect should react to incoming props only, not controller state read during sync.
@@ -85,7 +125,12 @@
 		onCopyNotes={controller.copyNotes}
 		onDeleteAll={controller.requestDeleteAll}
 		onSetBlockPageInteractions={controller.setBlockPageInteractions}
+		onSetClearOnCopy={controller.setClearOnCopy}
+		onSetIncludeComponentContext={controller.setIncludeComponentContext}
+		onSetIncludeComputedStyles={controller.setIncludeComputedStyles}
 		onSetMarkerColor={controller.setMarkerColor}
+		onSetOutputMode={controller.setOutputMode}
+		onSetPauseAnimations={controller.setPauseAnimations}
 		onSetToolbarPosition={controller.setToolbarPosition}
 		onToggle={controller.toggle}
 		onToggleNotesVisibility={controller.toggleNotesVisibility}

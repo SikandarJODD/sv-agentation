@@ -4,6 +4,7 @@ import type {
 	InspectorHoverInfo,
 	InspectorNote,
 	InspectorPosition,
+	OutputMode,
 	NoteComposerState,
 	NotesSettings,
 	RenderedInspectorNote,
@@ -22,7 +23,7 @@ export interface NoteComposerProps {
 	onCancel: () => void;
 	onDelete: (noteId: string) => void;
 	onInput: (value: string) => void;
-	onSubmit: () => boolean;
+	onSubmit: () => boolean | Promise<boolean>;
 }
 
 export interface NoteMarkersProps {
@@ -49,7 +50,12 @@ export interface InspectorToolProps {
 	onCopyNotes: () => Promise<boolean>;
 	onDeleteAll: () => void;
 	onSetBlockPageInteractions: (value: boolean) => void;
+	onSetClearOnCopy: (value: boolean) => void;
+	onSetIncludeComponentContext: (value: boolean) => void;
+	onSetIncludeComputedStyles: (value: boolean) => void;
 	onSetMarkerColor: (color: string) => void;
+	onSetOutputMode: (mode: OutputMode) => void;
+	onSetPauseAnimations: (value: boolean) => void;
 	onSetToolbarPosition: (position: InspectorPosition) => void;
 	onToggle: () => void;
 	onToggleNotesVisibility: () => void;
@@ -84,7 +90,12 @@ export interface InspectorToolbarSettingsProps {
 	toolbar: ToolbarState;
 	toolbarPosition: InspectorPosition;
 	onSetBlockPageInteractions: (value: boolean) => void;
+	onSetClearOnCopy: (value: boolean) => void;
+	onSetIncludeComponentContext: (value: boolean) => void;
+	onSetIncludeComputedStyles: (value: boolean) => void;
 	onSetMarkerColor: (color: string) => void;
+	onSetOutputMode: (mode: OutputMode) => void;
+	onSetPauseAnimations: (value: boolean) => void;
 	onSetToolbarPosition: (position: InspectorPosition) => void;
 	onToggleThemeMode: () => void;
 }

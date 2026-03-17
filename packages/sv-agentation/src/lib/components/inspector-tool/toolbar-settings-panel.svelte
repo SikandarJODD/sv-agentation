@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { scale } from 'svelte/transition';
-	import { Check, EllipsisVertical, Moon, SunMedium } from '@lucide/svelte';
+	import { cubicOut } from 'svelte/easing';
+	import { scale, slide } from 'svelte/transition';
+	import { Check, ChevronDown, ChevronRight, Moon, SunMedium } from '@lucide/svelte';
 
-	import type { InspectorPosition } from '../../types';
+	import type { InspectorPosition, OutputMode } from '../../types';
 	import type { InspectorToolbarSettingsProps } from '../../internal/component-props';
 	import { INSPECTOR_POSITION_OPTIONS } from '../../utils/position';
 	import { DEFAULT_MARKER_COLORS, EXPANDED_TOOLBAR_WIDTH } from '../../utils/notes';
@@ -12,7 +13,12 @@
 		toolbar,
 		toolbarPosition,
 		onSetBlockPageInteractions,
+		onSetClearOnCopy,
+		onSetIncludeComponentContext,
+		onSetIncludeComputedStyles,
 		onSetMarkerColor,
+		onSetOutputMode,
+		onSetPauseAnimations,
 		onSetToolbarPosition,
 		onToggleThemeMode,
 		panelElement = $bindable<HTMLDivElement | null>(null),
@@ -35,11 +41,33 @@
 		['mid-left', null, 'mid-right'],
 		['bottom-left', 'bottom-center', 'bottom-right']
 	];
+	let behaviorOpen = $state(false);
+	let toolbarPositionOpen = $state(false);
+
 	const getToolbarPositionLabel = (position: InspectorPosition) =>
 		INSPECTOR_POSITION_OPTIONS.find((option) => option.value === position)?.label ?? position;
 	const getToolbarPositionIconClass = (position: InspectorPosition) =>
 		`position-icon position-${position}`;
 	const settingsPanelWidth = `${EXPANDED_TOOLBAR_WIDTH}px`;
+	const outputModeOptions: {
+		value: OutputMode;
+		label: string;
+		description: string;
+	}[] = [
+		{ value: 'compact', label: 'Compact', description: 'Minimal notes only' },
+		{ value: 'standard', label: 'Standard', description: 'Filtered context' },
+		{ value: 'detailed', label: 'Detailed', description: 'Smart nearby context' },
+		{ value: 'forensic', label: 'Forensic', description: 'All metadata + styles' }
+	];
+	const getOutputModeMeta = (outputMode: OutputMode) =>
+		outputModeOptions.find((option) => option.value === outputMode) ?? outputModeOptions[0];
+	const cycleOutputMode = () => {
+		const currentIndex = outputModeOptions.findIndex((option) => option.value === settings.outputMode);
+		const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % outputModeOptions.length;
+		onSetOutputMode(outputModeOptions[nextIndex]?.value ?? 'standard');
+	};
+	const getOutputModeIndex = (outputMode: OutputMode) =>
+		Math.max(0, outputModeOptions.findIndex((option) => option.value === outputMode));
 </script>
 
 <div
@@ -57,7 +85,7 @@
 			<span class="brand-name" data-inspector-ui>sv-agentation</span>
 		</div>
 		<div class="settings-meta" data-inspector-ui>
-			<span class="version" data-inspector-ui>0.1.0</span>
+			<span class="version" data-inspector-ui>0.2.1</span>
 			<button
 				aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
 				class="theme-toggle"
@@ -76,17 +104,32 @@
 	</div>
 
 	<div class="settings-list" data-inspector-ui>
-		<div class="settings-row" data-inspector-ui>
-			<span class="settings-row-label" data-inspector-ui>Output Detail</span>
-			<div class="detail-pill" data-inspector-ui>
-				<span data-inspector-ui>Standard</span>
-				<EllipsisVertical size={12} />
-			</div>
-		</div>
+		<button
+			aria-label="Cycle output mode"
+			class="settings-row-button interactive-row"
+			data-inspector-ui
+			type="button"
+			onclick={cycleOutputMode}
+		>
+			<span class="settings-row-label" data-inspector-ui>Output Mode</span>
+			<span class="settings-row-value output-value" data-inspector-ui>
+				<span data-inspector-ui>{getOutputModeMeta(settings.outputMode).label}</span>
+				<span class="mode-dots" data-inspector-ui>
+					{#each outputModeOptions as _, index (`mode-dot-${index}`)}
+						<span
+							aria-hidden="true"
+							class:mode-dot-active={index === getOutputModeIndex(settings.outputMode)}
+							class="mode-dot"
+							data-inspector-ui
+						></span>
+					{/each}
+				</span>
+			</span>
+		</button>
 
 		<div class="settings-divider" data-inspector-ui></div>
 
-		<div class="settings-block" data-inspector-ui>
+		<div class="settings-block settings-block-compact" data-inspector-ui>
 			<span class="settings-label" data-inspector-ui>Marker Color</span>
 			<div class="color-row" data-inspector-ui>
 				{#each DEFAULT_MARKER_COLORS as color}
@@ -109,52 +152,154 @@
 
 		<div class="settings-divider" data-inspector-ui></div>
 
-		<div class="settings-block" data-inspector-ui>
-			<span class="settings-label" data-inspector-ui>Toolbar Position</span>
-			<div class="position-picker" data-inspector-ui>
-				<div class="position-grid" data-inspector-ui>
-					{#each toolbarPositionRows as row, rowIndex (`toolbar-position-row-${rowIndex}`)}
-						{#each row as position, columnIndex (`toolbar-position-${rowIndex}-${columnIndex}`)}
-							{#if position}
-								<button
-									aria-label={getToolbarPositionLabel(position)}
-									aria-pressed={toolbarPosition === position}
-									class:position-active={toolbarPosition === position}
-									class="position-chip"
-									data-inspector-ui
-									title={getToolbarPositionLabel(position)}
-									type="button"
-									onclick={() => onSetToolbarPosition(position)}
-								>
-									<span
-										aria-hidden="true"
-										class={getToolbarPositionIconClass(position)}
-										data-inspector-ui
-									></span>
-								</button>
-							{:else}
-								<div aria-hidden="true" class="position-gap" data-inspector-ui></div>
-							{/if}
-						{/each}
-					{/each}
+		<div class="settings-block settings-block-compact" data-inspector-ui>
+			<button
+				aria-expanded={behaviorOpen}
+				class="settings-row-button accordion-trigger"
+				data-inspector-ui
+				type="button"
+				onclick={() => (behaviorOpen = !behaviorOpen)}
+			>
+				<span class="settings-row-label" data-inspector-ui>Behavior</span>
+				<span class="settings-row-value accordion-value" data-inspector-ui>
+					<span class="accordion-summary" data-inspector-ui>5 options</span>
+					{#if behaviorOpen}
+						<ChevronDown size={14} />
+					{:else}
+						<ChevronRight size={14} />
+					{/if}
+				</span>
+			</button>
+
+			{#if behaviorOpen}
+				<div
+					class="accordion-content"
+					data-inspector-ui
+					in:slide={{ duration: 210, easing: cubicOut }}
+					out:slide={{ duration: 180, easing: cubicOut }}
+				>
+					<label class="toggle-row switch-row" data-inspector-ui>
+						<span data-inspector-ui>Block page interactions</span>
+						<input
+							checked={settings.blockPageInteractions}
+							class="settings-switch"
+							data-inspector-ui
+							type="checkbox"
+							onchange={(event) =>
+								onSetBlockPageInteractions((event.currentTarget as HTMLInputElement).checked)}
+						/>
+					</label>
+
+					<label class="toggle-row switch-row" data-inspector-ui>
+						<span data-inspector-ui>Pause animations</span>
+						<input
+							checked={settings.pauseAnimations}
+							class="settings-switch"
+							data-inspector-ui
+							type="checkbox"
+							onchange={(event) =>
+								onSetPauseAnimations((event.currentTarget as HTMLInputElement).checked)}
+						/>
+					</label>
+
+					<label class="toggle-row switch-row" data-inspector-ui>
+						<span data-inspector-ui>Clear on copy</span>
+						<input
+							checked={settings.clearOnCopy}
+							class="settings-switch"
+							data-inspector-ui
+							type="checkbox"
+							onchange={(event) => onSetClearOnCopy((event.currentTarget as HTMLInputElement).checked)}
+						/>
+					</label>
+
+					<label class="toggle-row switch-row" data-inspector-ui>
+						<span data-inspector-ui>Component context</span>
+						<input
+							checked={settings.includeComponentContext}
+							class="settings-switch"
+							data-inspector-ui
+							type="checkbox"
+							onchange={(event) =>
+								onSetIncludeComponentContext((event.currentTarget as HTMLInputElement).checked)}
+						/>
+					</label>
+
+					<label class="toggle-row switch-row" data-inspector-ui>
+						<span data-inspector-ui>Computed styles</span>
+						<input
+							checked={settings.includeComputedStyles}
+							class="settings-switch"
+							data-inspector-ui
+							type="checkbox"
+							onchange={(event) =>
+								onSetIncludeComputedStyles((event.currentTarget as HTMLInputElement).checked)}
+						/>
+					</label>
 				</div>
-			</div>
-			<p class="settings-hint" data-inspector-ui>Press R to reset to bottom right</p>
+			{/if}
 		</div>
 
 		<div class="settings-divider" data-inspector-ui></div>
 
-		<label class="toggle-row block-toggle" data-inspector-ui>
-			<span data-inspector-ui>Block page interactions</span>
-			<input
-				checked={settings.blockPageInteractions}
-				class="settings-checkbox"
+		<div class="settings-block settings-block-compact" data-inspector-ui>
+			<button
+				aria-expanded={toolbarPositionOpen}
+				class="settings-row-button accordion-trigger"
 				data-inspector-ui
-				type="checkbox"
-				onchange={(event) =>
-					onSetBlockPageInteractions((event.currentTarget as HTMLInputElement).checked)}
-			/>
-		</label>
+				type="button"
+				onclick={() => (toolbarPositionOpen = !toolbarPositionOpen)}
+			>
+				<span class="settings-row-label" data-inspector-ui>Toolbar Position</span>
+				<span class="settings-row-value accordion-value" data-inspector-ui>
+					<span class="accordion-summary" data-inspector-ui>{getToolbarPositionLabel(toolbarPosition)}</span>
+					{#if toolbarPositionOpen}
+						<ChevronDown size={14} />
+					{:else}
+						<ChevronRight size={14} />
+					{/if}
+				</span>
+			</button>
+
+			{#if toolbarPositionOpen}
+				<div
+					class="accordion-content"
+					data-inspector-ui
+					in:slide={{ duration: 210, easing: cubicOut }}
+					out:slide={{ duration: 180, easing: cubicOut }}
+				>
+					<div class="position-picker" data-inspector-ui>
+						<div class="position-grid" data-inspector-ui>
+							{#each toolbarPositionRows as row, rowIndex (`toolbar-position-row-${rowIndex}`)}
+								{#each row as position, columnIndex (`toolbar-position-${rowIndex}-${columnIndex}`)}
+									{#if position}
+										<button
+											aria-label={getToolbarPositionLabel(position)}
+											aria-pressed={toolbarPosition === position}
+											class:position-active={toolbarPosition === position}
+											class="position-chip"
+											data-inspector-ui
+											title={getToolbarPositionLabel(position)}
+											type="button"
+											onclick={() => onSetToolbarPosition(position)}
+										>
+											<span
+												aria-hidden="true"
+												class={getToolbarPositionIconClass(position)}
+												data-inspector-ui
+											></span>
+										</button>
+									{:else}
+										<div aria-hidden="true" class="position-gap" data-inspector-ui></div>
+									{/if}
+								{/each}
+							{/each}
+						</div>
+					</div>
+					<p class="settings-hint" data-inspector-ui>Press R to reset to bottom right</p>
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -171,7 +316,7 @@
 		border-radius: 22px;
 		background: var(--inspector-panel-surface);
 		color: var(--inspector-text-primary);
-		box-shadow: var(--inspector-shadow-panel);
+		box-shadow: none;
 		backdrop-filter: blur(18px);
 		overscroll-behavior: contain;
 		transform-origin: left bottom;
@@ -186,8 +331,8 @@
 
 	.settings-panel {
 		width: min(var(--settings-panel-width), calc(100vw - 16px));
-		padding: 11px 13px 12px;
-		border-radius: 24px;
+		padding: 14px 16px 15px;
+		border-radius: 28px;
 	}
 
 	.settings-head {
@@ -195,7 +340,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
-		margin-bottom: 10px;
+		margin-bottom: 12px;
 	}
 
 	.brand-name {
@@ -254,7 +399,114 @@
 	.settings-list,
 	.settings-block {
 		display: grid;
+		gap: 12px;
+	}
+
+	.settings-block-compact {
 		gap: 10px;
+	}
+
+	.settings-row-button {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		width: 100%;
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.interactive-row {
+		padding: 6px 4px;
+		border-radius: 14px;
+		transition:
+			background 160ms ease,
+			transform 160ms ease;
+	}
+
+	.accordion-trigger {
+		padding: 6px 4px;
+		border-radius: 14px;
+		transition:
+			background 160ms ease,
+			transform 160ms ease;
+	}
+
+	.interactive-row:hover,
+	.accordion-trigger:hover {
+		background: color-mix(in srgb, var(--inspector-toolbar-hover) 68%, transparent);
+	}
+
+	.interactive-row:hover {
+		transform: translateY(-0.5px);
+	}
+
+	.settings-row-copy {
+		display: grid;
+		gap: 2px;
+	}
+
+	.settings-row-label {
+		font-size: 0.92rem;
+		color: var(--inspector-text-secondary);
+	}
+
+	.settings-row-hint {
+		font-size: 0.7rem;
+		color: var(--inspector-text-muted);
+	}
+
+	.settings-row-value {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--inspector-text-primary);
+		font-size: 0.92rem;
+		font-weight: 470;
+	}
+
+	.output-value,
+	.accordion-value {
+		color: var(--inspector-text-primary);
+	}
+
+	.output-value {
+		gap: 10px;
+	}
+
+	.mode-dots {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 3px;
+	}
+
+	.mode-dot {
+		width: 3px;
+		height: 3px;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--inspector-text-muted) 42%, transparent);
+		opacity: 0.68;
+		transition:
+			background 160ms ease,
+			transform 160ms ease,
+			opacity 160ms ease;
+	}
+
+	.mode-dot.mode-dot-active {
+		background: rgba(255, 255, 255, 0.96);
+		opacity: 1;
+		transform: scale(1.28);
+	}
+
+	.accordion-summary {
+		color: var(--inspector-text-muted);
+		font-size: 0.78rem;
+		font-weight: 500;
 	}
 
 	.position-grid {
@@ -264,9 +516,9 @@
 	}
 
 	.position-picker {
-		padding: 5px;
+		padding: 8px;
 		border: 1px solid var(--inspector-border);
-		border-radius: 14px;
+		border-radius: 18px;
 		background: color-mix(in srgb, var(--inspector-surface-soft) 84%, transparent);
 	}
 
@@ -441,42 +693,61 @@
 		box-shadow: 0 0 0 2px rgba(20, 206, 76, 0.18);
 	}
 
-	.block-toggle {
+	.accordion-content {
+		display: grid;
+		gap: 10px;
+		padding-top: 4px;
+		overflow: hidden;
+	}
+
+	.block-toggle,
+	.switch-row {
 		font-size: 0.84rem;
 	}
 
-	.settings-checkbox {
+	.settings-switch {
 		position: relative;
-		width: 16px;
-		height: 16px;
+		width: 34px;
+		height: 20px;
 		margin: 0;
-		border: 1px solid var(--inspector-checkbox-border);
-		border-radius: 4px;
-		background: var(--inspector-checkbox-bg);
+		border: 1px solid color-mix(in srgb, var(--inspector-border-strong) 88%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--inspector-surface-soft) 92%, transparent);
 		appearance: none;
 		cursor: pointer;
 		transition:
 			border-color 160ms ease,
 			background 160ms ease,
-			box-shadow 160ms ease;
+			box-shadow 160ms ease,
+			transform 160ms ease;
 	}
 
-	.settings-checkbox:checked {
-		border-color: var(--inspector-checkbox-checked-bg);
-		background: var(--inspector-checkbox-checked-bg);
-		box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
-	}
-
-	.settings-checkbox:checked::after {
+	.settings-switch::after {
 		content: '';
 		position: absolute;
-		left: 4px;
-		top: 1px;
-		width: 4px;
-		height: 8px;
-		border-right: 1.5px solid var(--inspector-checkbox-check);
-		border-bottom: 1.5px solid var(--inspector-checkbox-check);
-		transform: rotate(45deg);
+		left: 2px;
+		top: 2px;
+		width: 14px;
+		height: 14px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.94);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.24);
+		transition:
+			transform 160ms ease,
+			background 160ms ease;
+	}
+
+	.settings-switch:hover {
+		transform: translateY(-0.5px);
+	}
+
+	.settings-switch:checked {
+		border-color: color-mix(in srgb, var(--inspector-marker-color) 70%, transparent);
+		background: color-mix(in srgb, var(--inspector-marker-color) 64%, transparent);
+	}
+
+	.settings-switch:checked::after {
+		transform: translateX(14px);
 	}
 
 	@media (max-width: 640px) {

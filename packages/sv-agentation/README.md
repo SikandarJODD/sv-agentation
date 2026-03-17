@@ -92,11 +92,15 @@ inspect / select
 7. Use a draggable floating toolbar.
 8. Choose toolbar position presets.
 9. Toggle the inspector theme inside the tool UI.
-10. Toggle marker visibility for notes.
-11. Block normal page interactions while inspecting.
-12. Use a delete-all flow with configurable delay.
-13. Copy structured annotation output for developer and AI-assisted workflows.
-14. Mount the inspector only in dev mode with `browser && dev`.
+10. Copy notes in `compact`, `standard`, `detailed`, or `forensic` output modes.
+11. Capture stable page metadata, selector paths, bounding boxes, nearby text, and component context for copied output.
+12. Include computed-style snapshots for forensic exports.
+13. Pause page animations while inspecting when needed.
+14. Toggle marker visibility for notes.
+15. Block normal page interactions while inspecting.
+16. Use a delete-all flow with configurable delay.
+17. Hook into annotation lifecycle and copy events with callbacks.
+18. Mount the inspector only in dev mode with `browser && dev`.
 
 ## Props
 
@@ -108,6 +112,17 @@ inspect / select
 | `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
 | `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
 | `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | Initial preset for the floating toolbar position. |
+| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | Initial copy/export mode for note output. |
+| `pauseAnimations` | `boolean` | Start with page animations paused while the inspector is active. |
+| `clearOnCopy` | `boolean` | Clear saved notes after a successful copy action. |
+| `includeComponentContext` | `boolean` | Include captured component ancestry in copied output. |
+| `includeComputedStyles` | `boolean` | Include computed styles in forensic output payloads. |
+| `copyToClipboard` | `boolean` | Disable direct clipboard writes and use callbacks only. |
+| `onAnnotationAdd` | `(annotation) => void` | Called after a note is created. |
+| `onAnnotationUpdate` | `(annotation) => void` | Called after a note is updated. |
+| `onAnnotationDelete` | `(annotation) => void` | Called after a note is deleted. |
+| `onAnnotationsClear` | `(annotations) => void` | Called after all notes are cleared. |
+| `onCopy` | `(markdown, payload) => void` | Called after note export is prepared. |
 
 ## Shortcuts
 

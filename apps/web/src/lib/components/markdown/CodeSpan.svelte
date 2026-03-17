@@ -11,10 +11,12 @@
 	const { children, class: className = "", ...restProps }: ComponentProps = $props();
 </script>
 
-<div
-	class="border-border bg-card relative mt-4 mb-10 w-full overflow-x-auto rounded-xl border shadow-none"
+<code
+	{...restProps}
+	class={cn(
+		"bg-muted/55 text-foreground border-border/70 inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[0.78em]",
+		className
+	)}
 >
-	<table {...restProps} class={cn("w-full text-base [&_code]:text-sm", className)}>
-		{@render children?.()}
-	</table>
-</div>
+	{@render children?.()}
+</code>

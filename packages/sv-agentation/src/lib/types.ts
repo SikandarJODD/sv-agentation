@@ -1,4 +1,9 @@
 export type VsCodeScheme = 'vscode' | 'vscode-insiders';
+export type OutputMode = 'compact' | 'standard' | 'detailed' | 'forensic';
+export type ThemeMode = 'dark' | 'light';
+export type InspectorNoteKind = 'element' | 'text' | 'group' | 'area';
+export type NoteResolutionState = 'resolved' | 'partial' | 'unresolved';
+export type ComponentContextMode = 'filtered' | 'smart' | 'all';
 
 export type InspectorPosition =
 	| 'top-left'
@@ -10,22 +15,49 @@ export type InspectorPosition =
 	| 'bottom-center'
 	| 'bottom-right';
 
+export interface AnnotationLifecycleCallbacks {
+	onAnnotationAdd?: (annotation: AgentationAnnotationSnapshot) => void;
+	onAnnotationUpdate?: (annotation: AgentationAnnotationSnapshot) => void;
+	onAnnotationDelete?: (annotation: AgentationAnnotationSnapshot) => void;
+	onAnnotationsClear?: (annotations: AgentationAnnotationSnapshot[]) => void;
+	onCopy?: (markdown: string, payload: AgentationExportPayload) => void;
+}
+
 export interface InspectorProps {
 	workspaceRoot?: string | null;
+	pageSessionKey?: string | null;
 	selector?: string | null;
 	vscodeScheme?: VsCodeScheme;
 	openSourceOnClick?: boolean;
 	deleteAllDelayMs?: number;
 	toolbarPosition?: InspectorPosition;
+	outputMode?: OutputMode;
+	pauseAnimations?: boolean;
+	clearOnCopy?: boolean;
+	includeComponentContext?: boolean;
+	includeComputedStyles?: boolean;
+	copyToClipboard?: boolean;
+	onAnnotationAdd?: AnnotationLifecycleCallbacks['onAnnotationAdd'];
+	onAnnotationUpdate?: AnnotationLifecycleCallbacks['onAnnotationUpdate'];
+	onAnnotationDelete?: AnnotationLifecycleCallbacks['onAnnotationDelete'];
+	onAnnotationsClear?: AnnotationLifecycleCallbacks['onAnnotationsClear'];
+	onCopy?: AnnotationLifecycleCallbacks['onCopy'];
 }
 
-export interface InspectorRuntimeOptions {
+export interface InspectorRuntimeOptions extends AnnotationLifecycleCallbacks {
 	workspaceRoot: string | null;
+	pageSessionKey: string | null;
 	selector: string | null;
 	vscodeScheme: VsCodeScheme;
 	openSourceOnClick: boolean;
 	deleteAllDelayMs: number;
 	toolbarPosition: InspectorPosition;
+	outputMode: OutputMode;
+	pauseAnimations: boolean;
+	clearOnCopy: boolean;
+	includeComponentContext: boolean;
+	includeComputedStyles: boolean;
+	copyToClipboard: boolean;
 }
 
 export interface InspectorHoverInfo {
@@ -53,16 +85,15 @@ export interface ToolbarCoordinates {
 	y: number;
 }
 
-export type OutputDetail = 'standard' | 'detailed';
-export type ThemeMode = 'dark' | 'light';
-export type InspectorNoteKind = 'element' | 'text' | 'group' | 'area';
-export type NoteResolutionState = 'resolved' | 'partial' | 'unresolved';
-
 export interface NotesSettings {
 	markerColor: string;
 	themeMode: ThemeMode;
 	blockPageInteractions: boolean;
-	outputDetail: OutputDetail;
+	outputMode: OutputMode;
+	pauseAnimations: boolean;
+	clearOnCopy: boolean;
+	includeComponentContext: boolean;
+	includeComputedStyles: boolean;
 }
 
 export interface ToolbarState {
@@ -101,6 +132,61 @@ export interface NoteSourceInfo {
 	shortFileName: string;
 	lineNumber: number | null;
 	columnNumber: number | null;
+}
+
+export type ComputedStyleSnapshot = Record<string, string>;
+
+export interface AnnotationViewport {
+	width: number;
+	height: number;
+}
+
+export interface AnnotationBoundingBox {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+export interface AnnotationPosition {
+	x: number;
+	y: number;
+	xPercent: number;
+	yAbsolute: number;
+}
+
+export interface AnnotationPageSnapshot {
+	title: string;
+	pathname: string;
+	url: string;
+	viewport: AnnotationViewport;
+	userAgent: string;
+	devicePixelRatio: number;
+	timestamp: string;
+}
+
+export interface AnnotationComponentContext {
+	filtered: string[];
+	smart: string[];
+	all: string[];
+}
+
+export interface AnnotationElementSnapshot {
+	selector: string | null;
+	fullDomPath: string | null;
+	cssClasses: string[];
+	components: AnnotationComponentContext;
+	boundingBox: AnnotationBoundingBox | null;
+	position: AnnotationPosition | null;
+	selectedText: string | null;
+	nearbyText: string | null;
+	accessibility: string | null;
+	computedStyles: ComputedStyleSnapshot | null;
+}
+
+export interface AnnotationCapture {
+	page: AnnotationPageSnapshot;
+	element: AnnotationElementSnapshot;
 }
 
 export interface ElementNoteAnchor {
@@ -147,6 +233,7 @@ interface InspectorNoteBase extends NoteSourceInfo {
 	targetLabel: string;
 	createdAt: string;
 	updatedAt: string;
+	capture?: AnnotationCapture;
 }
 
 export interface ElementInspectorNote extends InspectorNoteBase {
@@ -175,12 +262,37 @@ export type InspectorNote =
 	| GroupInspectorNote
 	| AreaInspectorNote;
 
+export interface AgentationAnnotationSnapshot {
+	id: string;
+	kind: InspectorNoteKind;
+	comment: string;
+	targetSummary: string;
+	targetLabel: string;
+	elementPath: string | null;
+	timestamp: string;
+	page: AnnotationPageSnapshot;
+	element: AnnotationElementSnapshot;
+	source: NoteSourceInfo;
+}
+
+export interface AgentationExportPayload {
+	title: string;
+	outputMode: OutputMode;
+	url: string;
+	viewport: AnnotationViewport;
+	userAgent: string;
+	devicePixelRatio: number;
+	timestamp: string;
+	annotations: AgentationAnnotationSnapshot[];
+}
+
 export interface ResolvedNotePosition {
 	markerLeft: number;
 	markerTop: number;
 	bounds: RectBox | null;
 	outlineRects: RectBox[];
 	highlightRects: RectBox[];
+	visibleInViewport: boolean;
 }
 
 export type RenderedInspectorNote = InspectorNote & {

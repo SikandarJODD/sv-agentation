@@ -1,7 +1,9 @@
 import type {
+	AnnotationCapture,
 	InspectorNote,
 	NoteSourceInfo,
 	NotesSettings,
+	OutputMode,
 	ThemeMode,
 	ToolbarCoordinates
 } from '../types';
@@ -17,9 +19,11 @@ import {
 } from './shared/constants';
 import { readStoredJson, writeStoredJson } from './shared/storage';
 
-const SETTINGS_STORAGE_KEY = `${STORAGE_PREFIX}:settings:v1`;
+const SETTINGS_STORAGE_KEY = `${STORAGE_PREFIX}:settings:v2`;
 const NOTES_STORAGE_PREFIX = `${STORAGE_PREFIX}:notes:v1:`;
 const TOOLBAR_STORAGE_PREFIX = `${STORAGE_PREFIX}:toolbar:v1:`;
+
+const OUTPUT_MODES: OutputMode[] = ['compact', 'standard', 'detailed', 'forensic'];
 
 const isToolbarCoordinates = (value: unknown): value is ToolbarCoordinates => {
 	if (!value || typeof value !== 'object') return false;
@@ -33,8 +37,32 @@ const isToolbarCoordinates = (value: unknown): value is ToolbarCoordinates => {
 	);
 };
 
-export const getPageStorageKey = () => {
+export const normalizePageSessionKey = (pageSessionKey?: string | null) => {
+	if (typeof pageSessionKey === 'string') {
+		const trimmedKey = pageSessionKey.trim();
+		if (!trimmedKey || trimmedKey === '/') return '/';
+
+		const [withoutHash] = trimmedKey.split('#');
+		const [pathname] = withoutHash.split('?');
+		if (!pathname || pathname === '/') return '/';
+
+		return pathname.startsWith('/') ? pathname : `/${pathname}`;
+	}
+
 	if (typeof window === 'undefined') return 'unknown-page';
+	return window.location.pathname || '/';
+};
+
+export const getPageStorageKey = (pageSessionKey?: string | null) =>
+	normalizePageSessionKey(pageSessionKey);
+
+export const getLegacyPageStorageKey = (pageSessionKey?: string | null) => {
+	if (typeof window === 'undefined') return null;
+
+	const normalizedPageKey = normalizePageSessionKey(pageSessionKey);
+	const currentPageKey = normalizePageSessionKey(window.location.pathname);
+	if (normalizedPageKey !== currentPageKey) return null;
+
 	return `${window.location.origin}${window.location.pathname}${window.location.search}`;
 };
 
@@ -78,29 +106,60 @@ export const writeStoredMarkerColor = (markerColor: string) => {
 	writeStoredJson(MARKER_COLOR_STORAGE_KEY, markerColor);
 };
 
-export const readStoredSettings = () => {
+export const readStoredSettings = (defaults: NotesSettings = DEFAULT_NOTES_SETTINGS) => {
 	const storedSettings = readStoredJson<Partial<NotesSettings>>(SETTINGS_STORAGE_KEY);
-	if (!storedSettings) return DEFAULT_NOTES_SETTINGS;
+	if (!storedSettings) return defaults;
 
 	return {
-		markerColor: DEFAULT_NOTES_SETTINGS.markerColor,
-		themeMode: DEFAULT_NOTES_SETTINGS.themeMode,
+		markerColor: defaults.markerColor,
+		themeMode: defaults.themeMode,
 		blockPageInteractions:
 			typeof storedSettings.blockPageInteractions === 'boolean'
 				? storedSettings.blockPageInteractions
-				: DEFAULT_NOTES_SETTINGS.blockPageInteractions,
-		outputDetail:
-			storedSettings.outputDetail === 'detailed' || storedSettings.outputDetail === 'standard'
-				? storedSettings.outputDetail
-				: DEFAULT_NOTES_SETTINGS.outputDetail
+				: defaults.blockPageInteractions,
+		outputMode: OUTPUT_MODES.includes(storedSettings.outputMode as OutputMode)
+			? (storedSettings.outputMode as OutputMode)
+			: defaults.outputMode,
+		pauseAnimations:
+			typeof storedSettings.pauseAnimations === 'boolean'
+				? storedSettings.pauseAnimations
+				: defaults.pauseAnimations,
+		clearOnCopy:
+			typeof storedSettings.clearOnCopy === 'boolean'
+				? storedSettings.clearOnCopy
+				: defaults.clearOnCopy,
+		includeComponentContext:
+			typeof storedSettings.includeComponentContext === 'boolean'
+				? storedSettings.includeComponentContext
+				: defaults.includeComponentContext,
+		includeComputedStyles:
+			typeof storedSettings.includeComputedStyles === 'boolean'
+				? storedSettings.includeComputedStyles
+				: defaults.includeComputedStyles
 	} satisfies NotesSettings;
 };
 
 export const writeStoredSettings = (settings: NotesSettings) => {
 	writeStoredJson(SETTINGS_STORAGE_KEY, {
 		blockPageInteractions: settings.blockPageInteractions,
-		outputDetail: settings.outputDetail
+		outputMode: settings.outputMode,
+		pauseAnimations: settings.pauseAnimations,
+		clearOnCopy: settings.clearOnCopy,
+		includeComponentContext: settings.includeComponentContext,
+		includeComputedStyles: settings.includeComputedStyles
 	});
+};
+
+const isAnnotationCapture = (value: unknown): value is AnnotationCapture => {
+	if (!value || typeof value !== 'object') return false;
+
+	const candidate = value as Partial<AnnotationCapture>;
+	return (
+		typeof candidate.page?.title === 'string' &&
+		typeof candidate.page?.url === 'string' &&
+		typeof candidate.page?.timestamp === 'string' &&
+		typeof candidate.element === 'object'
+	);
 };
 
 const isValidNote = (value: unknown): value is InspectorNote => {
@@ -120,6 +179,10 @@ const isValidNote = (value: unknown): value is InspectorNote => {
 		return false;
 	}
 
+	if ('capture' in candidate && candidate.capture !== undefined && !isAnnotationCapture(candidate.capture)) {
+		return false;
+	}
+
 	switch (candidate.kind) {
 		case 'element':
 			return typeof candidate.anchor?.domPath === 'string';
@@ -134,11 +197,28 @@ const isValidNote = (value: unknown): value is InspectorNote => {
 	}
 };
 
-export const readStoredNotes = (pageStorageKey: string) => {
-	const storedNotes = readStoredJson<unknown[]>(buildNotesStorageKey(pageStorageKey));
-	if (!Array.isArray(storedNotes)) return [] as InspectorNote[];
+const filterValidNotes = (storedNotes: unknown) =>
+	Array.isArray(storedNotes)
+		? storedNotes.filter((value): value is InspectorNote => isValidNote(value))
+		: ([] as InspectorNote[]);
 
-	return storedNotes.filter((value): value is InspectorNote => isValidNote(value));
+export const readStoredNotes = (pageStorageKey: string, legacyPageStorageKey?: string | null) => {
+	const storageKey = buildNotesStorageKey(pageStorageKey);
+	const nextNotes = filterValidNotes(readStoredJson<unknown[]>(storageKey));
+	if (nextNotes.length > 0) return nextNotes;
+
+	const fallbackLegacyPageStorageKey =
+		legacyPageStorageKey === undefined ? getLegacyPageStorageKey(pageStorageKey) : legacyPageStorageKey;
+	if (!fallbackLegacyPageStorageKey) return nextNotes;
+
+	// Keep old route-specific notes alive once, then move them to the pathname session.
+	const legacyNotes = filterValidNotes(
+		readStoredJson<unknown[]>(buildNotesStorageKey(fallbackLegacyPageStorageKey))
+	);
+	if (legacyNotes.length === 0) return nextNotes;
+
+	writeStoredJson(storageKey, legacyNotes);
+	return legacyNotes;
 };
 
 export const writeStoredNotes = (pageStorageKey: string, notes: InspectorNote[]) => {

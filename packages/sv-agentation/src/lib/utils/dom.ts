@@ -124,6 +124,9 @@ export const resolveDomPath = (domPath: string) => {
 export const getElementTextPreview = (target: Element) =>
 	target.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
+export const getElementClassNames = (target: Element) =>
+	Array.from(target.classList).filter((value) => value.trim().length > 0);
+
 export const getTagLabel = (tagName: string) => {
 	const normalized = tagName.toLowerCase();
 
@@ -164,4 +167,49 @@ export const getDeepElementFromPoint = (x: number, y: number) => {
 	}
 
 	return element;
+};
+
+const toNthChildSuffix = (target: Element) => {
+	if (!target.parentElement) return '';
+
+	const siblings = Array.from(target.parentElement.children).filter(
+		(sibling) => sibling.tagName === target.tagName
+	);
+	if (siblings.length <= 1) return '';
+
+	const index = siblings.indexOf(target);
+	return index >= 0 ? `:nth-child(${Array.from(target.parentElement.children).indexOf(target) + 1})` : '';
+};
+
+export const buildElementSelectorSegment = (target: Element) => {
+	const classNames = getElementClassNames(target);
+	if (classNames.length > 0) {
+		return `${target.tagName.toLowerCase()}.${classNames[0]}`;
+	}
+
+	return `${target.tagName.toLowerCase()}${toNthChildSuffix(target)}`;
+};
+
+export const buildElementSelectorPath = (target: Element, maxDepth = 4) => {
+	const segments: string[] = [];
+	let current: Element | null = target;
+
+	while (current && current !== document.body) {
+		segments.unshift(buildElementSelectorSegment(current));
+		current = current.parentElement;
+	}
+
+	return segments.slice(-maxDepth).join(' > ') || buildElementSelectorSegment(target);
+};
+
+export const buildFullDomPath = (target: Element) => {
+	const segments: string[] = [];
+	let current: Element | null = target;
+
+	while (current) {
+		segments.unshift(buildElementSelectorSegment(current));
+		current = current.parentElement;
+	}
+
+	return segments.join(' > ');
 };

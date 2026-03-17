@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { resolveElementInfo } from 'element-source';
 
 import type {
+	AgentationAnnotationSnapshot,
 	DragSelectionState,
 	GroupSelectionPreviewState,
 	InspectorHoverInfo,
@@ -11,6 +12,7 @@ import type {
 	NoteComposerState,
 	NoteSourceInfo,
 	NotesSettings,
+	OutputMode,
 	RectBox,
 	RenderedInspectorNote,
 	ToolbarCoordinates,
@@ -28,13 +30,17 @@ import {
 } from './utils/dom';
 import {
 	alignToolbarPositionForStateChange,
+	buildAnnotationSnapshot,
 	buildSourceInfoFromHoverInfo,
 	clampToolbarPosition,
+	captureAnnotationContext,
 	createEmptySourceInfo,
 	DEFAULT_DELETE_ALL_DELAY_MS,
 	DEFAULT_NOTES_SETTINGS,
 	formatNotesAsMarkdown,
 	getPageStorageKey,
+	getLegacyPageStorageKey,
+	normalizePageSessionKey,
 	readStoredMarkerColor,
 	readStoredNotes,
 	readStoredSettings,
@@ -78,6 +84,7 @@ import {
 	dispatchInspectorActiveChange,
 	installInspectorCursorStyles,
 	removeInspectorCursorStyles,
+	setPausedAnimations,
 	setDragUserSelectSuppressed
 } from './internal/controller-browser';
 import {
@@ -103,11 +110,23 @@ import {
 
 const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
+	pageSessionKey: null,
 	selector: null,
 	vscodeScheme: 'vscode',
 	openSourceOnClick: false,
 	deleteAllDelayMs: DEFAULT_DELETE_ALL_DELAY_MS,
-	toolbarPosition: DEFAULT_INSPECTOR_POSITION
+	toolbarPosition: DEFAULT_INSPECTOR_POSITION,
+	outputMode: DEFAULT_NOTES_SETTINGS.outputMode,
+	pauseAnimations: DEFAULT_NOTES_SETTINGS.pauseAnimations,
+	clearOnCopy: DEFAULT_NOTES_SETTINGS.clearOnCopy,
+	includeComponentContext: DEFAULT_NOTES_SETTINGS.includeComponentContext,
+	includeComputedStyles: DEFAULT_NOTES_SETTINGS.includeComputedStyles,
+	copyToClipboard: true,
+	onAnnotationAdd: undefined,
+	onAnnotationUpdate: undefined,
+	onAnnotationDelete: undefined,
+	onAnnotationsClear: undefined,
+	onCopy: undefined
 };
 
 export class CopyOpenController {
@@ -128,10 +147,27 @@ export class CopyOpenController {
 
 	#lastTarget: Element | null = null;
 	#workspaceRoot: string | null = DEFAULT_OPTIONS.workspaceRoot;
+	#pageSessionKey: string | null = DEFAULT_OPTIONS.pageSessionKey;
 	#selector: string | null = DEFAULT_OPTIONS.selector;
 	#vscodeScheme: VsCodeScheme = DEFAULT_OPTIONS.vscodeScheme;
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
 	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
+	#copyToClipboard = DEFAULT_OPTIONS.copyToClipboard;
+	#settingsDefaults: Pick<
+		NotesSettings,
+		'outputMode' | 'pauseAnimations' | 'clearOnCopy' | 'includeComponentContext' | 'includeComputedStyles'
+	> = {
+		outputMode: DEFAULT_OPTIONS.outputMode,
+		pauseAnimations: DEFAULT_OPTIONS.pauseAnimations,
+		clearOnCopy: DEFAULT_OPTIONS.clearOnCopy,
+		includeComponentContext: DEFAULT_OPTIONS.includeComponentContext,
+		includeComputedStyles: DEFAULT_OPTIONS.includeComputedStyles
+	};
+	#onAnnotationAdd = DEFAULT_OPTIONS.onAnnotationAdd;
+	#onAnnotationUpdate = DEFAULT_OPTIONS.onAnnotationUpdate;
+	#onAnnotationDelete = DEFAULT_OPTIONS.onAnnotationDelete;
+	#onAnnotationsClear = DEFAULT_OPTIONS.onAnnotationsClear;
+	#onCopy = DEFAULT_OPTIONS.onCopy;
 	#toolbarPositionMode: ToolbarPositionMode = 'preset';
 	#toolbarPositionDefault = DEFAULT_OPTIONS.toolbarPosition;
 	#copyResetTimer: number | null = null;
@@ -148,6 +184,7 @@ export class CopyOpenController {
 	#suppressNextClick = false;
 	#modifierState: ModifierState = createModifierState();
 	#cursorStyleElement: HTMLStyleElement | null = null;
+	#pausedAnimationsStyleElement: HTMLStyleElement | null = null;
 	#dragUserSelectSnapshot: UserSelectSnapshot | null = null;
 
 	constructor(options: Partial<InspectorRuntimeOptions> = {}) {
@@ -155,11 +192,11 @@ export class CopyOpenController {
 		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 
 		if (typeof window !== 'undefined') {
-			this.#pageStorageKey = getPageStorageKey();
-			const storedSettings = readStoredSettings();
+			this.#pageStorageKey = getPageStorageKey(this.#pageSessionKey);
+			const storedSettings = readStoredSettings(this.#getSettingsDefaults());
 			const themeMode = readStoredThemeMode() ?? DEFAULT_NOTES_SETTINGS.themeMode;
 			const markerColor = readStoredMarkerColor() ?? DEFAULT_NOTES_SETTINGS.markerColor;
-			const storedToolbarPlacement = readStoredToolbarPlacement();
+			const storedToolbarPlacement = readStoredToolbarPlacement(this.#pageSessionKey);
 
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
@@ -169,27 +206,18 @@ export class CopyOpenController {
 				themeMode,
 				markerColor
 			};
-			const initialToolbarPlacement =
+			this.#applyToolbarPlacement(
 				storedToolbarPlacement ?? {
 					mode: 'preset' as const,
 					preset: this.#toolbarPositionDefault,
 					coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
-				};
-
-			this.#toolbarPositionMode = initialToolbarPlacement.mode;
-			this.toolbarPositionPreset = initialToolbarPlacement.preset;
-			this.#setToolbar({
-				position:
-					initialToolbarPlacement.mode === 'preset'
-						? getToolbarCoordinatesForPreset(initialToolbarPlacement.preset, this.toolbar.expanded)
-						: clampToolbarPosition(initialToolbarPlacement.coordinates, this.toolbar.expanded)
-			});
-			this.#persistToolbarPlacement(this.toolbar.position, {
-				mode: initialToolbarPlacement.mode,
-				preset: initialToolbarPlacement.preset,
-				expanded: this.toolbar.expanded
-			});
-			this.notes = readStoredNotes(this.#pageStorageKey);
+				}
+			);
+			this.notes = readStoredNotes(
+				this.#pageStorageKey,
+				getLegacyPageStorageKey(this.#pageSessionKey)
+			);
+			this.#syncAnimationPauseState();
 			this.refreshRenderedNotes();
 		}
 	}
@@ -197,6 +225,21 @@ export class CopyOpenController {
 	updateOptions(options: Partial<InspectorRuntimeOptions>) {
 		if ('workspaceRoot' in options) {
 			this.#workspaceRoot = options.workspaceRoot ?? DEFAULT_OPTIONS.workspaceRoot;
+		}
+
+		if ('pageSessionKey' in options) {
+			const nextPageSessionKey = options.pageSessionKey ?? DEFAULT_OPTIONS.pageSessionKey;
+			const nextPageStorageKey = getPageStorageKey(nextPageSessionKey);
+			if (
+				typeof window !== 'undefined' &&
+				this.#pageStorageKey !== 'unknown-page' &&
+				nextPageStorageKey !== this.#pageStorageKey
+			) {
+				this.#syncPageSession(nextPageSessionKey, nextPageStorageKey);
+			} else {
+				this.#pageSessionKey = nextPageSessionKey;
+				this.#pageStorageKey = nextPageStorageKey;
+			}
 		}
 
 		if ('selector' in options) {
@@ -230,6 +273,72 @@ export class CopyOpenController {
 		if ('toolbarPosition' in options) {
 			this.#toolbarPositionDefault = sanitizeInspectorPosition(options.toolbarPosition);
 		}
+
+		if ('copyToClipboard' in options) {
+			this.#copyToClipboard = options.copyToClipboard ?? DEFAULT_OPTIONS.copyToClipboard;
+		}
+
+		if ('onAnnotationAdd' in options) {
+			this.#onAnnotationAdd = options.onAnnotationAdd ?? DEFAULT_OPTIONS.onAnnotationAdd;
+		}
+
+		if ('onAnnotationUpdate' in options) {
+			this.#onAnnotationUpdate = options.onAnnotationUpdate ?? DEFAULT_OPTIONS.onAnnotationUpdate;
+		}
+
+		if ('onAnnotationDelete' in options) {
+			this.#onAnnotationDelete = options.onAnnotationDelete ?? DEFAULT_OPTIONS.onAnnotationDelete;
+		}
+
+		if ('onAnnotationsClear' in options) {
+			this.#onAnnotationsClear = options.onAnnotationsClear ?? DEFAULT_OPTIONS.onAnnotationsClear;
+		}
+
+		if ('onCopy' in options) {
+			this.#onCopy = options.onCopy ?? DEFAULT_OPTIONS.onCopy;
+		}
+
+		const nextSettingsPatch: Partial<NotesSettings> = {};
+
+		if ('outputMode' in options) {
+			this.#settingsDefaults.outputMode = options.outputMode ?? DEFAULT_OPTIONS.outputMode;
+			nextSettingsPatch.outputMode = options.outputMode ?? DEFAULT_OPTIONS.outputMode;
+		}
+
+		if ('pauseAnimations' in options) {
+			this.#settingsDefaults.pauseAnimations =
+				options.pauseAnimations ?? DEFAULT_OPTIONS.pauseAnimations;
+			nextSettingsPatch.pauseAnimations =
+				options.pauseAnimations ?? DEFAULT_OPTIONS.pauseAnimations;
+		}
+
+		if ('clearOnCopy' in options) {
+			this.#settingsDefaults.clearOnCopy = options.clearOnCopy ?? DEFAULT_OPTIONS.clearOnCopy;
+			nextSettingsPatch.clearOnCopy = options.clearOnCopy ?? DEFAULT_OPTIONS.clearOnCopy;
+		}
+
+		if ('includeComponentContext' in options) {
+			this.#settingsDefaults.includeComponentContext =
+				options.includeComponentContext ?? DEFAULT_OPTIONS.includeComponentContext;
+			nextSettingsPatch.includeComponentContext =
+				options.includeComponentContext ?? DEFAULT_OPTIONS.includeComponentContext;
+		}
+
+		if ('includeComputedStyles' in options) {
+			this.#settingsDefaults.includeComputedStyles =
+				options.includeComputedStyles ?? DEFAULT_OPTIONS.includeComputedStyles;
+			nextSettingsPatch.includeComputedStyles =
+				options.includeComputedStyles ?? DEFAULT_OPTIONS.includeComputedStyles;
+		}
+
+		if (Object.keys(nextSettingsPatch).length > 0) {
+			this.settings = {
+				...this.settings,
+				...nextSettingsPatch
+			};
+			writeStoredSettings(this.settings);
+			this.#syncAnimationPauseState();
+		}
 	}
 
 	toggle = () => {
@@ -246,6 +355,7 @@ export class CopyOpenController {
 			this.#clearTransientSelections();
 			this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
 		}
+		this.#syncAnimationPauseState();
 
 		dispatchInspectorActiveChange(this.enabled);
 	};
@@ -321,7 +431,7 @@ export class CopyOpenController {
 	};
 
 	requestDeleteAll = () => {
-		if (this.notes.length === 0) return;
+		if (this.#getCurrentPageNotes().length === 0) return;
 		if (this.deleteAllState.active) {
 			this.cancelDeleteAll();
 			return;
@@ -337,9 +447,11 @@ export class CopyOpenController {
 	};
 
 	confirmDeleteAll = () => {
+		const currentPageNotes = this.#getCurrentPageNotes();
+		const clearedSnapshots = currentPageNotes.map((note) => this.#getAnnotationSnapshot(note));
 		this.#clearDeleteAllTimers();
 		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
-		this.notes = [];
+		this.notes = this.notes.filter((note) => !currentPageNotes.some((entry) => entry.id === note.id));
 		this.renderedNotes = [];
 		this.activeNoteId = null;
 		this.closeComposer();
@@ -348,6 +460,7 @@ export class CopyOpenController {
 		this.#setToolbar({
 			confirmDeleteAll: false
 		});
+		this.#onAnnotationsClear?.(clearedSnapshots);
 	};
 
 	toggleNotesVisibility = () => {
@@ -366,6 +479,47 @@ export class CopyOpenController {
 		this.settings = {
 			...this.settings,
 			blockPageInteractions: value
+		};
+		writeStoredSettings(this.settings);
+	};
+
+	setOutputMode = (outputMode: OutputMode) => {
+		this.settings = {
+			...this.settings,
+			outputMode
+		};
+		writeStoredSettings(this.settings);
+	};
+
+	setPauseAnimations = (value: boolean) => {
+		this.settings = {
+			...this.settings,
+			pauseAnimations: value
+		};
+		writeStoredSettings(this.settings);
+		this.#syncAnimationPauseState();
+	};
+
+	setClearOnCopy = (value: boolean) => {
+		this.settings = {
+			...this.settings,
+			clearOnCopy: value
+		};
+		writeStoredSettings(this.settings);
+	};
+
+	setIncludeComponentContext = (value: boolean) => {
+		this.settings = {
+			...this.settings,
+			includeComponentContext: value
+		};
+		writeStoredSettings(this.settings);
+	};
+
+	setIncludeComputedStyles = (value: boolean) => {
+		this.settings = {
+			...this.settings,
+			includeComputedStyles: value
 		};
 		writeStoredSettings(this.settings);
 	};
@@ -688,16 +842,33 @@ export class CopyOpenController {
 	};
 
 	copyNotes = async () => {
-		if (this.notes.length === 0) return false;
+		const currentPageNotes = this.#getCurrentPageNotes();
+		if (currentPageNotes.length === 0) return false;
+
+		const { markdown, payload } = await formatNotesAsMarkdown(currentPageNotes, this.settings);
+		let succeeded = false;
 
 		try {
-			await navigator.clipboard.writeText(formatNotesAsMarkdown(this.notes));
-			this.#setToolbar({ copyFeedback: true });
-			this.#scheduleToolbarCopyReset();
-			return true;
+			if (this.#copyToClipboard) {
+				await navigator.clipboard.writeText(markdown);
+				succeeded = true;
+			}
+			if (this.#onCopy) {
+				this.#onCopy(markdown, payload);
+				succeeded = true;
+			}
 		} catch {
 			return false;
 		}
+
+		if (!succeeded) return false;
+
+		this.#setToolbar({ copyFeedback: true });
+		this.#scheduleToolbarCopyReset();
+		if (this.settings.clearOnCopy) {
+			this.confirmDeleteAll();
+		}
+		return true;
 	};
 
 	open = (hoverInfo: InspectorHoverInfo | null = this.hoverInfo) => {
@@ -718,7 +889,7 @@ export class CopyOpenController {
 		window.getSelection()?.removeAllRanges();
 	};
 
-	saveComposer = () => {
+	saveComposer = async () => {
 		if (!this.composer) return false;
 
 		const noteText = this.noteDraft.trim();
@@ -726,12 +897,20 @@ export class CopyOpenController {
 		const existingNote = this.composer.noteId
 			? (this.notes.find((note) => note.id === this.composer?.noteId) ?? null)
 			: null;
-		const nextNote = buildNoteFromComposer({
+		const baseNote = buildNoteFromComposer({
 			composer: this.composer,
 			noteText,
 			existingNote,
 			createNoteId: () => this.#createNoteId()
 		});
+		const capture = await captureAnnotationContext(
+			baseNote,
+			existingNote?.capture?.page.timestamp ?? new Date().toISOString()
+		);
+		const nextNote: InspectorNote = {
+			...baseNote,
+			capture
+		};
 
 		this.notes = existingNote
 			? this.notes.map((note) => (note.id === nextNote.id ? nextNote : note))
@@ -742,11 +921,17 @@ export class CopyOpenController {
 		this.#clearTransientSelections();
 		this.#persistNotes();
 		this.refreshRenderedNotes();
+		const snapshot = this.#getAnnotationSnapshot(nextNote);
+		if (existingNote) {
+			this.#onAnnotationUpdate?.(snapshot);
+		} else {
+			this.#onAnnotationAdd?.(snapshot);
+		}
 		return true;
 	};
 
 	openNote = async (noteId: string) => {
-		const note = this.notes.find((entry) => entry.id === noteId);
+		const note = this.#getCurrentPageNotes().find((entry) => entry.id === noteId);
 		if (!note) return false;
 
 		this.activeNoteId = note.id;
@@ -756,6 +941,7 @@ export class CopyOpenController {
 	};
 
 	deleteNote = (noteId: string) => {
+		const deletedNote = this.notes.find((note) => note.id === noteId);
 		this.notes = this.notes.filter((note) => note.id !== noteId);
 		this.renderedNotes = this.renderedNotes.filter((note) => note.id !== noteId);
 
@@ -772,10 +958,13 @@ export class CopyOpenController {
 		}
 
 		this.#persistNotes();
+		if (deletedNote) {
+			this.#onAnnotationDelete?.(this.#getAnnotationSnapshot(deletedNote));
+		}
 	};
 
 	refreshRenderedNotes = () => {
-		this.renderedNotes = this.notes.map(renderNote);
+		this.renderedNotes = this.#getCurrentPageNotes().map(renderNote);
 	};
 
 	destroy() {
@@ -787,6 +976,10 @@ export class CopyOpenController {
 			this.#dragUserSelectSnapshot
 		);
 		this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
+		this.#pausedAnimationsStyleElement = setPausedAnimations(
+			false,
+			this.#pausedAnimationsStyleElement
+		);
 	}
 
 	#setToolbar(patch: Partial<ToolbarState>) {
@@ -796,9 +989,131 @@ export class CopyOpenController {
 		};
 	}
 
+	#getSettingsDefaults(): NotesSettings {
+		return {
+			...DEFAULT_NOTES_SETTINGS,
+			...this.#settingsDefaults
+		};
+	}
+
+	#getActivePageStorageKey() {
+		if (typeof window === 'undefined') {
+			return this.#pageStorageKey;
+		}
+
+		return getPageStorageKey(window.location.pathname);
+	}
+
+	#getCurrentPageNotes() {
+		const activePageStorageKey = this.#getActivePageStorageKey();
+
+		return this.notes.filter((note) => {
+			const notePathname = note.capture?.page.pathname;
+			if (!notePathname) return activePageStorageKey === this.#pageStorageKey;
+			return normalizePageSessionKey(notePathname) === activePageStorageKey;
+		});
+	}
+
 	#persistNotes() {
 		if (typeof window === 'undefined') return;
 		writeStoredNotes(this.#pageStorageKey, this.notes);
+	}
+
+	#syncPageSession(nextPageSessionKey: string | null, nextPageStorageKey: string) {
+		const previousPageStorageKey = this.#pageStorageKey;
+		if (previousPageStorageKey !== 'unknown-page') {
+			writeStoredNotes(previousPageStorageKey, this.notes);
+		}
+
+		this.cancelDeleteAll();
+		this.closeComposer();
+		this.clearHover();
+		this.#clearTransientSelections();
+		this.#clearToolbarCopyResetTimer();
+		this.#setToolbar({
+			copyFeedback: false,
+			confirmDeleteAll: false
+		});
+		this.activeNoteId = null;
+
+		this.#pageSessionKey = nextPageSessionKey;
+		this.#pageStorageKey = nextPageStorageKey;
+		this.notes = readStoredNotes(
+			this.#pageStorageKey,
+			getLegacyPageStorageKey(this.#pageSessionKey)
+		);
+
+		this.#applyToolbarPlacement(
+			readStoredToolbarPlacement(this.#pageSessionKey) ?? {
+				mode: 'preset',
+				preset: this.#toolbarPositionDefault,
+				coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
+			}
+		);
+		this.refreshRenderedNotes();
+	}
+
+	#syncAnimationPauseState() {
+		this.#pausedAnimationsStyleElement = setPausedAnimations(
+			this.enabled && this.settings.pauseAnimations,
+			this.#pausedAnimationsStyleElement
+		);
+	}
+
+	#applyToolbarPlacement(placement: {
+		mode: ToolbarPositionMode;
+		preset: InspectorPosition;
+		coordinates: ToolbarCoordinates;
+	}) {
+		this.#toolbarPositionMode = placement.mode;
+		this.toolbarPositionPreset = placement.preset;
+		this.#setToolbar({
+			position:
+				placement.mode === 'preset'
+					? getToolbarCoordinatesForPreset(placement.preset, this.toolbar.expanded)
+					: clampToolbarPosition(placement.coordinates, this.toolbar.expanded)
+		});
+		this.#persistToolbarPlacement(this.toolbar.position, {
+			mode: placement.mode,
+			preset: placement.preset,
+			expanded: this.toolbar.expanded
+		});
+	}
+
+	#getAnnotationSnapshot(note: InspectorNote): AgentationAnnotationSnapshot {
+		const capture =
+			note.capture ?? {
+				page: {
+					title: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
+					pathname: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
+					url: typeof window === 'undefined' ? '' : window.location.href,
+					viewport: {
+						width: typeof window === 'undefined' ? 0 : window.innerWidth,
+						height: typeof window === 'undefined' ? 0 : window.innerHeight
+					},
+					userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
+					devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
+					timestamp: note.updatedAt
+				},
+				element: {
+					selector: null,
+					fullDomPath: null,
+					cssClasses: [],
+					components: {
+						filtered: [],
+						smart: [],
+						all: []
+					},
+					boundingBox: null,
+					position: null,
+					selectedText: note.kind === 'text' ? note.anchor.selectedText : null,
+					nearbyText: null,
+					accessibility: null,
+					computedStyles: null
+				}
+			};
+
+		return buildAnnotationSnapshot(note, capture);
 	}
 
 	#persistToolbarPlacement(
@@ -824,7 +1139,7 @@ export class CopyOpenController {
 
 		this.#toolbarPositionMode = nextMode;
 		this.toolbarPositionPreset = nextPreset;
-		writeStoredToolbarPlacement({
+		writeStoredToolbarPlacement(this.#pageStorageKey, {
 			mode: nextMode,
 			preset: nextPreset,
 			coordinates: storedCoordinates

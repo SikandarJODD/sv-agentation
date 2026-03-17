@@ -17,7 +17,12 @@
 		onCopyNotes,
 		onDeleteAll,
 		onSetBlockPageInteractions,
+		onSetClearOnCopy,
+		onSetIncludeComponentContext,
+		onSetIncludeComputedStyles,
 		onSetMarkerColor,
+		onSetOutputMode,
+		onSetPauseAnimations,
 		onSetToolbarPosition,
 		onToggle,
 		onToggleNotesVisibility,
@@ -110,7 +115,12 @@
 			toolbar={toolbar}
 			{toolbarPosition}
 			onSetBlockPageInteractions={onSetBlockPageInteractions}
+			onSetClearOnCopy={onSetClearOnCopy}
+			onSetIncludeComponentContext={onSetIncludeComponentContext}
+			onSetIncludeComputedStyles={onSetIncludeComputedStyles}
 			onSetMarkerColor={onSetMarkerColor}
+			onSetOutputMode={onSetOutputMode}
+			onSetPauseAnimations={onSetPauseAnimations}
 			onSetToolbarPosition={onSetToolbarPosition}
 			onToggleThemeMode={onToggleThemeMode}
 		/>
