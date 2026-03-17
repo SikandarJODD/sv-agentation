@@ -112,11 +112,11 @@ importers:
   packages/sv-agentation:
     dependencies:
       '@lucide/svelte':
-        specifier: ^0.561.0
-        version: 0.561.0(svelte@5.53.11)
+        specifier: ^0.577.0
+        version: 0.577.0(svelte@5.53.11)
       element-source:
-        specifier: ^0.0.4
-        version: 0.0.4(@types/react@19.2.14)(react@19.2.4)
+        specifier: ^0.0.5
+        version: 0.0.5(@types/react@19.2.14)(react@19.2.4)
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
@@ -433,6 +433,11 @@ packages:
 
   '@lucide/svelte@0.561.0':
     resolution: {integrity: sha512-vofKV2UFVrKE6I4ewKJ3dfCXSV6iP6nWVmiM83MLjsU91EeJcEg7LoWUABLp/aOTxj1HQNbJD1f3g3L0JQgH9A==}
+    peerDependencies:
+      svelte: ^5
+
+  '@lucide/svelte@0.577.0':
+    resolution: {integrity: sha512-0P6mkySd2MapIEgq08tADPmcN4DHndC/02PWwaLkOerXlx5Sv9aT4BxyXLIY+eccr0g/nEyCYiJesqS61YdBZQ==}
     peerDependencies:
       svelte: ^5
 
@@ -949,6 +954,9 @@ packages:
 
   element-source@0.0.4:
     resolution: {integrity: sha512-4feZB3FhezD6UBGj6h8OO8axyPaz8kcJrpJzGTCWyLeZ0ldHgiE2z6i7Th0d5V2IlHUFNoXR7Tb2dfbZIgih0A==}
+
+  element-source@0.0.5:
+    resolution: {integrity: sha512-04NFHxgZ3SLgvMmcPIMsx8bvbIvZZ2F2xNtxiBByACNXFiTJWU8ujz5M1PIVbBuKyKLwmXbPJsu2V2qRNhdXGQ==}
 
   enhanced-resolve@5.20.0:
     resolution: {integrity: sha512-/ce7+jQ1PQ6rVXwe+jKEg5hW5ciicHwIQUagZkp6IufBoY3YDgdTTY1azVs0qoRgVmvsNB+rbjLJxDAeHHtwsQ==}
@@ -2118,6 +2126,10 @@ snapshots:
     dependencies:
       svelte: 5.53.11
 
+  '@lucide/svelte@0.577.0(svelte@5.53.11)':
+    dependencies:
+      svelte: 5.53.11
+
   '@manypkg/find-root@1.1.0':
     dependencies:
       '@babel/runtime': 7.28.6
@@ -2548,6 +2560,13 @@ snapshots:
       '@types/trusted-types': 2.0.7
 
   element-source@0.0.4(@types/react@19.2.14)(react@19.2.4):
+    dependencies:
+      bippy: 0.5.32(@types/react@19.2.14)(react@19.2.4)
+    transitivePeerDependencies:
+      - '@types/react'
+      - react
+
+  element-source@0.0.5(@types/react@19.2.14)(react@19.2.4):
     dependencies:
       bippy: 0.5.32(@types/react@19.2.14)(react@19.2.4)
     transitivePeerDependencies:

@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "git+https://github.com/SikandarJODD/sv-agentation.git"
 	},
-	"homepage": "https://github.com/SikandarJODD/sv-agentation#readme",
+	"homepage": "https://sv-agentation.com",
 	"bugs": {
 		"url": "https://github.com/SikandarJODD/sv-agentation/issues"
 	},
@@ -40,8 +40,8 @@
 		"svelte": "^5.0.0"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^0.561.0",
-		"element-source": "^0.0.4"
+		"@lucide/svelte": "^0.577.0",
+		"element-source": "^0.0.5"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
