@@ -5,9 +5,11 @@
 
 	import type { InspectorToolbarLauncherProps } from '../../internal/component-props';
 
-	let { notes, onToggleToolbar, onToolbarPointerDown }: InspectorToolbarLauncherProps = $props();
+	let { notes, toolbarDragEnabled, onToggleToolbar, onToolbarPointerDown }: InspectorToolbarLauncherProps =
+		$props();
 
 	const handleSurfacePointerDown = (event: PointerEvent) => {
+		if (!toolbarDragEnabled) return;
 		const target = event.target;
 		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
 		onToolbarPointerDown(event);
@@ -24,6 +26,7 @@
 <!-- Ignore: the shell only handles drag affordance around the launcher button. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+	class:drag-enabled={toolbarDragEnabled}
 	class="launcher-shell"
 	data-inspector-ui
 	in:fade={launcherTransition}
@@ -51,10 +54,13 @@
 		transform-origin: right bottom;
 		will-change: transform, opacity;
 		pointer-events: auto;
+	}
+
+	.launcher-shell.drag-enabled {
 		cursor: grab;
 	}
 
-	.launcher-shell:active {
+	.launcher-shell.drag-enabled:active {
 		cursor: grabbing;
 	}
 

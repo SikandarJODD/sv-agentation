@@ -8,10 +8,12 @@
 
 	let {
 		active,
+		controlledOptions,
 		deleteAllState,
 		notes,
 		settings,
 		toolbar,
+		toolbarDragEnabled,
 		toolbarPosition,
 		onCloseToolbar,
 		onCopyNotes,
@@ -109,6 +111,7 @@
 	{#if toolbar.settingsOpen}
 		<ToolbarSettingsPanel
 			bind:panelElement={settingsPanelElement}
+			{controlledOptions}
 			placement={settingsPanelPlacement}
 			settings={settings}
 			style={getSettingsPanelStyle()}
@@ -132,6 +135,7 @@
 			{deleteAllState}
 			{notes}
 			{toolbar}
+			{toolbarDragEnabled}
 			onCloseToolbar={onCloseToolbar}
 			onCopyNotes={onCopyNotes}
 			onDeleteAll={onDeleteAll}
@@ -141,7 +145,12 @@
 			onToolbarPointerDown={onToolbarPointerDown}
 		/>
 	{:else}
-		<ToolbarLauncher {notes} onToggleToolbar={onToggleToolbar} onToolbarPointerDown={onToolbarPointerDown} />
+		<ToolbarLauncher
+			{notes}
+			{toolbarDragEnabled}
+			onToggleToolbar={onToggleToolbar}
+			onToolbarPointerDown={onToolbarPointerDown}
+		/>
 	{/if}
 </div>
 

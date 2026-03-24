@@ -107,6 +107,10 @@ import {
 	type ToolbarDragState,
 	type UserSelectSnapshot
 } from './internal/controller-state.svelte';
+import {
+	DEFAULT_CONTROLLED_INSPECTOR_OPTIONS,
+	type ControlledInspectorOptions
+} from './internal/controlled-options';
 
 const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
@@ -129,8 +133,34 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	onCopy: undefined
 };
 
+const CONTROLLED_SETTINGS_KEYS = [
+	'outputMode',
+	'pauseAnimations',
+	'clearOnCopy',
+	'includeComponentContext',
+	'includeComputedStyles'
+] as const satisfies readonly (keyof Pick<
+	NotesSettings,
+	'outputMode' | 'pauseAnimations' | 'clearOnCopy' | 'includeComponentContext' | 'includeComputedStyles'
+>)[];
+
+type ControlledSettingsKey = (typeof CONTROLLED_SETTINGS_KEYS)[number];
+type CopyOpenControllerOptions = Partial<InspectorRuntimeOptions> & {
+	controlled?: Partial<ControlledInspectorOptions>;
+};
+
+const normalizeControlledOptions = (
+	controlled?: Partial<ControlledInspectorOptions>
+): ControlledInspectorOptions => ({
+	...DEFAULT_CONTROLLED_INSPECTOR_OPTIONS,
+	...controlled
+});
+
 export class CopyOpenController {
 	enabled = $state(false);
+	controlledOptions = $state<ControlledInspectorOptions>({
+		...DEFAULT_CONTROLLED_INSPECTOR_OPTIONS
+	});
 	hoverInfo = $state<InspectorHoverInfo | null>(null);
 	copied = $state(false);
 	toolbar = $state<ToolbarState>(createToolbarState());
@@ -186,8 +216,9 @@ export class CopyOpenController {
 	#cursorStyleElement: HTMLStyleElement | null = null;
 	#pausedAnimationsStyleElement: HTMLStyleElement | null = null;
 	#dragUserSelectSnapshot: UserSelectSnapshot | null = null;
+	#runtimeReady = false;
 
-	constructor(options: Partial<InspectorRuntimeOptions> = {}) {
+	constructor(options: CopyOpenControllerOptions = {}) {
 		this.updateOptions(options);
 		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
 
@@ -201,45 +232,33 @@ export class CopyOpenController {
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
 
-			this.settings = {
+			this.settings = this.#getResolvedSettingsState({
 				...storedSettings,
 				themeMode,
 				markerColor
-			};
-			this.#applyToolbarPlacement(
-				storedToolbarPlacement ?? {
-					mode: 'preset' as const,
-					preset: this.#toolbarPositionDefault,
-					coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
-				}
-			);
+			});
+			this.#applyToolbarPlacement(this.#resolveToolbarPlacement(storedToolbarPlacement), {
+				persist: !this.controlledOptions.toolbarPosition
+			});
 			this.notes = readStoredNotes(
 				this.#pageStorageKey,
 				getLegacyPageStorageKey(this.#pageSessionKey)
 			);
 			this.#syncAnimationPauseState();
 			this.refreshRenderedNotes();
+			this.#runtimeReady = true;
 		}
 	}
 
-	updateOptions(options: Partial<InspectorRuntimeOptions>) {
-		if ('workspaceRoot' in options) {
-			this.#workspaceRoot = options.workspaceRoot ?? DEFAULT_OPTIONS.workspaceRoot;
+	updateOptions(options: CopyOpenControllerOptions) {
+		const previousControlledOptions = { ...this.controlledOptions };
+
+		if ('controlled' in options) {
+			this.controlledOptions = normalizeControlledOptions(options.controlled);
 		}
 
-		if ('pageSessionKey' in options) {
-			const nextPageSessionKey = options.pageSessionKey ?? DEFAULT_OPTIONS.pageSessionKey;
-			const nextPageStorageKey = getPageStorageKey(nextPageSessionKey);
-			if (
-				typeof window !== 'undefined' &&
-				this.#pageStorageKey !== 'unknown-page' &&
-				nextPageStorageKey !== this.#pageStorageKey
-			) {
-				this.#syncPageSession(nextPageSessionKey, nextPageStorageKey);
-			} else {
-				this.#pageSessionKey = nextPageSessionKey;
-				this.#pageStorageKey = nextPageStorageKey;
-			}
+		if ('workspaceRoot' in options) {
+			this.#workspaceRoot = options.workspaceRoot ?? DEFAULT_OPTIONS.workspaceRoot;
 		}
 
 		if ('selector' in options) {
@@ -298,46 +317,61 @@ export class CopyOpenController {
 			this.#onCopy = options.onCopy ?? DEFAULT_OPTIONS.onCopy;
 		}
 
-		const nextSettingsPatch: Partial<NotesSettings> = {};
-
 		if ('outputMode' in options) {
 			this.#settingsDefaults.outputMode = options.outputMode ?? DEFAULT_OPTIONS.outputMode;
-			nextSettingsPatch.outputMode = options.outputMode ?? DEFAULT_OPTIONS.outputMode;
 		}
 
 		if ('pauseAnimations' in options) {
 			this.#settingsDefaults.pauseAnimations =
 				options.pauseAnimations ?? DEFAULT_OPTIONS.pauseAnimations;
-			nextSettingsPatch.pauseAnimations =
-				options.pauseAnimations ?? DEFAULT_OPTIONS.pauseAnimations;
 		}
 
 		if ('clearOnCopy' in options) {
 			this.#settingsDefaults.clearOnCopy = options.clearOnCopy ?? DEFAULT_OPTIONS.clearOnCopy;
-			nextSettingsPatch.clearOnCopy = options.clearOnCopy ?? DEFAULT_OPTIONS.clearOnCopy;
 		}
 
 		if ('includeComponentContext' in options) {
 			this.#settingsDefaults.includeComponentContext =
-				options.includeComponentContext ?? DEFAULT_OPTIONS.includeComponentContext;
-			nextSettingsPatch.includeComponentContext =
 				options.includeComponentContext ?? DEFAULT_OPTIONS.includeComponentContext;
 		}
 
 		if ('includeComputedStyles' in options) {
 			this.#settingsDefaults.includeComputedStyles =
 				options.includeComputedStyles ?? DEFAULT_OPTIONS.includeComputedStyles;
-			nextSettingsPatch.includeComputedStyles =
-				options.includeComputedStyles ?? DEFAULT_OPTIONS.includeComputedStyles;
 		}
 
-		if (Object.keys(nextSettingsPatch).length > 0) {
-			this.settings = {
-				...this.settings,
-				...nextSettingsPatch
-			};
-			writeStoredSettings(this.settings);
-			this.#syncAnimationPauseState();
+		if ('pageSessionKey' in options) {
+			const nextPageSessionKey = options.pageSessionKey ?? DEFAULT_OPTIONS.pageSessionKey;
+			const nextPageStorageKey = getPageStorageKey(nextPageSessionKey);
+			if (
+				typeof window !== 'undefined' &&
+				this.#pageStorageKey !== 'unknown-page' &&
+				nextPageStorageKey !== this.#pageStorageKey
+			) {
+				this.#syncPageSession(nextPageSessionKey, nextPageStorageKey);
+			} else {
+				this.#pageSessionKey = nextPageSessionKey;
+				this.#pageStorageKey = nextPageStorageKey;
+			}
+		}
+
+		if (!this.#runtimeReady) {
+			return;
+		}
+
+		if (CONTROLLED_SETTINGS_KEYS.some((key) => previousControlledOptions[key] && !this.controlledOptions[key])) {
+			this.#restoreSettingsFromStorage();
+		} else {
+			this.#applyControlledSettingsState();
+		}
+
+		if (this.controlledOptions.toolbarPosition) {
+			this.#applyToolbarPlacement(this.#getDefaultToolbarPlacement(), { persist: false });
+		} else if (previousControlledOptions.toolbarPosition) {
+			this.#applyToolbarPlacement(
+				this.#resolveToolbarPlacement(readStoredToolbarPlacement(this.#pageSessionKey)),
+				{ persist: false }
+			);
 		}
 	}
 
@@ -412,7 +446,9 @@ export class CopyOpenController {
 		this.#persistToolbarPlacement(nextPosition, { expanded });
 	};
 
-	setToolbarPosition = (toolbarPosition: InspectorPosition) => {
+	setToolbarPosition = (toolbarPosition: InspectorPosition, options?: { force?: boolean }) => {
+		if (this.controlledOptions.toolbarPosition && !options?.force) return;
+
 		const nextPosition = getToolbarCoordinatesForPreset(toolbarPosition, this.toolbar.expanded);
 		this.#toolbarPositionMode = 'preset';
 		this.toolbarPositionPreset = toolbarPosition;
@@ -427,7 +463,10 @@ export class CopyOpenController {
 	};
 
 	resetToolbarPosition = () => {
-		this.setToolbarPosition(DEFAULT_INSPECTOR_POSITION);
+		this.setToolbarPosition(
+			this.controlledOptions.toolbarPosition ? this.#toolbarPositionDefault : DEFAULT_INSPECTOR_POSITION,
+			{ force: this.controlledOptions.toolbarPosition }
+		);
 	};
 
 	requestDeleteAll = () => {
@@ -480,48 +519,58 @@ export class CopyOpenController {
 			...this.settings,
 			blockPageInteractions: value
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 	};
 
 	setOutputMode = (outputMode: OutputMode) => {
+		if (this.controlledOptions.outputMode) return;
+
 		this.settings = {
 			...this.settings,
 			outputMode
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 	};
 
 	setPauseAnimations = (value: boolean) => {
+		if (this.controlledOptions.pauseAnimations) return;
+
 		this.settings = {
 			...this.settings,
 			pauseAnimations: value
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 		this.#syncAnimationPauseState();
 	};
 
 	setClearOnCopy = (value: boolean) => {
+		if (this.controlledOptions.clearOnCopy) return;
+
 		this.settings = {
 			...this.settings,
 			clearOnCopy: value
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 	};
 
 	setIncludeComponentContext = (value: boolean) => {
+		if (this.controlledOptions.includeComponentContext) return;
+
 		this.settings = {
 			...this.settings,
 			includeComponentContext: value
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 	};
 
 	setIncludeComputedStyles = (value: boolean) => {
+		if (this.controlledOptions.includeComputedStyles) return;
+
 		this.settings = {
 			...this.settings,
 			includeComputedStyles: value
 		};
-		writeStoredSettings(this.settings);
+		this.#persistSettings();
 	};
 
 	toggleThemeMode = () => {
@@ -535,6 +584,7 @@ export class CopyOpenController {
 
 	handleToolbarPointerDown = (event: PointerEvent) => {
 		if (event.button !== 0) return;
+		if (this.controlledOptions.toolbarPosition) return;
 
 		let width = 0;
 		let height = 0;
@@ -688,7 +738,10 @@ export class CopyOpenController {
 			this.clearHover();
 		}
 
-		const nextPosition = clampToolbarPosition(this.toolbar.position, this.toolbar.expanded);
+		const nextPosition =
+			this.#toolbarPositionMode === 'preset'
+				? getToolbarCoordinatesForPreset(this.toolbarPositionPreset, this.toolbar.expanded)
+				: clampToolbarPosition(this.toolbar.position, this.toolbar.expanded);
 		const positionChanged =
 			nextPosition.x !== this.toolbar.position.x || nextPosition.y !== this.toolbar.position.y;
 
@@ -989,11 +1042,75 @@ export class CopyOpenController {
 		};
 	}
 
+	#getResolvedSettingsState(baseSettings: NotesSettings): NotesSettings {
+		const nextSettings = {
+			...baseSettings
+		};
+
+		if (this.controlledOptions.outputMode) {
+			nextSettings.outputMode = this.#settingsDefaults.outputMode;
+		}
+		if (this.controlledOptions.pauseAnimations) {
+			nextSettings.pauseAnimations = this.#settingsDefaults.pauseAnimations;
+		}
+		if (this.controlledOptions.clearOnCopy) {
+			nextSettings.clearOnCopy = this.#settingsDefaults.clearOnCopy;
+		}
+		if (this.controlledOptions.includeComponentContext) {
+			nextSettings.includeComponentContext = this.#settingsDefaults.includeComponentContext;
+		}
+		if (this.controlledOptions.includeComputedStyles) {
+			nextSettings.includeComputedStyles = this.#settingsDefaults.includeComputedStyles;
+		}
+
+		return nextSettings;
+	}
+
 	#getSettingsDefaults(): NotesSettings {
 		return {
 			...DEFAULT_NOTES_SETTINGS,
 			...this.#settingsDefaults
 		};
+	}
+
+	#applyControlledSettingsState() {
+		const nextSettings = this.#getResolvedSettingsState(this.settings);
+		const changed = CONTROLLED_SETTINGS_KEYS.some((key) => nextSettings[key] !== this.settings[key]);
+		if (!changed) return;
+
+		this.settings = nextSettings;
+		this.#syncAnimationPauseState();
+	}
+
+	#restoreSettingsFromStorage() {
+		if (typeof window === 'undefined') return;
+
+		this.settings = this.#getResolvedSettingsState({
+			...readStoredSettings(this.#getSettingsDefaults()),
+			themeMode: this.settings.themeMode,
+			markerColor: this.settings.markerColor
+		});
+		this.#syncAnimationPauseState();
+	}
+
+	#getControlledSettingsSkipKeys() {
+		return CONTROLLED_SETTINGS_KEYS.filter((key) => this.controlledOptions[key]);
+	}
+
+	#getDefaultToolbarPlacement() {
+		return {
+			mode: 'preset' as const,
+			preset: this.#toolbarPositionDefault,
+			coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
+		};
+	}
+
+	#resolveToolbarPlacement(storedPlacement: ReturnType<typeof readStoredToolbarPlacement>) {
+		if (this.controlledOptions.toolbarPosition) {
+			return this.#getDefaultToolbarPlacement();
+		}
+
+		return storedPlacement ?? this.#getDefaultToolbarPlacement();
 	}
 
 	#getActivePageStorageKey() {
@@ -1017,6 +1134,13 @@ export class CopyOpenController {
 	#persistNotes() {
 		if (typeof window === 'undefined') return;
 		writeStoredNotes(this.#pageStorageKey, this.notes);
+	}
+
+	#persistSettings() {
+		if (typeof window === 'undefined') return;
+		writeStoredSettings(this.settings, {
+			skipKeys: this.#getControlledSettingsSkipKeys()
+		});
 	}
 
 	#syncPageSession(nextPageSessionKey: string | null, nextPageStorageKey: string) {
@@ -1044,11 +1168,8 @@ export class CopyOpenController {
 		);
 
 		this.#applyToolbarPlacement(
-			readStoredToolbarPlacement(this.#pageSessionKey) ?? {
-				mode: 'preset',
-				preset: this.#toolbarPositionDefault,
-				coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
-			}
+			this.#resolveToolbarPlacement(readStoredToolbarPlacement(this.#pageSessionKey)),
+			{ persist: !this.controlledOptions.toolbarPosition }
 		);
 		this.refreshRenderedNotes();
 	}
@@ -1060,11 +1181,16 @@ export class CopyOpenController {
 		);
 	}
 
-	#applyToolbarPlacement(placement: {
-		mode: ToolbarPositionMode;
-		preset: InspectorPosition;
-		coordinates: ToolbarCoordinates;
-	}) {
+	#applyToolbarPlacement(
+		placement: {
+			mode: ToolbarPositionMode;
+			preset: InspectorPosition;
+			coordinates: ToolbarCoordinates;
+		},
+		options?: {
+			persist?: boolean;
+		}
+	) {
 		this.#toolbarPositionMode = placement.mode;
 		this.toolbarPositionPreset = placement.preset;
 		this.#setToolbar({
@@ -1073,11 +1199,13 @@ export class CopyOpenController {
 					? getToolbarCoordinatesForPreset(placement.preset, this.toolbar.expanded)
 					: clampToolbarPosition(placement.coordinates, this.toolbar.expanded)
 		});
-		this.#persistToolbarPlacement(this.toolbar.position, {
-			mode: placement.mode,
-			preset: placement.preset,
-			expanded: this.toolbar.expanded
-		});
+		if (options?.persist ?? true) {
+			this.#persistToolbarPlacement(this.toolbar.position, {
+				mode: placement.mode,
+				preset: placement.preset,
+				expanded: this.toolbar.expanded
+			});
+		}
 	}
 
 	#getAnnotationSnapshot(note: InspectorNote): AgentationAnnotationSnapshot {
@@ -1124,8 +1252,6 @@ export class CopyOpenController {
 			expanded?: boolean;
 		}
 	) {
-		if (typeof window === 'undefined') return;
-
 		const expanded = options?.expanded ?? this.toolbar.expanded;
 		const nextMode = options?.mode ?? this.#toolbarPositionMode;
 		const nextPreset =
@@ -1139,6 +1265,8 @@ export class CopyOpenController {
 
 		this.#toolbarPositionMode = nextMode;
 		this.toolbarPositionPreset = nextPreset;
+		if (typeof window === 'undefined' || this.controlledOptions.toolbarPosition) return;
+
 		writeStoredToolbarPlacement(this.#pageStorageKey, {
 			mode: nextMode,
 			preset: nextPreset,

@@ -1,25 +1,45 @@
 <script lang="ts">
 	import { MetaTags, type MetaTagsProps } from 'svelte-meta-tags';
-	import { CodeSpan, Highlight, Link } from '$lib/components/markdown';
+	import { Highlight, Link } from '$lib/components/markdown';
 
 	const releases = [
+		{
+			version: '0.2.2',
+			date: 'March 24, 2026',
+			sections: [
+				{
+					label: 'Fixed',
+					items: [
+						'Props now override saved toolbar settings when you pass them in.',
+						'Toolbar position now loads in the right place and stays correct after resize.'
+					]
+				},
+				{
+					label: 'Updated',
+					items: [
+						'Controlled settings are now disabled in the toolbar and clearly marked.',
+						'The playground now mounts Agentation with test props so the behavior is easy to check.'
+					]
+				}
+			]
+		},
 		{
 			version: '0.2.1',
 			date: 'March 17, 2026',
 			sections: [
 				{
-					label: 'Improved',
+					label: 'Updated',
 					items: [
-						'Made route-scoped note sessions work automatically without extra app-shell key wiring.',
-						'Polished the floating settings UI with a denser layout, compact output mode cycling, and calmer accordion motion.',
-						'Fixed local editor-opening in the demo app by resolving source links against the correct app workspace root.'
+						'Notes now stay separate for each route automatically.',
+						'The floating settings panel became smaller and easier to use.',
+						'Source links in the demo app now open from the correct workspace.'
 					]
 				},
 				{
 					label: 'Added',
 					items: [
-						'Added internal pathname tracking so page notes stay isolated by default.',
-						'Added regression coverage for stale note leakage across routes and offscreen marker visibility.'
+						'Added route tracking for note sessions by default.',
+						'Added tests for route changes and note marker visibility.'
 					]
 				}
 			]
@@ -29,18 +49,11 @@
 			date: 'March 17, 2026',
 			sections: [
 				{
-					label: 'Improved',
-					items: [
-						'Added compact, standard, detailed, and forensic copy modes based on the Agentation-style demo outputs.',
-						'Captured stable page context, selector paths, component context, nearby text, and forensic computed styles at save time.',
-						'Added settings for output mode, animation pause, clear-on-copy, component context, and computed-style inclusion.'
-					]
-				},
-				{
 					label: 'Added',
 					items: [
-						'Added annotation lifecycle and copy callbacks for local integrations.',
-						'Added fixture tests that compare generated output against the demo markdown references.'
+						'Added compact, standard, detailed, and forensic output modes.',
+						'Added more page context, component context, and computed style data to saved notes.',
+						'Added settings and callbacks for local integrations.'
 					]
 				}
 			]
@@ -50,15 +63,15 @@
 			date: 'March 17, 2026',
 			sections: [
 				{
-					label: 'Improved',
+					label: 'Updated',
 					items: [
-						'Refactored the package into smaller controller, utility, and UI modules.',
-						'Added code-structure docs and a first pass of package tests.'
+						'Split the package into smaller controller, utility, and UI files.',
+						'Added docs and the first round of package tests.'
 					]
 				},
 				{
 					label: 'Removed',
-					items: ['Dropped old legacy storage compatibility from the pre-release copy-open phase.']
+					items: ['Removed old pre-release storage compatibility code.']
 				}
 			]
 		},
@@ -68,9 +81,7 @@
 			sections: [
 				{
 					label: 'Initial',
-					items: [
-						'Shipped the first Svelte Agentation alpha with source-aware inspection, note annotations, and markdown copy.'
-					]
+					items: ['First release with source inspection, notes, and markdown copy.']
 				}
 			]
 		}
@@ -104,7 +115,7 @@
 			<h1 class="font-serif text-[2.1rem] tracking-tight text-foreground sm:text-[2.35rem]">
 				Changelog
 			</h1>
-			<p class="text-[1rem] text-muted-foreground">Release history</p>
+			<p class="text-[1rem] text-muted-foreground">Short notes for each release.</p>
 			<div class="pt-1">
 				<Link class="text-sm" href="/">Back to home</Link>
 			</div>
@@ -122,14 +133,10 @@
 					</div>
 
 					<div class="release-body">
-						{#if release.version === '0.2.1'}
+						{#if release.version === '0.2.2'}
 							<p class="release-note">
 								<Highlight>Current patch</Highlight>
-								<span>
-									This release focuses on making <CodeSpan>Agentation</CodeSpan> easier to mount,
-									keeping route sessions isolated by default, and polishing the compact toolbar
-									settings surface.
-								</span>
+								<span>Props now win over saved state, and toolbar placement works correctly.</span>
 							</p>
 						{/if}
 

@@ -4,9 +4,17 @@ import { CopyOpenController } from '../src/lib/copy-open.svelte';
 import {
 	buildComposerState,
 	createEmptySourceInfo,
+	DEFAULT_NOTES_SETTINGS,
 	getPageStorageKey,
-	readStoredNotes
+	readStoredNotes,
+	readStoredSettings,
+	writeStoredSettings
 } from '../src/lib/utils/notes';
+import {
+	getToolbarCoordinatesForPreset,
+	readStoredToolbarPlacement,
+	writeStoredToolbarPlacement
+} from '../src/lib/utils/position';
 
 const setViewport = (width: number, height: number) => {
 	Object.defineProperty(window, 'innerWidth', {
@@ -271,6 +279,116 @@ describe('CopyOpenController', () => {
 
 		controller.toggle();
 		expect(document.head.innerHTML).not.toContain('sv-agentation-pause-animations');
+		controller.destroy();
+	});
+
+	it('treats explicit persisted props as controlled and preserves conflicting stored state', () => {
+		writeStoredSettings({
+			...DEFAULT_NOTES_SETTINGS,
+			blockPageInteractions: true,
+			outputMode: 'forensic',
+			pauseAnimations: false,
+			clearOnCopy: false,
+			includeComponentContext: false,
+			includeComputedStyles: false
+		});
+		writeStoredToolbarPlacement('/', {
+			mode: 'preset',
+			preset: 'bottom-right',
+			coordinates: getToolbarCoordinatesForPreset('bottom-right', false)
+		});
+
+		const controller = new CopyOpenController({
+			pageSessionKey: '/',
+			toolbarPosition: 'bottom-left',
+			outputMode: 'compact',
+			pauseAnimations: true,
+			clearOnCopy: true,
+			includeComponentContext: true,
+			includeComputedStyles: true,
+			controlled: {
+				toolbarPosition: true,
+				outputMode: true,
+				pauseAnimations: true,
+				clearOnCopy: true,
+				includeComponentContext: true,
+				includeComputedStyles: true
+			}
+		});
+
+		expect(controller.toolbarPositionPreset).toBe('bottom-left');
+		expect(controller.toolbar.position).toEqual({ x: 8, y: 660 });
+		expect(controller.settings).toMatchObject({
+			outputMode: 'compact',
+			pauseAnimations: true,
+			clearOnCopy: true,
+			includeComponentContext: true,
+			includeComputedStyles: true
+		});
+		expect(readStoredToolbarPlacement('/')).toMatchObject({ preset: 'bottom-right' });
+
+		const toolbarHandle = document.createElement('div');
+		Object.defineProperty(toolbarHandle, 'getBoundingClientRect', {
+			value: () => ({
+				width: 52,
+				height: 52,
+				left: 0,
+				top: 0,
+				right: 52,
+				bottom: 52,
+				x: 0,
+				y: 0,
+				toJSON: () => ({})
+			})
+		});
+
+		controller.handleToolbarPointerDown({
+			button: 0,
+			pointerId: 1,
+			clientX: 120,
+			clientY: 120,
+			currentTarget: toolbarHandle,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		expect(controller.toolbar.dragging).toBe(false);
+
+		controller.toolbar = {
+			...controller.toolbar,
+			position: {
+				x: 400,
+				y: 24
+			}
+		};
+		controller.resetToolbarPosition();
+		expect(controller.toolbar.position).toEqual({ x: 8, y: 660 });
+
+		controller.setBlockPageInteractions(false);
+		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS)).toMatchObject({
+			blockPageInteractions: false,
+			outputMode: 'forensic',
+			pauseAnimations: false,
+			clearOnCopy: false,
+			includeComponentContext: false,
+			includeComputedStyles: false
+		});
+
+		controller.destroy();
+	});
+
+	it('reanchors preset toolbar positions on viewport resize', () => {
+		const controller = new CopyOpenController({
+			toolbarPosition: 'bottom-right',
+			controlled: {
+				toolbarPosition: true
+			}
+		});
+
+		expect(controller.toolbar.position).toEqual({ x: 1210, y: 660 });
+
+		setViewport(960, 540);
+		controller.handleViewportChange();
+
+		expect(controller.toolbar.position).toEqual({ x: 890, y: 480 });
 		controller.destroy();
 	});
 });
