@@ -73,22 +73,22 @@ Route-based note sessions are automatic by default.
 - `deleteAllDelayMs?: number`
   Confirmation delay for delete-all notes.
 - `toolbarPosition?: 'top-left' | 'top-center' | 'top-right' | 'mid-right' | 'mid-left' | 'bottom-left' | 'bottom-center' | 'bottom-right'`
-  Initial preset for the floating toolbar position.
+  When provided, keeps the floating toolbar anchored to this preset and overrides saved toolbar placements.
 - `pageSessionKey?: string | null`
   Optional advanced override for note session scoping. Most apps do not need this.
 
 ### Behavior
 
 - `outputMode?: 'compact' | 'standard' | 'detailed' | 'forensic'`
-  Controls how much annotation context is copied.
+  When provided, controls the copy mode and overrides saved toolbar settings.
 - `pauseAnimations?: boolean`
-  Pauses host-page animations while the inspector is active.
+  When provided, controls animation pausing and overrides saved toolbar settings.
 - `clearOnCopy?: boolean`
-  Clears current page notes after a successful copy.
+  When provided, controls note clearing after copy and overrides saved toolbar settings.
 - `includeComponentContext?: boolean`
-  Includes component-chain context when available.
+  When provided, controls component-context capture and overrides saved toolbar settings.
 - `includeComputedStyles?: boolean`
-  Includes computed-style metadata when the output mode allows it.
+  When provided, controls computed-style capture and overrides saved toolbar settings.
 - `copyToClipboard?: boolean`
   Lets you intercept copy output without writing to the clipboard.
 

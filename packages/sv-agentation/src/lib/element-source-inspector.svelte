@@ -16,26 +16,41 @@
 	} from './utils/notes';
 	import { observePathnameChanges } from './internal/controller-browser';
 
-	let {
-		workspaceRoot = null,
-		pageSessionKey = null,
-		selector = null,
-		vscodeScheme = 'vscode',
-		openSourceOnClick = true,
-		deleteAllDelayMs = DEFAULT_DELETE_ALL_DELAY_MS,
-		toolbarPosition = DEFAULT_INSPECTOR_POSITION,
-		outputMode = DEFAULT_NOTES_SETTINGS.outputMode,
-		pauseAnimations = DEFAULT_NOTES_SETTINGS.pauseAnimations,
-		clearOnCopy = DEFAULT_NOTES_SETTINGS.clearOnCopy,
-		includeComponentContext = DEFAULT_NOTES_SETTINGS.includeComponentContext,
-		includeComputedStyles = DEFAULT_NOTES_SETTINGS.includeComputedStyles,
-		copyToClipboard = true,
-		onAnnotationAdd,
-		onAnnotationUpdate,
-		onAnnotationDelete,
-		onAnnotationsClear,
-		onCopy
-	}: InspectorProps = $props();
+	let rawProps: InspectorProps = $props();
+
+	const hasExplicitProp = <Key extends keyof InspectorProps>(key: Key) =>
+		Object.prototype.hasOwnProperty.call(rawProps, key);
+	const getControlledOptions = () => ({
+		toolbarPosition: hasExplicitProp('toolbarPosition'),
+		outputMode: hasExplicitProp('outputMode'),
+		pauseAnimations: hasExplicitProp('pauseAnimations'),
+		clearOnCopy: hasExplicitProp('clearOnCopy'),
+		includeComponentContext: hasExplicitProp('includeComponentContext'),
+		includeComputedStyles: hasExplicitProp('includeComputedStyles')
+	});
+	const getResolvedOptions = (resolvedPageSessionKey: string | null) => ({
+		workspaceRoot: rawProps.workspaceRoot ?? null,
+		pageSessionKey: resolvedPageSessionKey,
+		selector: rawProps.selector ?? null,
+		vscodeScheme: rawProps.vscodeScheme ?? 'vscode',
+		openSourceOnClick: rawProps.openSourceOnClick ?? true,
+		deleteAllDelayMs: rawProps.deleteAllDelayMs ?? DEFAULT_DELETE_ALL_DELAY_MS,
+		toolbarPosition: rawProps.toolbarPosition ?? DEFAULT_INSPECTOR_POSITION,
+		outputMode: rawProps.outputMode ?? DEFAULT_NOTES_SETTINGS.outputMode,
+		pauseAnimations: rawProps.pauseAnimations ?? DEFAULT_NOTES_SETTINGS.pauseAnimations,
+		clearOnCopy: rawProps.clearOnCopy ?? DEFAULT_NOTES_SETTINGS.clearOnCopy,
+		includeComponentContext:
+			rawProps.includeComponentContext ?? DEFAULT_NOTES_SETTINGS.includeComponentContext,
+		includeComputedStyles:
+			rawProps.includeComputedStyles ?? DEFAULT_NOTES_SETTINGS.includeComputedStyles,
+		copyToClipboard: rawProps.copyToClipboard ?? true,
+		onAnnotationAdd: rawProps.onAnnotationAdd,
+		onAnnotationUpdate: rawProps.onAnnotationUpdate,
+		onAnnotationDelete: rawProps.onAnnotationDelete,
+		onAnnotationsClear: rawProps.onAnnotationsClear,
+		onCopy: rawProps.onCopy,
+		controlled: getControlledOptions()
+	});
 
 	const controller = new CopyOpenController();
 	let autoPageSessionKey = $state<string | null>(null);
@@ -62,28 +77,9 @@
 		});
 	});
 
-	$effect(() => {
-		const effectivePageSessionKey = pageSessionKey ?? autoPageSessionKey;
-		const nextOptions = {
-			workspaceRoot,
-			pageSessionKey: effectivePageSessionKey,
-			selector,
-			vscodeScheme,
-			openSourceOnClick,
-			deleteAllDelayMs,
-			toolbarPosition,
-			outputMode,
-			pauseAnimations,
-			clearOnCopy,
-			includeComponentContext,
-			includeComputedStyles,
-			copyToClipboard,
-			onAnnotationAdd,
-			onAnnotationUpdate,
-			onAnnotationDelete,
-			onAnnotationsClear,
-			onCopy
-		};
+	$effect.pre(() => {
+		const effectivePageSessionKey = rawProps.pageSessionKey ?? autoPageSessionKey;
+		const nextOptions = getResolvedOptions(effectivePageSessionKey);
 
 		// This effect should react to incoming props only, not controller state read during sync.
 		untrack(() => controller.updateOptions(nextOptions));
@@ -117,10 +113,12 @@
 >
 	<InspectorTool
 		active={controller.enabled}
+		controlledOptions={controller.controlledOptions}
 		deleteAllState={controller.deleteAllState}
 		notes={controller.notes}
 		settings={controller.settings}
 		toolbar={controller.toolbar}
+		toolbarDragEnabled={!controller.controlledOptions.toolbarPosition}
 		onCloseToolbar={controller.closeToolbar}
 		onCopyNotes={controller.copyNotes}
 		onDeleteAll={controller.requestDeleteAll}

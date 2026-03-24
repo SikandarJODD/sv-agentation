@@ -4,6 +4,26 @@
 
 	const releases = [
 		{
+			version: '0.2.2',
+			date: 'March 24, 2026',
+			sections: [
+				{
+					label: 'Fixed',
+					items: [
+						'Made explicit behavior props authoritative over saved local state for toolbar position, output mode, pause animations, clear-on-copy, component context, and computed styles.',
+						'Fixed toolbarPosition so preset placement is applied correctly on mount and re-anchors correctly on window resize.'
+					]
+				},
+				{
+					label: 'Improved',
+					items: [
+						'Disabled conflicting toolbar settings when those behaviors are controlled by app props and surfaced clear controlled-by-prop hints in the UI.',
+						'Updated the playground app shell to mount Agentation with explicit controlled props for quick manual testing.'
+					]
+				}
+			]
+		},
+		{
 			version: '0.2.1',
 			date: 'March 17, 2026',
 			sections: [
@@ -122,13 +142,13 @@
 					</div>
 
 					<div class="release-body">
-						{#if release.version === '0.2.1'}
+						{#if release.version === '0.2.2'}
 							<p class="release-note">
 								<Highlight>Current patch</Highlight>
 								<span>
-									This release focuses on making <CodeSpan>Agentation</CodeSpan> easier to mount,
-									keeping route sessions isolated by default, and polishing the compact toolbar
-									settings surface.
+									This release focuses on making prop-driven behavior authoritative, fixing
+									toolbar preset placement on mount and resize, and making the playground easier
+									to verify by eye.
 								</span>
 							</p>
 						{/if}

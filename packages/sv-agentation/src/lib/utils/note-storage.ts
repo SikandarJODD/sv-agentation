@@ -24,6 +24,15 @@ const NOTES_STORAGE_PREFIX = `${STORAGE_PREFIX}:notes:v1:`;
 const TOOLBAR_STORAGE_PREFIX = `${STORAGE_PREFIX}:toolbar:v1:`;
 
 const OUTPUT_MODES: OutputMode[] = ['compact', 'standard', 'detailed', 'forensic'];
+type PersistedSettings = Pick<
+	NotesSettings,
+	| 'blockPageInteractions'
+	| 'outputMode'
+	| 'pauseAnimations'
+	| 'clearOnCopy'
+	| 'includeComponentContext'
+	| 'includeComputedStyles'
+>;
 
 const isToolbarCoordinates = (value: unknown): value is ToolbarCoordinates => {
 	if (!value || typeof value !== 'object') return false;
@@ -107,7 +116,7 @@ export const writeStoredMarkerColor = (markerColor: string) => {
 };
 
 export const readStoredSettings = (defaults: NotesSettings = DEFAULT_NOTES_SETTINGS) => {
-	const storedSettings = readStoredJson<Partial<NotesSettings>>(SETTINGS_STORAGE_KEY);
+	const storedSettings = readStoredJson<Partial<PersistedSettings>>(SETTINGS_STORAGE_KEY);
 	if (!storedSettings) return defaults;
 
 	return {
@@ -139,15 +148,30 @@ export const readStoredSettings = (defaults: NotesSettings = DEFAULT_NOTES_SETTI
 	} satisfies NotesSettings;
 };
 
-export const writeStoredSettings = (settings: NotesSettings) => {
+export const writeStoredSettings = (
+	settings: NotesSettings,
+	options?: {
+		skipKeys?: (keyof PersistedSettings)[];
+	}
+) => {
+	const skipKeys = new Set(options?.skipKeys ?? []);
+	const storedSettings = readStoredJson<Partial<PersistedSettings>>(SETTINGS_STORAGE_KEY) ?? {};
 	writeStoredJson(SETTINGS_STORAGE_KEY, {
-		blockPageInteractions: settings.blockPageInteractions,
-		outputMode: settings.outputMode,
-		pauseAnimations: settings.pauseAnimations,
-		clearOnCopy: settings.clearOnCopy,
-		includeComponentContext: settings.includeComponentContext,
-		includeComputedStyles: settings.includeComputedStyles
-	});
+		blockPageInteractions: skipKeys.has('blockPageInteractions')
+			? storedSettings.blockPageInteractions
+			: settings.blockPageInteractions,
+		outputMode: skipKeys.has('outputMode') ? storedSettings.outputMode : settings.outputMode,
+		pauseAnimations: skipKeys.has('pauseAnimations')
+			? storedSettings.pauseAnimations
+			: settings.pauseAnimations,
+		clearOnCopy: skipKeys.has('clearOnCopy') ? storedSettings.clearOnCopy : settings.clearOnCopy,
+		includeComponentContext: skipKeys.has('includeComponentContext')
+			? storedSettings.includeComponentContext
+			: settings.includeComponentContext,
+		includeComputedStyles: skipKeys.has('includeComputedStyles')
+			? storedSettings.includeComputedStyles
+			: settings.includeComputedStyles
+	} satisfies Partial<PersistedSettings>);
 };
 
 const isAnnotationCapture = (value: unknown): value is AnnotationCapture => {

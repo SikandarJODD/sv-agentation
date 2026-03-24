@@ -79,6 +79,24 @@
   <Agentation {workspaceRoot} />
 {/if}`;
 
+	const propsPlaygroundSnippet = `<script lang="ts">
+  import { browser, dev } from '$app/environment';
+  import { Agentation, type AgentationInspectorProps } from 'sv-agentation';
+
+  let playgroundAgentationProps: AgentationInspectorProps = {
+    toolbarPosition: 'top-left',
+    outputMode: 'compact',
+    pauseAnimations: true,
+    clearOnCopy: true,
+    includeComponentContext: false,
+    includeComputedStyles: false
+  };
+<\/script>
+
+{#if browser && dev}
+  <Agentation {...playgroundAgentationProps} />
+{/if}`;
+
 	const behaviorSnippet = `<Agentation
   {workspaceRoot}
   outputMode="detailed"
@@ -190,7 +208,7 @@ Use this example:
 		{
 			name: 'toolbarPosition',
 			type: "'top-left' | 'top-center' | 'top-right' | 'mid-right' | 'mid-left' | 'bottom-left' | 'bottom-center' | 'bottom-right'",
-			description: 'Initial preset for the floating toolbar position.'
+			description: 'When provided, keeps the toolbar anchored to this preset and overrides saved toolbar placements.'
 		},
 		{
 			name: 'pageSessionKey',
@@ -203,27 +221,27 @@ Use this example:
 		{
 			name: 'outputMode',
 			type: "'compact' | 'standard' | 'detailed' | 'forensic'",
-			description: 'Controls how much annotation context is copied.'
+			description: 'When provided, controls the copy mode and overrides saved toolbar settings.'
 		},
 		{
 			name: 'pauseAnimations',
 			type: 'boolean',
-			description: 'Pauses host-page animations while the inspector is active.'
+			description: 'When provided, controls animation pausing and overrides saved toolbar settings.'
 		},
 		{
 			name: 'clearOnCopy',
 			type: 'boolean',
-			description: 'Clears current page notes after a successful copy.'
+			description: 'When provided, controls note clearing after copy and overrides saved toolbar settings.'
 		},
 		{
 			name: 'includeComponentContext',
 			type: 'boolean',
-			description: 'Includes component-chain context when available.'
+			description: 'When provided, controls component-context capture and overrides saved toolbar settings.'
 		},
 		{
 			name: 'includeComputedStyles',
 			type: 'boolean',
-			description: 'Includes computed-style metadata when the output mode allows it.'
+			description: 'When provided, controls computed-style capture and overrides saved toolbar settings.'
 		},
 		{
 			name: 'copyToClipboard',
@@ -261,6 +279,11 @@ Use this example:
 	];
 
 	const examples = [
+		{
+			title: 'Typed prop-driven mount',
+			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit props stay in charge of toolbar behavior.',
+			code: propsPlaygroundSnippet
+		},
 		{
 			title: 'Behavior controls',
 			copy: 'Set a default output mode, pause animations, and keep component context enabled for richer local reviews.',
@@ -310,7 +333,7 @@ Use this example:
 		{
 			key: 'r',
 			label: 'Reset toolbar position',
-			description: 'Move the floating toolbar back to its default bottom-right placement.'
+			description: 'Move the floating toolbar back to the explicit prop value, or to bottom-right when uncontrolled.'
 		},
 		{
 			key: 'o',
@@ -354,7 +377,7 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							v0.2.1
+							v0.2.2
 						</Badge>
 					</div>
 					<Paragraph
@@ -496,56 +519,6 @@ Use this example:
 
 		<Divider class="my-8" />
 
-		<section aria-labelledby="props-title" class="flex flex-col">
-			<H2 id="props-title" class="text-[1.2rem]">Props</H2>
-			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				The public API now covers copy modes, route-aware sessions, and local callbacks without
-				pushing routing work onto the host app.
-			</Paragraph>
-			<div class="mt-3 grid gap-8">
-				{#each propGroups as group}
-					<div class="grid gap-3">
-						<div class="grid gap-1">
-							<h3 class="text-sm font-medium text-foreground">{group.title}</h3>
-							<p class="text-sm leading-6 text-muted-foreground">{group.description}</p>
-						</div>
-						<Table class="text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
-							<Thead>
-								<Tr class="border-b border-border">
-									<Th>Prop</Th>
-									<Th>Type</Th>
-									<Th>Description</Th>
-								</Tr>
-							</Thead>
-							<Tbody>
-								{#each group.rows as prop}
-									<Tr class="border-b border-border last:border-b-0">
-										<Td>
-											<CodeSpan
-												class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground"
-											>
-												{prop.name}
-											</CodeSpan>
-										</Td>
-										<Td>
-											<CodeSpan
-												class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
-											>
-												{prop.type}
-											</CodeSpan>
-										</Td>
-										<Td>{prop.description}</Td>
-									</Tr>
-								{/each}
-							</Tbody>
-						</Table>
-					</div>
-				{/each}
-			</div>
-		</section>
-
-		<Divider class="my-8" />
-
 		<section aria-labelledby="examples-title" class="flex flex-col">
 			<H2 id="examples-title" class="text-[1.2rem]">Examples</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
@@ -606,6 +579,56 @@ Use this example:
 					{/each}
 				</Tbody>
 			</Table>
+		</section>
+
+		<Divider class="my-8" />
+
+		<section aria-labelledby="props-title" class="flex flex-col">
+			<H2 id="props-title" class="text-[1.2rem]">Props</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				After the examples, this is the full prop reference for copy modes, route-aware sessions,
+				and local callbacks.
+			</Paragraph>
+			<div class="mt-3 grid gap-8">
+				{#each propGroups as group}
+					<div class="grid gap-3">
+						<div class="grid gap-1">
+							<h3 class="text-sm font-medium text-foreground">{group.title}</h3>
+							<p class="text-sm leading-6 text-muted-foreground">{group.description}</p>
+						</div>
+						<Table class="text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+							<Thead>
+								<Tr class="border-b border-border">
+									<Th>Prop</Th>
+									<Th>Type</Th>
+									<Th>Description</Th>
+								</Tr>
+							</Thead>
+							<Tbody>
+								{#each group.rows as prop}
+									<Tr class="border-b border-border last:border-b-0">
+										<Td>
+											<CodeSpan
+												class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground"
+											>
+												{prop.name}
+											</CodeSpan>
+										</Td>
+										<Td>
+											<CodeSpan
+												class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
+											>
+												{prop.type}
+											</CodeSpan>
+										</Td>
+										<Td>{prop.description}</Td>
+									</Tr>
+								{/each}
+							</Tbody>
+						</Table>
+					</div>
+				{/each}
+			</div>
 		</section>
 
 		<Divider class="my-8" />

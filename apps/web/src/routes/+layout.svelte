@@ -2,10 +2,18 @@
 	import './layout.css';
 	import { browser, dev } from '$app/environment';
 	import { ModeWatcher } from 'mode-watcher';
-	import { Agentation } from 'sv-agentation';
+	import { Agentation, type AgentationInspectorProps } from 'sv-agentation';
 	import { asset } from '$app/paths';
 
-	const workspaceRoot = 's:/advance_svelte/exp/svelte-learning/apps/web';
+	let workspaceRoot = 's:/advance_svelte/exp/svelte-learning/apps/web';
+	let playgroundAgentationProps: AgentationInspectorProps = {
+		toolbarPosition: 'top-left',
+		outputMode: 'compact',
+		pauseAnimations: true,
+		clearOnCopy: true,
+		includeComponentContext: false,
+		includeComputedStyles: false
+	};
 
 	let { children } = $props();
 </script>
@@ -16,5 +24,5 @@
 {@render children()}
 
 {#if browser && dev}
-	<Agentation {workspaceRoot} />
+	<Agentation {workspaceRoot} {...playgroundAgentationProps} />
 {/if}

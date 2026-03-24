@@ -103,12 +103,12 @@ inspect / select
 | `vscodeScheme` | `'vscode' \| 'vscode-insiders'` | Choose the VS Code URL scheme for open-in-editor actions. |
 | `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
 | `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
-| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | Initial preset for the floating toolbar position. |
-| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | Initial copy/export mode for note output. |
-| `pauseAnimations` | `boolean` | Start with page animations paused while the inspector is active. |
-| `clearOnCopy` | `boolean` | Clear saved notes after a successful copy action. |
-| `includeComponentContext` | `boolean` | Include captured component ancestry in copied output. |
-| `includeComputedStyles` | `boolean` | Include computed styles in forensic output payloads. |
+| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | When provided, keeps the floating toolbar anchored to this preset and overrides saved toolbar placements. |
+| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | When provided, controls the copy/export mode and overrides saved toolbar settings. |
+| `pauseAnimations` | `boolean` | When provided, controls animation pausing while the inspector is active and overrides saved toolbar settings. |
+| `clearOnCopy` | `boolean` | When provided, controls whether copied notes are cleared and overrides saved toolbar settings. |
+| `includeComponentContext` | `boolean` | When provided, controls component-context capture and overrides saved toolbar settings. |
+| `includeComputedStyles` | `boolean` | When provided, controls computed-style capture and overrides saved toolbar settings. |
 | `copyToClipboard` | `boolean` | Disable direct clipboard writes and use callbacks only. |
 | `onAnnotationAdd` | `(annotation) => void` | Called after a note is created. |
 | `onAnnotationUpdate` | `(annotation) => void` | Called after a note is updated. |
@@ -122,7 +122,7 @@ inspect / select
 | --- | --- | --- |
 | `i` | Toggle inspector | Open or close the inspector toolbar and annotation mode. |
 | `c` | Copy all notes | Copy notes as Markdown when at least one note exists. |
-| `r` | Reset toolbar position | Move the floating toolbar back to its default bottom-right placement. |
+| `r` | Reset toolbar position | Move the floating toolbar back to the explicit prop value, or to bottom-right when uncontrolled. |
 | `o` | Open source | Open the currently hovered source location when the inspector is active. |
 | `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
 | `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |

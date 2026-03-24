@@ -21,6 +21,7 @@
 		deleteAllState,
 		notes,
 		toolbar,
+		toolbarDragEnabled,
 		onCloseToolbar,
 		onCopyNotes,
 		onDeleteAll,
@@ -31,6 +32,7 @@
 	}: InspectorToolbarActionsProps = $props();
 
 	const handleSurfacePointerDown = (event: PointerEvent) => {
+		if (!toolbarDragEnabled) return;
 		const target = event.target;
 		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
 		onToolbarPointerDown(event);
@@ -66,6 +68,7 @@
 <!-- Ignore: the shell only handles drag affordance around focusable children. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+	class:drag-enabled={toolbarDragEnabled}
 	class="toolbar-shell"
 	data-inspector-ui
 	in:slide={toolbarTransition}
@@ -192,7 +195,11 @@
 		pointer-events: auto;
 	}
 
-	.toolbar-shell:active {
+	.toolbar-shell.drag-enabled {
+		cursor: grab;
+	}
+
+	.toolbar-shell.drag-enabled:active {
 		cursor: grabbing;
 	}
 
