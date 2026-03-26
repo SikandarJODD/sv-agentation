@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, untrack } from 'svelte';
 
-	import { CopyOpenController } from './copy-open.svelte';
+	import { CopyOpenController } from './copy-open.svelte.ts';
 	import InspectorTool from './components/inspector-tool.svelte';
 	import HoverCard from './components/hover-card.svelte';
 	import NoteComposer from './components/note-composer.svelte';
@@ -229,7 +229,7 @@
 		--inspector-divider: rgba(255, 255, 255, 0.1);
 		--inspector-text-primary: rgba(255, 255, 255, 0.94);
 		--inspector-text-secondary: rgba(255, 255, 255, 0.78);
-		--inspector-text-muted: rgba(255, 255, 255, 0.56);
+		--inspector-text-muted: rgba(255, 255, 255, 0.80);
 		--inspector-text-subtle: rgba(255, 255, 255, 0.35);
 		--inspector-toolbar-hover: rgba(255, 255, 255, 0.06);
 		--inspector-surface-soft: rgba(255, 255, 255, 0.03);
@@ -241,7 +241,7 @@
 		--inspector-shadow-composer: 0 18px 34px rgba(0, 0, 0, 0.2), 0 10px 18px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-overlay: 0 12px 22px rgba(0, 0, 0, 0.14);
 		--inspector-shadow-marker: 0 4px 10px rgba(0, 0, 0, 0.08);
-		--inspector-marker-border: rgba(255, 255, 255, 0.92);
+		--inspector-marker-border: rgba(255, 255, 255, 0.52);
 		--inspector-checkbox-border: rgba(255, 255, 255, 0.18);
 		--inspector-checkbox-bg: rgba(255, 255, 255, 0.03);
 		--inspector-checkbox-checked-bg: rgba(255, 255, 255, 0.94);
@@ -249,11 +249,11 @@
 	}
 
 	.inspector-root.theme-light {
-		--inspector-toolbar-surface: rgba(255, 255, 255, 0.98);
-		--inspector-panel-surface: rgba(247, 246, 242, 0.98);
-		--inspector-overlay-surface: rgba(255, 255, 255, 0.98);
+		--inspector-toolbar-surface: rgba(255, 255, 255, 1);
+		--inspector-panel-surface: rgba(255, 255, 255, 1);
+		--inspector-overlay-surface: rgba(255, 255, 255, 0.99);
 		--inspector-composer-surface: rgba(255, 255, 255, 0.985);
-		--inspector-input-surface: rgba(242, 241, 237, 1);
+		--inspector-input-surface: rgba(248, 250, 252, 1);
 		--inspector-composer-input-surface: rgba(255, 255, 255, 1);
 		--inspector-border: rgba(15, 23, 42, 0.08);
 		--inspector-composer-border: rgba(15, 23, 42, 0.12);

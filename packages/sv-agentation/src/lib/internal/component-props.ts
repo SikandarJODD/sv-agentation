@@ -71,26 +71,21 @@ export interface InspectorToolbarActionsProps {
 	deleteAllState: DeleteAllState;
 	notes: InspectorNote[];
 	toolbar: ToolbarState;
-	toolbarDragEnabled: boolean;
 	onCloseToolbar: () => void;
 	onCopyNotes: () => Promise<boolean>;
 	onDeleteAll: () => void;
 	onToggle: () => void;
 	onToggleNotesVisibility: () => void;
 	onToggleSettings: () => void;
-	onToolbarPointerDown: (event: PointerEvent) => void;
 }
 
 export interface InspectorToolbarLauncherProps {
 	notes: InspectorNote[];
-	toolbarDragEnabled: boolean;
 	onToggleToolbar: () => void;
-	onToolbarPointerDown: (event: PointerEvent) => void;
 }
 
 export interface InspectorToolbarSettingsProps {
 	settings: NotesSettings;
-	toolbar: ToolbarState;
 	toolbarPosition: InspectorPosition;
 	onSetBlockPageInteractions: (value: boolean) => void;
 	onSetClearOnCopy: (value: boolean) => void;

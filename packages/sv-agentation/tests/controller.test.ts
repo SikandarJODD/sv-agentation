@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CopyOpenController } from '../src/lib/copy-open.svelte';
 import {
 	buildComposerState,
+	COLLAPSED_TOOLBAR_SIZE,
 	createEmptySourceInfo,
 	DEFAULT_NOTES_SETTINGS,
+	EXPANDED_TOOLBAR_WIDTH,
 	getPageStorageKey,
 	readStoredNotes,
 	readStoredSettings,
@@ -25,6 +27,25 @@ const setViewport = (width: number, height: number) => {
 		configurable: true,
 		value: height
 	});
+};
+
+const createToolbarHandle = (width: number, height: number) => {
+	const toolbarHandle = document.createElement('div');
+	Object.defineProperty(toolbarHandle, 'getBoundingClientRect', {
+		value: () => ({
+			width,
+			height,
+			left: 0,
+			top: 0,
+			right: width,
+			bottom: height,
+			x: 0,
+			y: 0,
+			toJSON: () => ({})
+		})
+	});
+
+	return toolbarHandle;
 };
 
 describe('CopyOpenController', () => {
@@ -311,7 +332,7 @@ describe('CopyOpenController', () => {
 		});
 
 		expect(controller.toolbarPositionPreset).toBe('bottom-left');
-		expect(controller.toolbar.position).toEqual({ x: 8, y: 660 });
+		expect(controller.toolbar.position).toEqual({ x: 8, y: 666 });
 		expect(controller.settings).toMatchObject({
 			outputMode: 'compact',
 			pauseAnimations: true,
@@ -357,7 +378,7 @@ describe('CopyOpenController', () => {
 			}
 		};
 		controller.resetToolbarPosition();
-		expect(controller.toolbar.position).toEqual({ x: 8, y: 660 });
+		expect(controller.toolbar.position).toEqual({ x: 8, y: 666 });
 
 		controller.setBlockPageInteractions(false);
 		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS)).toMatchObject({
@@ -392,7 +413,9 @@ describe('CopyOpenController', () => {
 		controller.resetToolbarPosition();
 
 		expect(controller.toolbarPositionPreset).toBe('bottom-left');
-		expect(controller.toolbar.position).toEqual(getToolbarCoordinatesForPreset('bottom-left', false));
+		expect(controller.toolbar.position).toEqual(
+			getToolbarCoordinatesForPreset('bottom-left', false)
+		);
 
 		controller.syncPersistedProps({});
 		controller.toolbar = {
@@ -405,7 +428,9 @@ describe('CopyOpenController', () => {
 		controller.resetToolbarPosition();
 
 		expect(controller.toolbarPositionPreset).toBe('bottom-left');
-		expect(controller.toolbar.position).toEqual(getToolbarCoordinatesForPreset('bottom-left', false));
+		expect(controller.toolbar.position).toEqual(
+			getToolbarCoordinatesForPreset('bottom-left', false)
+		);
 		controller.destroy();
 	});
 
@@ -415,12 +440,98 @@ describe('CopyOpenController', () => {
 			toolbarPosition: 'bottom-right'
 		});
 
-		expect(controller.toolbar.position).toEqual({ x: 1210, y: 660 });
+		expect(controller.toolbar.position).toEqual({ x: 1216, y: 666 });
 
 		setViewport(960, 540);
 		controller.handleViewportChange();
 
-		expect(controller.toolbar.position).toEqual({ x: 890, y: 480 });
+		expect(controller.toolbar.position).toEqual({ x: 896, y: 486 });
 		controller.destroy();
+	});
+
+	it('preserves preset anchors when toggling the toolbar open and closed', () => {
+		const controller = new CopyOpenController();
+		const scenarios = [
+			{
+				position: 'bottom-left' as const,
+				measure: (x: number, expanded: boolean) => x
+			},
+			{
+				position: 'bottom-center' as const,
+				measure: (x: number, expanded: boolean) =>
+					x + (expanded ? EXPANDED_TOOLBAR_WIDTH : COLLAPSED_TOOLBAR_SIZE) / 2
+			},
+			{
+				position: 'bottom-right' as const,
+				measure: (x: number, expanded: boolean) =>
+					x + (expanded ? EXPANDED_TOOLBAR_WIDTH : COLLAPSED_TOOLBAR_SIZE)
+			}
+		];
+
+		for (const scenario of scenarios) {
+			controller.syncPersistedProps({
+				toolbarPosition: scenario.position
+			});
+
+			const collapsedPosition = { ...controller.toolbar.position };
+			const collapsedAnchor = scenario.measure(collapsedPosition.x, false);
+
+			controller.toggleToolbar();
+			expect(scenario.measure(controller.toolbar.position.x, true)).toBe(collapsedAnchor);
+
+			controller.closeToolbar();
+			expect(controller.toolbar.position).toEqual(collapsedPosition);
+		}
+
+		controller.destroy();
+	});
+
+	it('supports dragging the toolbar in both collapsed and expanded states', async () => {
+		const collapsedController = new CopyOpenController();
+		const collapsedHandle = createToolbarHandle(COLLAPSED_TOOLBAR_SIZE, COLLAPSED_TOOLBAR_SIZE);
+
+		collapsedController.handleToolbarPointerDown({
+			button: 0,
+			pointerId: 1,
+			clientX: collapsedController.toolbar.position.x + 26,
+			clientY: collapsedController.toolbar.position.y + 26,
+			currentTarget: collapsedHandle,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		await collapsedController.handlePointerMove({
+			pointerId: 1,
+			clientX: 400,
+			clientY: 300
+		} as PointerEvent);
+		expect(collapsedController.toolbar.position).toEqual({ x: 374, y: 274 });
+		collapsedController.handlePointerUp({
+			pointerId: 1
+		} as PointerEvent);
+		expect(collapsedController.toolbar.dragging).toBe(false);
+		collapsedController.destroy();
+
+		const expandedController = new CopyOpenController();
+		expandedController.toggleToolbar();
+		const expandedHandle = createToolbarHandle(EXPANDED_TOOLBAR_WIDTH, COLLAPSED_TOOLBAR_SIZE);
+
+		expandedController.handleToolbarPointerDown({
+			button: 0,
+			pointerId: 2,
+			clientX: expandedController.toolbar.position.x + EXPANDED_TOOLBAR_WIDTH / 2,
+			clientY: expandedController.toolbar.position.y + 26,
+			currentTarget: expandedHandle,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		await expandedController.handlePointerMove({
+			pointerId: 2,
+			clientX: 600,
+			clientY: 320
+		} as PointerEvent);
+		expect(expandedController.toolbar.position).toEqual({ x: 467, y: 294 });
+		expandedController.handlePointerUp({
+			pointerId: 2
+		} as PointerEvent);
+		expect(expandedController.toolbar.dragging).toBe(false);
+		expandedController.destroy();
 	});
 });

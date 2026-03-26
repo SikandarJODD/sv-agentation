@@ -1,128 +1,91 @@
 <script lang="ts">
 	import { MetaTags, type MetaTagsProps } from 'svelte-meta-tags';
-	import { Highlight, Link } from '$lib/components/markdown';
+	import { Link } from '$lib/components/markdown';
 
 	const releases = [
 		{
+			version: '0.2.5',
+			date: 'March 26, 2026',
+			notes: [
+				'Hovering a saved note now previews the exact target area with outline and highlight overlays.',
+				'Marker icons reset more cleanly after save and cancel.',
+				'Add, save, cancel, and delete flows now close with smoother fade-out motion.'
+			]
+		},
+		{
+			version: '0.2.4',
+			date: 'March 26, 2026',
+			notes: [
+				'Toolbar open and close transitions are smoother and stay anchored during width changes.',
+				'The floating settings layout was simplified and made more stable.',
+				'Toolbar internals and controller updates were cleaned up to remove redundant code.'
+			]
+		},
+		{
 			version: '0.2.3',
 			date: 'March 26, 2026',
-			sections: [
-				{
-					label: 'Fixed',
-					items: [
-						'Persisted props now sync into local storage without permanently locking the toolbar UI.',
-						'Parent rerenders with the same prop values no longer overwrite user changes or trigger effect loops.'
-					]
-				},
-				{
-					label: 'Updated',
-					items: [
-						'Removed the old controlled-prop badges and disabled settings states.',
-						'Reset now returns to the latest explicit prop value, saved placement, or package default.'
-					]
-				}
+			notes: [
+				'Persisted props now sync into local storage without locking the toolbar UI.',
+				'Repeated parent rerenders no longer overwrite user changes.'
 			]
 		},
 		{
 			version: '0.2.2',
 			date: 'March 24, 2026',
-			sections: [
-				{
-					label: 'Fixed',
-					items: [
-						'Props now override saved toolbar settings when you pass them in.',
-						'Toolbar position now loads in the right place and stays correct after resize.'
-					]
-				},
-				{
-					label: 'Updated',
-					items: [
-						'Controlled settings are now disabled in the toolbar and clearly marked.',
-						'The playground now mounts Agentation with test props so the behavior is easy to check.'
-					]
-				}
+			notes: [
+				'Explicit props now override saved toolbar settings correctly.',
+				'Toolbar position now stays correct after load and resize.'
 			]
 		},
 		{
 			version: '0.2.1',
 			date: 'March 17, 2026',
-			sections: [
-				{
-					label: 'Updated',
-					items: [
-						'Notes now stay separate for each route automatically.',
-						'The floating settings panel became smaller and easier to use.',
-						'Source links in the demo app now open from the correct workspace.'
-					]
-				},
-				{
-					label: 'Added',
-					items: [
-						'Added route tracking for note sessions by default.',
-						'Added tests for route changes and note marker visibility.'
-					]
-				}
+			notes: [
+				'Notes now stay separate for each route automatically.',
+				'The settings panel became smaller and easier to use.',
+				'Source links in the demo app now open from the right workspace.'
 			]
 		},
 		{
 			version: '0.2.0',
 			date: 'March 17, 2026',
-			sections: [
-				{
-					label: 'Added',
-					items: [
-						'Added compact, standard, detailed, and forensic output modes.',
-						'Added more page context, component context, and computed style data to saved notes.',
-						'Added settings and callbacks for local integrations.'
-					]
-				}
+			notes: [
+				'Added compact, standard, detailed, and forensic output modes.',
+				'Added more page context, component context, and computed style capture.',
+				'Added settings and local lifecycle callbacks.'
 			]
 		},
 		{
 			version: '0.1.0',
 			date: 'March 17, 2026',
-			sections: [
-				{
-					label: 'Updated',
-					items: [
-						'Split the package into smaller controller, utility, and UI files.',
-						'Added docs and the first round of package tests.'
-					]
-				},
-				{
-					label: 'Removed',
-					items: ['Removed old pre-release storage compatibility code.']
-				}
+			notes: [
+				'Split the package into smaller controller, utility, and UI files.',
+				'Added docs and the first round of package tests.'
 			]
 		},
 		{
 			version: '0.0.1',
 			date: 'March 15, 2026',
-			sections: [
-				{
-					label: 'Initial',
-					items: ['First release with source inspection, notes, and markdown copy.']
-				}
-			]
+			notes: ['First release with source inspection, notes, and markdown copy.']
 		}
 	];
 
 	const siteUrl = 'https://sv-agentation.com';
 	const metaTags: MetaTagsProps = {
-		title: 'Changelog • Svelte Agentation',
-		description: 'Release history for Svelte Agentation.',
+		title: 'Changelog | Svelte Agentation',
+		description: 'Simple release notes for Svelte Agentation.',
 		canonical: `${siteUrl}/changelog`,
 		openGraph: {
 			type: 'website',
 			url: `${siteUrl}/changelog`,
-			title: 'Changelog • Svelte Agentation',
-			description: 'Release history for Svelte Agentation.',
+			title: 'Changelog | Svelte Agentation',
+			description: 'Simple release notes for Svelte Agentation.',
 			siteName: 'Svelte Agentation'
 		},
 		twitter: {
 			cardType: 'summary',
-			title: 'Changelog • Svelte Agentation',
-			description: 'Release history for Svelte Agentation.'
+			title: 'Changelog | Svelte Agentation',
+			description: 'Simple release notes for Svelte Agentation.'
 		}
 	};
 </script>
@@ -130,149 +93,30 @@
 <MetaTags {...metaTags} />
 
 <main class="min-h-screen bg-background px-5 py-10 text-foreground sm:px-6 sm:py-12">
-	<div class="mx-auto w-full max-w-[44rem]">
+	<div class="mx-auto w-full max-w-3xl">
 		<header class="space-y-2">
-			<h1 class="font-serif text-[2.1rem] tracking-tight text-foreground sm:text-[2.35rem]">
+			<h1 class="text-[2rem] font-semibold tracking-tight text-foreground sm:text-[2.2rem]">
 				Changelog
 			</h1>
-			<p class="text-[1rem] text-muted-foreground">Short notes for each release.</p>
-			<div class="pt-1">
-				<Link class="text-sm" href="/">Back to home</Link>
-			</div>
+			<p class="text-sm text-muted-foreground">Simple release notes for each version.</p>
+			<Link class="text-sm" href="/">Back to home</Link>
 		</header>
 
-		<section class="mt-12">
-			{#each releases as release, index}
-				<article class:entry-spaced={index > 0} class="release-entry">
-					<div class="release-head">
-						<div class="release-meta">
-							<span class="release-version">{release.version}</span>
-							<span class="release-date">{release.date}</span>
-						</div>
-						<div class="release-rule"></div>
+		<div class="mt-8 grid gap-4">
+			{#each releases as release}
+				<article class="rounded-2xl border border-border bg-card/30 p-5">
+					<div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+						<h2 class="text-lg font-semibold text-foreground">{release.version}</h2>
+						<p class="text-sm text-muted-foreground">{release.date}</p>
 					</div>
 
-					<div class="release-body">
-						{#if release.version === '0.2.3'}
-							<p class="release-note">
-								<Highlight>Current patch</Highlight>
-								<span>Props now resync cleanly with saved state while keeping the toolbar editable.</span>
-							</p>
-						{/if}
-
-						{#each release.sections as section}
-							<section class="section-block">
-								<h2 class="section-label">{section.label}</h2>
-								<ul class="section-list">
-									{#each section.items as item}
-										<li>{item}</li>
-									{/each}
-								</ul>
-							</section>
+					<ul class="mt-4 grid gap-2 pl-5 text-sm leading-6 text-muted-foreground">
+						{#each release.notes as note}
+							<li>{note}</li>
 						{/each}
-					</div>
+					</ul>
 				</article>
 			{/each}
-		</section>
+		</div>
 	</div>
 </main>
-
-<style>
-	.release-entry {
-		display: grid;
-		gap: 1.2rem;
-	}
-
-	.release-entry.entry-spaced {
-		margin-top: 3rem;
-	}
-
-	.release-head {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.release-meta {
-		display: inline-flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.8rem;
-	}
-
-	.release-version {
-		font-size: 1.5rem;
-		font-weight: 700;
-		letter-spacing: -0.03em;
-	}
-
-	.release-date {
-		font-size: 1rem;
-		color: var(--color-muted-foreground);
-	}
-
-	.release-rule {
-		height: 1px;
-		background: var(--color-border);
-	}
-
-	.release-body {
-		display: grid;
-		gap: 1.25rem;
-	}
-
-	.release-note {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.55rem;
-		margin: 0;
-		color: var(--color-muted-foreground);
-		font-size: 0.98rem;
-		line-height: 1.65;
-	}
-
-	.section-block {
-		display: grid;
-		gap: 0.55rem;
-	}
-
-	.section-label {
-		font-size: 0.82rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		color: var(--color-muted-foreground);
-	}
-
-	.section-list {
-		display: grid;
-		gap: 0.55rem;
-		margin: 0;
-		padding-left: 1.15rem;
-		color: var(--color-foreground);
-		font-size: 1.02rem;
-		line-height: 1.65;
-	}
-
-	.section-list li {
-		/* color: color-mix(in srgb, var(--color-muted-foreground) 72%, transparent); */
-		font-size: 0.96rem;
-		font-weight: 400;
-		/* color: var(--color-muted-foreground) */
-	}
-	.section-list li::marker {
-		color: color-mix(in srgb, var(--color-muted-foreground) 72%, transparent);
-	}
-
-	@media (max-width: 640px) {
-		.release-head {
-			grid-template-columns: 1fr;
-			gap: 0.75rem;
-		}
-
-		.release-version {
-			font-size: 1.45rem;
-		}
-	}
-</style>
