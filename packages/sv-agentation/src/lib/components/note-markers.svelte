@@ -22,10 +22,19 @@
 	};
 
 	const setHoveredNote = (noteId: string | null) => {
+		if (composerNoteId !== null && noteId !== null) {
+			return;
+		}
+
 		hoveredNoteId = noteId;
 	};
 
-	const isEditingNote = (noteId: string) => composerNoteId === noteId;
+	const showEditIcon = (noteId: string) =>
+		composerNoteId === noteId || (composerNoteId === null && hoveredNoteId === noteId);
+	const showHoverPreview = (noteId: string) =>
+		visible && composerNoteId === null && hoveredNoteId === noteId;
+	const getHoverOutlineClass = (note: NoteMarkersProps['notes'][number]) =>
+		note.kind === 'group' || note.kind === 'area' ? 'hover-outline dashed' : 'hover-outline solid';
 
 	const getPreviewStyle = (note: NoteMarkersProps['notes'][number]) => {
 		if (!note.position || typeof window === 'undefined') {
@@ -64,6 +73,7 @@
 			aria-label={`Open note ${index + 1}`}
 			class:active-marker={activeNoteId === note.id}
 			class:group-marker={note.kind === 'group' || note.kind === 'area'}
+			class:hovered-marker={hoveredNoteId === note.id}
 			class:marker-hidden={!visible}
 			class:unresolved-marker={note.resolution === 'unresolved'}
 			class="marker"
@@ -76,18 +86,17 @@
 			onmouseleave={() => setHoveredNote(null)}
 			onfocus={() => setHoveredNote(note.id)}
 			onblur={() => setHoveredNote(null)}
-			in:scale={markerEnter}
-			out:scale={markerExit}
+			in:scale|global={markerEnter}
+			out:scale|global={markerExit}
 		>
 			<span class="marker-content" data-inspector-ui>
-				{#key `${note.id}:${isEditingNote(note.id) ? 'edit' : 'count'}`}
+				{#key `${note.id}:${showEditIcon(note.id) ? 'edit' : 'count'}`}
 					<span
 						class="marker-value"
 						data-inspector-ui
-						in:fade={{ duration: 120 }}
-						out:fade={{ duration: 90 }}
+						in:scale|global={{ duration: 200, start: 0.80 }}
 					>
-						{#if isEditingNote(note.id)}
+						{#if showEditIcon(note.id)}
 							<PenLine size={11} />
 						{:else}
 							<span>{index + 1}</span>
@@ -97,7 +106,29 @@
 			</span>
 		</button>
 
-		{#if visible && hoveredNoteId === note.id}
+		{#if showHoverPreview(note.id)}
+			{#each note.position.outlineRects as rect, outlineIndex (`hover-outline-${note.id}-${outlineIndex}`)}
+				<div
+					aria-hidden="true"
+					class={getHoverOutlineClass(note)}
+					data-inspector-ui
+					style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;`}
+					in:fade={{ duration: 120 }}
+					out:fade={{ duration: 90 }}
+				></div>
+			{/each}
+
+			{#each note.position.highlightRects as rect, highlightIndex (`hover-highlight-${note.id}-${highlightIndex}`)}
+				<div
+					aria-hidden="true"
+					class="hover-highlight-rect"
+					data-inspector-ui
+					style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;`}
+					in:fade={{ duration: 120 }}
+					out:fade={{ duration: 90 }}
+				></div>
+			{/each}
+
 			<div
 				class="note-preview"
 				data-inspector-ui
@@ -168,13 +199,14 @@
 		transform: scale(0.78);
 	}
 
-	.marker:hover {
-		transform: translate(-50%, calc(-50% - 1px));
+	.marker.active-marker {
+		filter: saturate(1.14);
 		box-shadow: var(--inspector-shadow-overlay);
 	}
 
-	.marker.active-marker {
-		filter: saturate(1.14);
+	.marker.hovered-marker,
+	.marker:focus-visible {
+		transform: translate(-50%, -50%) scale(1.06);
 		box-shadow: var(--inspector-shadow-overlay);
 	}
 
@@ -198,6 +230,32 @@
 		box-shadow: var(--inspector-shadow-overlay);
 		backdrop-filter: blur(16px);
 		pointer-events: none;
+	}
+
+	.hover-outline,
+	.hover-highlight-rect {
+		position: fixed;
+		z-index: 9996;
+		box-sizing: border-box;
+		pointer-events: none;
+	}
+
+	.hover-outline.solid {
+		border: 1.5px solid var(--inspector-outline-border);
+		border-radius: 4px;
+		background: var(--inspector-outline-bg);
+		box-shadow: 0 0 0 1px var(--inspector-outline-inner) inset;
+	}
+
+	.hover-outline.dashed {
+		border: 2px dashed var(--inspector-group-outline-border);
+		border-radius: 4px;
+		background: var(--inspector-group-outline-bg);
+	}
+
+	.hover-highlight-rect {
+		border-radius: 3px;
+		background: color-mix(in srgb, var(--inspector-marker-color) 18%, transparent);
 	}
 
 	.note-preview-title {

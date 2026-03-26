@@ -62,9 +62,7 @@ import {
 	type ToolbarPositionMode,
 	writeStoredToolbarPlacement
 } from './utils/position';
-import {
-	serializeTextSelection
-} from './utils/selection';
+import { serializeTextSelection } from './utils/selection';
 import { buildHoverInfo, getHoverGeometry } from './utils/source';
 import type { InspectorBlockedInteractionDetail } from './events';
 import {
@@ -107,10 +105,6 @@ import {
 	type ToolbarDragState,
 	type UserSelectSnapshot
 } from './internal/controller-state.svelte';
-import {
-	DEFAULT_CONTROLLED_INSPECTOR_OPTIONS,
-	type ControlledInspectorOptions
-} from './internal/controlled-options';
 
 const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	workspaceRoot: null,
@@ -133,7 +127,7 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	onCopy: undefined
 };
 
-const CONTROLLED_SETTINGS_KEYS = [
+const PERSISTED_SETTINGS_KEYS = [
 	'outputMode',
 	'pauseAnimations',
 	'clearOnCopy',
@@ -141,26 +135,25 @@ const CONTROLLED_SETTINGS_KEYS = [
 	'includeComputedStyles'
 ] as const satisfies readonly (keyof Pick<
 	NotesSettings,
-	'outputMode' | 'pauseAnimations' | 'clearOnCopy' | 'includeComponentContext' | 'includeComputedStyles'
+	| 'outputMode'
+	| 'pauseAnimations'
+	| 'clearOnCopy'
+	| 'includeComponentContext'
+	| 'includeComputedStyles'
 >)[];
 
-type ControlledSettingsKey = (typeof CONTROLLED_SETTINGS_KEYS)[number];
-type CopyOpenControllerOptions = Partial<InspectorRuntimeOptions> & {
-	controlled?: Partial<ControlledInspectorOptions>;
-};
-
-const normalizeControlledOptions = (
-	controlled?: Partial<ControlledInspectorOptions>
-): ControlledInspectorOptions => ({
-	...DEFAULT_CONTROLLED_INSPECTOR_OPTIONS,
-	...controlled
-});
+type PersistedControllerOptions = Pick<
+	InspectorRuntimeOptions,
+	'toolbarPosition' | PersistedSettingsKey
+>;
+type PersistedSettingsKey = (typeof PERSISTED_SETTINGS_KEYS)[number];
+type PersistedSettingsPatch = Partial<Pick<NotesSettings, PersistedSettingsKey>>;
+type CopyOpenControllerOptions = Partial<
+	Omit<InspectorRuntimeOptions, 'toolbarPosition' | PersistedSettingsKey>
+>;
 
 export class CopyOpenController {
 	enabled = $state(false);
-	controlledOptions = $state<ControlledInspectorOptions>({
-		...DEFAULT_CONTROLLED_INSPECTOR_OPTIONS
-	});
 	hoverInfo = $state<InspectorHoverInfo | null>(null);
 	copied = $state(false);
 	toolbar = $state<ToolbarState>(createToolbarState());
@@ -183,23 +176,13 @@ export class CopyOpenController {
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
 	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
 	#copyToClipboard = DEFAULT_OPTIONS.copyToClipboard;
-	#settingsDefaults: Pick<
-		NotesSettings,
-		'outputMode' | 'pauseAnimations' | 'clearOnCopy' | 'includeComponentContext' | 'includeComputedStyles'
-	> = {
-		outputMode: DEFAULT_OPTIONS.outputMode,
-		pauseAnimations: DEFAULT_OPTIONS.pauseAnimations,
-		clearOnCopy: DEFAULT_OPTIONS.clearOnCopy,
-		includeComponentContext: DEFAULT_OPTIONS.includeComponentContext,
-		includeComputedStyles: DEFAULT_OPTIONS.includeComputedStyles
-	};
 	#onAnnotationAdd = DEFAULT_OPTIONS.onAnnotationAdd;
 	#onAnnotationUpdate = DEFAULT_OPTIONS.onAnnotationUpdate;
 	#onAnnotationDelete = DEFAULT_OPTIONS.onAnnotationDelete;
 	#onAnnotationsClear = DEFAULT_OPTIONS.onAnnotationsClear;
 	#onCopy = DEFAULT_OPTIONS.onCopy;
 	#toolbarPositionMode: ToolbarPositionMode = 'preset';
-	#toolbarPositionDefault = DEFAULT_OPTIONS.toolbarPosition;
+	#explicitToolbarPosition: InspectorPosition | null = null;
 	#copyResetTimer: number | null = null;
 	#toolbarCopyResetTimer: number | null = null;
 	#deleteAllCommitTimer: number | null = null;
@@ -232,13 +215,13 @@ export class CopyOpenController {
 			writeStoredThemeMode(themeMode);
 			writeStoredMarkerColor(markerColor);
 
-			this.settings = this.#getResolvedSettingsState({
+			this.settings = {
 				...storedSettings,
 				themeMode,
 				markerColor
-			});
-			this.#applyToolbarPlacement(this.#resolveToolbarPlacement(storedToolbarPlacement), {
-				persist: !this.controlledOptions.toolbarPosition
+			};
+			this.#applyToolbarPlacement(storedToolbarPlacement ?? this.#getDefaultToolbarPlacement(), {
+				persist: false
 			});
 			this.notes = readStoredNotes(
 				this.#pageStorageKey,
@@ -251,12 +234,6 @@ export class CopyOpenController {
 	}
 
 	updateOptions(options: CopyOpenControllerOptions) {
-		const previousControlledOptions = { ...this.controlledOptions };
-
-		if ('controlled' in options) {
-			this.controlledOptions = normalizeControlledOptions(options.controlled);
-		}
-
 		if ('workspaceRoot' in options) {
 			this.#workspaceRoot = options.workspaceRoot ?? DEFAULT_OPTIONS.workspaceRoot;
 		}
@@ -289,10 +266,6 @@ export class CopyOpenController {
 			}
 		}
 
-		if ('toolbarPosition' in options) {
-			this.#toolbarPositionDefault = sanitizeInspectorPosition(options.toolbarPosition);
-		}
-
 		if ('copyToClipboard' in options) {
 			this.#copyToClipboard = options.copyToClipboard ?? DEFAULT_OPTIONS.copyToClipboard;
 		}
@@ -317,29 +290,6 @@ export class CopyOpenController {
 			this.#onCopy = options.onCopy ?? DEFAULT_OPTIONS.onCopy;
 		}
 
-		if ('outputMode' in options) {
-			this.#settingsDefaults.outputMode = options.outputMode ?? DEFAULT_OPTIONS.outputMode;
-		}
-
-		if ('pauseAnimations' in options) {
-			this.#settingsDefaults.pauseAnimations =
-				options.pauseAnimations ?? DEFAULT_OPTIONS.pauseAnimations;
-		}
-
-		if ('clearOnCopy' in options) {
-			this.#settingsDefaults.clearOnCopy = options.clearOnCopy ?? DEFAULT_OPTIONS.clearOnCopy;
-		}
-
-		if ('includeComponentContext' in options) {
-			this.#settingsDefaults.includeComponentContext =
-				options.includeComponentContext ?? DEFAULT_OPTIONS.includeComponentContext;
-		}
-
-		if ('includeComputedStyles' in options) {
-			this.#settingsDefaults.includeComputedStyles =
-				options.includeComputedStyles ?? DEFAULT_OPTIONS.includeComputedStyles;
-		}
-
 		if ('pageSessionKey' in options) {
 			const nextPageSessionKey = options.pageSessionKey ?? DEFAULT_OPTIONS.pageSessionKey;
 			const nextPageStorageKey = getPageStorageKey(nextPageSessionKey);
@@ -358,21 +308,22 @@ export class CopyOpenController {
 		if (!this.#runtimeReady) {
 			return;
 		}
+	}
 
-		if (CONTROLLED_SETTINGS_KEYS.some((key) => previousControlledOptions[key] && !this.controlledOptions[key])) {
-			this.#restoreSettingsFromStorage();
-		} else {
-			this.#applyControlledSettingsState();
+	syncPersistedProps(options: Partial<PersistedControllerOptions>) {
+		const toolbarPosition =
+			'toolbarPosition' in options ? sanitizeInspectorPosition(options.toolbarPosition) : null;
+		this.#explicitToolbarPosition = toolbarPosition;
+
+		if (toolbarPosition !== null) {
+			this.#syncToolbarPositionProp(toolbarPosition);
 		}
 
-		if (this.controlledOptions.toolbarPosition) {
-			this.#applyToolbarPlacement(this.#getDefaultToolbarPlacement(), { persist: false });
-		} else if (previousControlledOptions.toolbarPosition) {
-			this.#applyToolbarPlacement(
-				this.#resolveToolbarPlacement(readStoredToolbarPlacement(this.#pageSessionKey)),
-				{ persist: false }
-			);
-		}
+		const settingsPatch = this.#getPersistedSettingsPatch(options);
+		this.#setSettings(settingsPatch, {
+			persist: PERSISTED_SETTINGS_KEYS.some((key) => key in options),
+			syncAnimationPauseState: settingsPatch.pauseAnimations !== undefined
+		});
 	}
 
 	toggle = () => {
@@ -399,55 +350,26 @@ export class CopyOpenController {
 		if (!expanded) {
 			this.cancelDeleteAll();
 		}
-		const nextPosition = alignToolbarPositionForStateChange(
-			this.toolbar.position,
-			this.toolbar.expanded,
-			expanded,
-			getToolbarAlignment(this.toolbarPositionPreset)
-		);
 
-		this.#setToolbar({
-			expanded,
-			settingsOpen: expanded ? this.toolbar.settingsOpen : false,
-			confirmDeleteAll: false,
-			position: nextPosition
+		this.#setToolbarExpanded(expanded, {
+			settingsOpen: expanded ? this.toolbar.settingsOpen : false
 		});
-		this.#persistToolbarPlacement(nextPosition, { expanded });
 	};
 
 	closeToolbar = () => {
 		this.cancelDeleteAll();
-		const nextPosition = alignToolbarPositionForStateChange(
-			this.toolbar.position,
-			true,
-			false,
-			getToolbarAlignment(this.toolbarPositionPreset)
-		);
 
-		this.#setToolbar({
-			expanded: false,
-			settingsOpen: false,
-			confirmDeleteAll: false,
-			position: nextPosition
-		});
-		this.#persistToolbarPlacement(nextPosition, { expanded: false });
+		this.#setToolbarExpanded(false, { settingsOpen: false });
 	};
 
 	toggleSettings = () => {
-		const expanded = true;
-		const settingsOpen = !this.toolbar.settingsOpen;
-		const nextPosition = clampToolbarPosition(this.toolbar.position, expanded);
-		this.#setToolbar({
-			expanded,
-			settingsOpen,
-			confirmDeleteAll: false,
-			position: nextPosition
+		this.#setToolbarExpanded(true, {
+			settingsOpen: !this.toolbar.settingsOpen
 		});
-		this.#persistToolbarPlacement(nextPosition, { expanded });
 	};
 
 	setToolbarPosition = (toolbarPosition: InspectorPosition, options?: { force?: boolean }) => {
-		if (this.controlledOptions.toolbarPosition && !options?.force) return;
+		void options;
 
 		const nextPosition = getToolbarCoordinatesForPreset(toolbarPosition, this.toolbar.expanded);
 		this.#toolbarPositionMode = 'preset';
@@ -463,10 +385,13 @@ export class CopyOpenController {
 	};
 
 	resetToolbarPosition = () => {
-		this.setToolbarPosition(
-			this.controlledOptions.toolbarPosition ? this.#toolbarPositionDefault : DEFAULT_INSPECTOR_POSITION,
-			{ force: this.controlledOptions.toolbarPosition }
-		);
+		if (this.#explicitToolbarPosition) {
+			this.setToolbarPosition(this.#explicitToolbarPosition, { force: true });
+			return;
+		}
+
+		const storedPlacement = readStoredToolbarPlacement(this.#pageSessionKey);
+		this.#applyToolbarPlacement(storedPlacement ?? this.#getDefaultToolbarPlacement());
 	};
 
 	requestDeleteAll = () => {
@@ -490,7 +415,9 @@ export class CopyOpenController {
 		const clearedSnapshots = currentPageNotes.map((note) => this.#getAnnotationSnapshot(note));
 		this.#clearDeleteAllTimers();
 		this.deleteAllState = createDeleteAllState(this.#deleteAllDelayMs);
-		this.notes = this.notes.filter((note) => !currentPageNotes.some((entry) => entry.id === note.id));
+		this.notes = this.notes.filter(
+			(note) => !currentPageNotes.some((entry) => entry.id === note.id)
+		);
 		this.renderedNotes = [];
 		this.activeNoteId = null;
 		this.closeComposer();
@@ -507,84 +434,80 @@ export class CopyOpenController {
 	};
 
 	setMarkerColor = (color: string) => {
-		this.settings = {
-			...this.settings,
-			markerColor: color
-		};
-		writeStoredMarkerColor(color);
+		this.#setSettings(
+			{
+				markerColor: color
+			},
+			{ persistMarkerColor: true }
+		);
 	};
 
 	setBlockPageInteractions = (value: boolean) => {
-		this.settings = {
-			...this.settings,
-			blockPageInteractions: value
-		};
-		this.#persistSettings();
+		this.#setSettings(
+			{
+				blockPageInteractions: value
+			},
+			{ persist: true }
+		);
 	};
 
 	setOutputMode = (outputMode: OutputMode) => {
-		if (this.controlledOptions.outputMode) return;
-
-		this.settings = {
-			...this.settings,
-			outputMode
-		};
-		this.#persistSettings();
+		this.#setSettings(
+			{
+				outputMode
+			},
+			{ persist: true }
+		);
 	};
 
 	setPauseAnimations = (value: boolean) => {
-		if (this.controlledOptions.pauseAnimations) return;
-
-		this.settings = {
-			...this.settings,
-			pauseAnimations: value
-		};
-		this.#persistSettings();
-		this.#syncAnimationPauseState();
+		this.#setSettings(
+			{
+				pauseAnimations: value
+			},
+			{ persist: true, syncAnimationPauseState: true }
+		);
 	};
 
 	setClearOnCopy = (value: boolean) => {
-		if (this.controlledOptions.clearOnCopy) return;
-
-		this.settings = {
-			...this.settings,
-			clearOnCopy: value
-		};
-		this.#persistSettings();
+		this.#setSettings(
+			{
+				clearOnCopy: value
+			},
+			{ persist: true }
+		);
 	};
 
 	setIncludeComponentContext = (value: boolean) => {
-		if (this.controlledOptions.includeComponentContext) return;
-
-		this.settings = {
-			...this.settings,
-			includeComponentContext: value
-		};
-		this.#persistSettings();
+		this.#setSettings(
+			{
+				includeComponentContext: value
+			},
+			{ persist: true }
+		);
 	};
 
 	setIncludeComputedStyles = (value: boolean) => {
-		if (this.controlledOptions.includeComputedStyles) return;
-
-		this.settings = {
-			...this.settings,
-			includeComputedStyles: value
-		};
-		this.#persistSettings();
+		this.#setSettings(
+			{
+				includeComputedStyles: value
+			},
+			{ persist: true }
+		);
 	};
 
 	toggleThemeMode = () => {
 		const themeMode = this.settings.themeMode === 'dark' ? 'light' : 'dark';
-		this.settings = {
-			...this.settings,
-			themeMode
-		};
-		writeStoredThemeMode(themeMode);
+		this.#setSettings(
+			{
+				themeMode
+			},
+			{ persistThemeMode: true }
+		);
 	};
 
 	handleToolbarPointerDown = (event: PointerEvent) => {
 		if (event.button !== 0) return;
-		if (this.controlledOptions.toolbarPosition) return;
 
 		let width = 0;
 		let height = 0;
@@ -706,10 +629,7 @@ export class CopyOpenController {
 		this.#dragActive = false;
 		this.dragSelection = null;
 		this.#lastDragUpdate = 0;
-		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
-			false,
-			this.#dragUserSelectSnapshot
-		);
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(false, this.#dragUserSelectSnapshot);
 
 		if (!this.enabled || this.composer) return;
 
@@ -1024,10 +944,7 @@ export class CopyOpenController {
 		this.cancelDeleteAll();
 		this.#clearCopyResetTimer();
 		this.#clearToolbarCopyResetTimer();
-		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
-			false,
-			this.#dragUserSelectSnapshot
-		);
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(false, this.#dragUserSelectSnapshot);
 		this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
 		this.#pausedAnimationsStyleElement = setPausedAnimations(
 			false,
@@ -1042,75 +959,16 @@ export class CopyOpenController {
 		};
 	}
 
-	#getResolvedSettingsState(baseSettings: NotesSettings): NotesSettings {
-		const nextSettings = {
-			...baseSettings
-		};
-
-		if (this.controlledOptions.outputMode) {
-			nextSettings.outputMode = this.#settingsDefaults.outputMode;
-		}
-		if (this.controlledOptions.pauseAnimations) {
-			nextSettings.pauseAnimations = this.#settingsDefaults.pauseAnimations;
-		}
-		if (this.controlledOptions.clearOnCopy) {
-			nextSettings.clearOnCopy = this.#settingsDefaults.clearOnCopy;
-		}
-		if (this.controlledOptions.includeComponentContext) {
-			nextSettings.includeComponentContext = this.#settingsDefaults.includeComponentContext;
-		}
-		if (this.controlledOptions.includeComputedStyles) {
-			nextSettings.includeComputedStyles = this.#settingsDefaults.includeComputedStyles;
-		}
-
-		return nextSettings;
-	}
-
 	#getSettingsDefaults(): NotesSettings {
-		return {
-			...DEFAULT_NOTES_SETTINGS,
-			...this.#settingsDefaults
-		};
-	}
-
-	#applyControlledSettingsState() {
-		const nextSettings = this.#getResolvedSettingsState(this.settings);
-		const changed = CONTROLLED_SETTINGS_KEYS.some((key) => nextSettings[key] !== this.settings[key]);
-		if (!changed) return;
-
-		this.settings = nextSettings;
-		this.#syncAnimationPauseState();
-	}
-
-	#restoreSettingsFromStorage() {
-		if (typeof window === 'undefined') return;
-
-		this.settings = this.#getResolvedSettingsState({
-			...readStoredSettings(this.#getSettingsDefaults()),
-			themeMode: this.settings.themeMode,
-			markerColor: this.settings.markerColor
-		});
-		this.#syncAnimationPauseState();
-	}
-
-	#getControlledSettingsSkipKeys() {
-		return CONTROLLED_SETTINGS_KEYS.filter((key) => this.controlledOptions[key]);
+		return DEFAULT_NOTES_SETTINGS;
 	}
 
 	#getDefaultToolbarPlacement() {
 		return {
 			mode: 'preset' as const,
-			preset: this.#toolbarPositionDefault,
-			coordinates: getToolbarCoordinatesForPreset(this.#toolbarPositionDefault, false)
+			preset: DEFAULT_INSPECTOR_POSITION,
+			coordinates: getToolbarCoordinatesForPreset(DEFAULT_INSPECTOR_POSITION, false)
 		};
-	}
-
-	#resolveToolbarPlacement(storedPlacement: ReturnType<typeof readStoredToolbarPlacement>) {
-		if (this.controlledOptions.toolbarPosition) {
-			return this.#getDefaultToolbarPlacement();
-		}
-
-		return storedPlacement ?? this.#getDefaultToolbarPlacement();
 	}
 
 	#getActivePageStorageKey() {
@@ -1138,9 +996,7 @@ export class CopyOpenController {
 
 	#persistSettings() {
 		if (typeof window === 'undefined') return;
-		writeStoredSettings(this.settings, {
-			skipKeys: this.#getControlledSettingsSkipKeys()
-		});
+		writeStoredSettings(this.settings);
 	}
 
 	#syncPageSession(nextPageSessionKey: string | null, nextPageStorageKey: string) {
@@ -1168,8 +1024,8 @@ export class CopyOpenController {
 		);
 
 		this.#applyToolbarPlacement(
-			this.#resolveToolbarPlacement(readStoredToolbarPlacement(this.#pageSessionKey)),
-			{ persist: !this.controlledOptions.toolbarPosition }
+			readStoredToolbarPlacement(this.#pageSessionKey) ?? this.#getDefaultToolbarPlacement(),
+			{ persist: false }
 		);
 		this.refreshRenderedNotes();
 	}
@@ -1179,6 +1035,32 @@ export class CopyOpenController {
 			this.enabled && this.settings.pauseAnimations,
 			this.#pausedAnimationsStyleElement
 		);
+	}
+
+	#setToolbarExpanded(
+		expanded: boolean,
+		options?: {
+			settingsOpen?: boolean;
+		}
+	) {
+		const settingsOpen = expanded ? (options?.settingsOpen ?? this.toolbar.settingsOpen) : false;
+		const nextPosition =
+			expanded === this.toolbar.expanded
+				? clampToolbarPosition(this.toolbar.position, expanded)
+				: alignToolbarPositionForStateChange(
+						this.toolbar.position,
+						this.toolbar.expanded,
+						expanded,
+						getToolbarAlignment(this.toolbarPositionPreset)
+					);
+
+		this.#setToolbar({
+			expanded,
+			settingsOpen,
+			confirmDeleteAll: false,
+			position: nextPosition
+		});
+		this.#persistToolbarPlacement(nextPosition, { expanded });
 	}
 
 	#applyToolbarPlacement(
@@ -1208,38 +1090,105 @@ export class CopyOpenController {
 		}
 	}
 
-	#getAnnotationSnapshot(note: InspectorNote): AgentationAnnotationSnapshot {
-		const capture =
-			note.capture ?? {
-				page: {
-					title: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
-					pathname: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
-					url: typeof window === 'undefined' ? '' : window.location.href,
-					viewport: {
-						width: typeof window === 'undefined' ? 0 : window.innerWidth,
-						height: typeof window === 'undefined' ? 0 : window.innerHeight
-					},
-					userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
-					devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
-					timestamp: note.updatedAt
-				},
-				element: {
-					selector: null,
-					fullDomPath: null,
-					cssClasses: [],
-					components: {
-						filtered: [],
-						smart: [],
-						all: []
-					},
-					boundingBox: null,
-					position: null,
-					selectedText: note.kind === 'text' ? note.anchor.selectedText : null,
-					nearbyText: null,
-					accessibility: null,
-					computedStyles: null
-				}
+	#syncToolbarPositionProp(toolbarPosition: InspectorPosition) {
+		const nextPosition = getToolbarCoordinatesForPreset(toolbarPosition, this.toolbar.expanded);
+		const alreadyApplied =
+			this.#toolbarPositionMode === 'preset' &&
+			this.toolbarPositionPreset === toolbarPosition &&
+			this.toolbar.position.x === nextPosition.x &&
+			this.toolbar.position.y === nextPosition.y;
+
+		this.#toolbarPositionMode = 'preset';
+		this.toolbarPositionPreset = toolbarPosition;
+		if (!alreadyApplied) {
+			this.#setToolbar({
+				position: nextPosition
+			});
+		}
+		this.#persistToolbarPlacement(nextPosition, {
+			mode: 'preset',
+			preset: toolbarPosition,
+			expanded: this.toolbar.expanded
+		});
+	}
+
+	#getPersistedSettingsPatch(options: Partial<PersistedControllerOptions>): PersistedSettingsPatch {
+		const patch: PersistedSettingsPatch = {};
+
+		for (const key of PERSISTED_SETTINGS_KEYS) {
+			const nextValue = options[key];
+			if (nextValue !== undefined && nextValue !== this.settings[key]) {
+				(patch as Record<PersistedSettingsKey, OutputMode | boolean>)[key] = nextValue;
+			}
+		}
+
+		return patch;
+	}
+
+	#setSettings(
+		patch: Partial<NotesSettings>,
+		options?: {
+			persist?: boolean;
+			persistMarkerColor?: boolean;
+			persistThemeMode?: boolean;
+			syncAnimationPauseState?: boolean;
+		}
+	) {
+		if (Object.keys(patch).length > 0) {
+			this.settings = {
+				...this.settings,
+				...patch
 			};
+		}
+
+		if (options?.persist) {
+			this.#persistSettings();
+		}
+
+		if (options?.persistMarkerColor && patch.markerColor) {
+			writeStoredMarkerColor(patch.markerColor);
+		}
+
+		if (options?.persistThemeMode && patch.themeMode) {
+			writeStoredThemeMode(patch.themeMode);
+		}
+
+		if (options?.syncAnimationPauseState) {
+			this.#syncAnimationPauseState();
+		}
+	}
+
+	#getAnnotationSnapshot(note: InspectorNote): AgentationAnnotationSnapshot {
+		const capture = note.capture ?? {
+			page: {
+				title: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
+				pathname: typeof window === 'undefined' ? '/' : window.location.pathname || '/',
+				url: typeof window === 'undefined' ? '' : window.location.href,
+				viewport: {
+					width: typeof window === 'undefined' ? 0 : window.innerWidth,
+					height: typeof window === 'undefined' ? 0 : window.innerHeight
+				},
+				userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
+				devicePixelRatio: typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1,
+				timestamp: note.updatedAt
+			},
+			element: {
+				selector: null,
+				fullDomPath: null,
+				cssClasses: [],
+				components: {
+					filtered: [],
+					smart: [],
+					all: []
+				},
+				boundingBox: null,
+				position: null,
+				selectedText: note.kind === 'text' ? note.anchor.selectedText : null,
+				nearbyText: null,
+				accessibility: null,
+				computedStyles: null
+			}
+		};
 
 		return buildAnnotationSnapshot(note, capture);
 	}
@@ -1265,7 +1214,7 @@ export class CopyOpenController {
 
 		this.#toolbarPositionMode = nextMode;
 		this.toolbarPositionPreset = nextPreset;
-		if (typeof window === 'undefined' || this.controlledOptions.toolbarPosition) return;
+		if (typeof window === 'undefined') return;
 
 		writeStoredToolbarPlacement(this.#pageStorageKey, {
 			mode: nextMode,
@@ -1339,10 +1288,7 @@ export class CopyOpenController {
 		this.#dragActive = false;
 		this.#lastDragUpdate = 0;
 		this.#suppressNextClick = false;
-		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(
-			false,
-			this.#dragUserSelectSnapshot
-		);
+		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(false, this.#dragUserSelectSnapshot);
 		window.getSelection()?.removeAllRanges();
 	}
 
@@ -1524,10 +1470,7 @@ export class CopyOpenController {
 
 	#refreshComposerLayout() {
 		if (!this.composer) return;
-		this.composer = updateComposerPosition(
-			this.composer,
-			resolveComposerLayout(this.composer)
-		);
+		this.composer = updateComposerPosition(this.composer, resolveComposerLayout(this.composer));
 	}
 
 	#updateComposerPosition(

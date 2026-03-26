@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { scale } from 'svelte/transition';
-	import { ChevronRight, Trash2 } from '@lucide/svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { ChevronRight, Plus, Trash2 } from '@lucide/svelte';
 
 	import type { NoteComposerProps } from '../internal/component-props';
 
@@ -44,16 +44,25 @@
 		onDelete(composer.noteId);
 	};
 
-	const getHasChanges = (composerState: NonNullable<NoteComposerProps['composer']>, nextValue: string) =>
-		nextValue.trim() !== composerState.initialValue.trim();
+	const getHasChanges = (
+		composerState: NonNullable<NoteComposerProps['composer']>,
+		nextValue: string
+	) => nextValue.trim() !== composerState.initialValue.trim();
 
-	const getCanSubmit = (composerState: NonNullable<NoteComposerProps['composer']>, nextValue: string) =>
-		nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
+	const getCanSubmit = (
+		composerState: NonNullable<NoteComposerProps['composer']>,
+		nextValue: string
+	) => nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
 
 	const getOutlineClass = (composerState: NonNullable<NoteComposerProps['composer']>) =>
 		composerState.noteKind === 'group' || composerState.noteKind === 'area'
 			? 'outline dashed'
 			: 'outline solid';
+	let outlineTransition = { duration: 130 };
+	let highlightTransition = { duration: 120 };
+	let anchorTransition = { duration: 150, start: 0.74, opacity: 0 };
+	let composerEnter = { duration: 180, start: 0.94, opacity: 0.18 };
+	let composerExit = { duration: 180, start: 0.85, opacity: 0 };
 </script>
 
 {#if composer}
@@ -63,6 +72,8 @@
 			class={getOutlineClass(composer)}
 			data-inspector-ui
 			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+			in:fade={outlineTransition}
+			out:fade={{ duration: 100 }}
 		></div>
 	{/each}
 
@@ -72,6 +83,8 @@
 			class="highlight-rect"
 			data-inspector-ui
 			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+			in:fade={highlightTransition}
+			out:fade={{ duration: 90 }}
 		></div>
 	{/each}
 
@@ -81,19 +94,24 @@
 		data-inspector-ui
 		style={`left:${composer.markerLeft}px;top:${composer.markerTop}px;--composer-accent:${composer.accentColor};`}
 		type="button"
+		in:scale|global={anchorTransition}
+		out:scale={{ duration: 120, start: 1, opacity: 0 }}
 	>
-		<span>+</span>
+		<span>
+			<Plus size={16} />
+		</span>
 	</button>
 
 	<div
 		class="composer"
 		data-inspector-ui
 		style={`left:${composer.panelLeft}px;top:${composer.panelTop}px;`}
-		in:scale={{ duration: 180, start: 0.94 }}
+		in:scale={composerEnter}
+		out:scale|global={composerExit}
 	>
 		<div class="composer-head" data-inspector-ui>
 			<div class="target-label" data-inspector-ui>
-				<ChevronRight size={14} />
+				<!-- <ChevronRight size={14} /> -->
 				<span data-inspector-ui>{composer.targetLabel}</span>
 			</div>
 		</div>
@@ -187,11 +205,11 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
+		width: 22px;
+		height: 22px;
 		padding: 0;
 		border: none;
-		border-radius: 8px;
+		border-radius: 100px;
 		background: var(--composer-accent);
 		color: #ffffff;
 		box-shadow: var(--inspector-shadow-overlay);
@@ -309,16 +327,18 @@
 	.cancel-button {
 		color: var(--inspector-text-muted);
 		font-size: 0.82rem;
-		font-weight: 600;
+		font-weight: 500;
+		padding: 0.4rem 0.875rem;
+		border-radius: 999px;
 	}
 
 	.submit-button {
-		padding: 8px 16px;
+		padding: 0.4rem 0.875rem;
 		border-radius: 999px;
 		background: var(--composer-accent);
 		color: #ffffff;
 		font-size: 0.82rem;
-		font-weight: 700;
+		font-weight: 500;
 	}
 
 	.cancel-button.inactive-action {
@@ -326,20 +346,26 @@
 	}
 
 	.submit-button:disabled {
-		background: var(--inspector-surface-soft);
-		color: var(--inspector-text-subtle);
-		cursor: not-allowed;
+		/* background: var(--inspector-surface-soft); */
+		/* color: var(--inspector-text-subtle); */
+		opacity: 0.5;
+		cursor: not-allowed !important;
 		transform: none;
 	}
 
-	.cancel-button:hover,
+	/* .cancel-button:hover,
 	.submit-button:hover {
 		opacity: 0.92;
 		transform: translateY(-1px);
+	} */
+	.cancel-button:hover  {
+		opacity: 0.92;
+		background: rgba(255, 255, 255, 0.1);
+		color: rgba(255, 255, 255, 0.8);
 	}
 
-	.submit-button:disabled:hover {
+	/* .submit-button:disabled:hover {
 		opacity: 1;
 		transform: none;
-	}
+	} */
 </style>

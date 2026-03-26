@@ -103,12 +103,12 @@ inspect / select
 | `vscodeScheme` | `'vscode' \| 'vscode-insiders'` | Choose the VS Code URL scheme for open-in-editor actions. |
 | `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
 | `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
-| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | When provided, keeps the floating toolbar anchored to this preset and overrides saved toolbar placements. |
-| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | When provided, controls the copy/export mode and overrides saved toolbar settings. |
-| `pauseAnimations` | `boolean` | When provided, controls animation pausing while the inspector is active and overrides saved toolbar settings. |
-| `clearOnCopy` | `boolean` | When provided, controls whether copied notes are cleared and overrides saved toolbar settings. |
-| `includeComponentContext` | `boolean` | When provided, controls component-context capture and overrides saved toolbar settings. |
-| `includeComputedStyles` | `boolean` | When provided, controls computed-style capture and overrides saved toolbar settings. |
+| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | When provided, syncs the floating toolbar to this preset and stores it as the latest saved placement. |
+| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | When provided, syncs the copy/export mode and stores it for later sessions. |
+| `pauseAnimations` | `boolean` | When provided, syncs animation pausing while the inspector is active and stores it for later sessions. |
+| `clearOnCopy` | `boolean` | When provided, syncs whether copied notes are cleared and stores it for later sessions. |
+| `includeComponentContext` | `boolean` | When provided, syncs component-context capture and stores it for later sessions. |
+| `includeComputedStyles` | `boolean` | When provided, syncs computed-style capture and stores it for later sessions. |
 | `copyToClipboard` | `boolean` | Disable direct clipboard writes and use callbacks only. |
 | `onAnnotationAdd` | `(annotation) => void` | Called after a note is created. |
 | `onAnnotationUpdate` | `(annotation) => void` | Called after a note is updated. |
@@ -122,7 +122,7 @@ inspect / select
 | --- | --- | --- |
 | `i` | Toggle inspector | Open or close the inspector toolbar and annotation mode. |
 | `c` | Copy all notes | Copy notes as Markdown when at least one note exists. |
-| `r` | Reset toolbar position | Move the floating toolbar back to the explicit prop value, or to bottom-right when uncontrolled. |
+| `r` | Reset toolbar position | Move the floating toolbar back to the latest explicit prop value, saved placement, or default. |
 | `o` | Open source | Open the currently hovered source location when the inspector is active. |
 | `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
 | `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |

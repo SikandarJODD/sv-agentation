@@ -5,13 +5,14 @@
 	import { Agentation, type AgentationInspectorProps } from 'sv-agentation';
 	import { asset } from '$app/paths';
 
-	let workspaceRoot = 's:/advance_svelte/exp/svelte-learning/apps/web';
+	// Use the repo root so source links can resolve both the demo app and the package workspace.
+	let workspaceRoot = 's:/advance_svelte/exp/svelte-learning';
 	let playgroundAgentationProps: AgentationInspectorProps = {
-		toolbarPosition: 'top-left',
-		outputMode: 'compact',
+		toolbarPosition: 'bottom-right',
+		outputMode: 'detailed',
 		pauseAnimations: true,
-		clearOnCopy: true,
-		includeComponentContext: false,
+		clearOnCopy: false,
+		includeComponentContext: true,
 		includeComputedStyles: false
 	};
 
@@ -24,5 +25,5 @@
 {@render children()}
 
 <!-- {#if browser && dev} -->
-	<Agentation {workspaceRoot} {...playgroundAgentationProps} />
+<Agentation {workspaceRoot} {...playgroundAgentationProps} />
 <!-- {/if} -->

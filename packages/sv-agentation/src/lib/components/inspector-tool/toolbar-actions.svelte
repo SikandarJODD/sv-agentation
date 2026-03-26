@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { cubicOut } from 'svelte/easing';
-	import { scale, slide } from 'svelte/transition';
+	import { scale } from 'svelte/transition';
 	import {
 		Check,
 		Copy,
@@ -21,39 +20,23 @@
 		deleteAllState,
 		notes,
 		toolbar,
-		toolbarDragEnabled,
 		onCloseToolbar,
 		onCopyNotes,
 		onDeleteAll,
 		onToggle,
 		onToggleNotesVisibility,
-		onToggleSettings,
-		onToolbarPointerDown
+		onToggleSettings
 	}: InspectorToolbarActionsProps = $props();
-
-	const handleSurfacePointerDown = (event: PointerEvent) => {
-		if (!toolbarDragEnabled) return;
-		const target = event.target;
-		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
-		onToolbarPointerDown(event);
-	};
 
 	const handleNotesCopyClick = async (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
 		await onCopyNotes();
 	};
-
-	const toolbarTransition = {
-		axis: 'x' as const,
-		duration: 190,
-		easing: cubicOut
-	};
 	const badgeTransition = {
 		duration: 140,
 		start: 0.86,
-		opacity: 0,
-		easing: cubicOut
+		opacity: 0
 	};
 	const getDeleteAllRemainingSeconds = (state: typeof deleteAllState) =>
 		Math.max(1, Math.ceil(state.remainingMs / 1000));
@@ -65,154 +48,126 @@
 			: 'Delete all notes';
 </script>
 
-<!-- Ignore: the shell only handles drag affordance around focusable children. -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class:drag-enabled={toolbarDragEnabled}
-	class="toolbar-shell"
-	data-inspector-ui
-	in:slide={toolbarTransition}
-	out:slide={{ ...toolbarTransition, duration: 145 }}
-	onpointerdown={handleSurfacePointerDown}
->
-	<div class="toolbar" data-inspector-ui>
-		<button
-			aria-label={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
-			aria-pressed={active}
-			class:active-button={active}
-			class="toolbar-button primary"
-			data-inspector-ui
-			title={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
-			type="button"
-			onclick={onToggle}
-		>
-			{#if active}
-				<Pause size={16} />
-			{:else}
-				<Play size={16} />
-			{/if}
-		</button>
+<div class="toolbar-actions" data-inspector-ui>
+	<button
+		aria-label={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
+		aria-pressed={active}
+		class:active-button={active}
+		class="toolbar-button primary"
+		data-inspector-ui
+		title={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
+		type="button"
+		onclick={onToggle}
+	>
+		{#if active}
+			<Pause size={16} />
+		{:else}
+			<Play size={16} />
+		{/if}
+	</button>
 
-		<div class="divider" data-inspector-ui></div>
+	<div class="divider" data-inspector-ui></div>
 
-		<button
-			class:active-pane={!toolbar.notesVisible}
-			class="toolbar-button"
-			data-inspector-ui
-			title={toolbar.notesVisible ? 'Hide notes' : 'Show notes'}
-			type="button"
-			onclick={onToggleNotesVisibility}
-		>
-			{#if toolbar.notesVisible}
-				<Eye size={16} />
-			{:else}
-				<EyeOff size={16} />
-			{/if}
-		</button>
+	<button
+		class:active-pane={!toolbar.notesVisible}
+		class="toolbar-button"
+		data-inspector-ui
+		title={toolbar.notesVisible ? 'Hide notes' : 'Show notes'}
+		type="button"
+		onclick={onToggleNotesVisibility}
+	>
+		{#if toolbar.notesVisible}
+			<Eye size={16} />
+		{:else}
+			<EyeOff size={16} />
+		{/if}
+	</button>
 
-		<button
-			class:flash-button={toolbar.copyFeedback}
-			class="toolbar-button"
-			data-inspector-ui
-			disabled={notes.length === 0}
-			title="Copy notes as Markdown"
-			type="button"
-			onclick={handleNotesCopyClick}
-		>
-			{#if toolbar.copyFeedback}
-				<Check size={16} />
-			{:else}
-				<Copy size={16} />
-			{/if}
-		</button>
+	<button
+		class:flash-button={toolbar.copyFeedback}
+		class="toolbar-button"
+		data-inspector-ui
+		disabled={notes.length === 0}
+		title="Copy notes as Markdown"
+		type="button"
+		onclick={handleNotesCopyClick}
+	>
+		{#if toolbar.copyFeedback}
+			<Check size={16} />
+		{:else}
+			<Copy size={16} />
+		{/if}
+	</button>
 
-		<button
-			aria-label={getDeleteAllTitle(deleteAllState)}
-			class:pending-delete={deleteAllState.active}
-			class="toolbar-button delete-button"
-			data-inspector-ui
-			disabled={notes.length === 0}
-			style={deleteAllState.active
-				? `--delete-progress:${getDeleteAllProgressDegrees(deleteAllState)};`
-				: undefined}
-			title={getDeleteAllTitle(deleteAllState)}
-			type="button"
-			onclick={onDeleteAll}
-		>
+	<button
+		aria-label={getDeleteAllTitle(deleteAllState)}
+		class:pending-delete={deleteAllState.active}
+		class="toolbar-button delete-button"
+		data-inspector-ui
+		disabled={notes.length === 0}
+		style={deleteAllState.active
+			? `--delete-progress:${getDeleteAllProgressDegrees(deleteAllState)};`
+			: undefined}
+		title={getDeleteAllTitle(deleteAllState)}
+		type="button"
+		onclick={onDeleteAll}
+	>
+		{#if deleteAllState.active}
+			<span aria-hidden="true" class="delete-progress-ring" data-inspector-ui></span>
+			<span aria-hidden="true" class="delete-progress-face" data-inspector-ui></span>
+		{/if}
+		<span class="delete-icon" data-inspector-ui>
 			{#if deleteAllState.active}
-				<span aria-hidden="true" class="delete-progress-ring" data-inspector-ui></span>
-				<span aria-hidden="true" class="delete-progress-face" data-inspector-ui></span>
+				<RotateCcw size={15} />
+			{:else}
+				<Trash2 size={16} />
 			{/if}
-			<span class="delete-icon" data-inspector-ui>
-				{#if deleteAllState.active}
-					<RotateCcw size={15} />
-				{:else}
-					<Trash2 size={16} />
-				{/if}
+		</span>
+		{#if deleteAllState.active}
+			<span
+				class="delete-countdown"
+				data-inspector-ui
+				in:scale={badgeTransition}
+				out:scale={{ ...badgeTransition, duration: 110 }}
+			>
+				{getDeleteAllRemainingSeconds(deleteAllState)}s
 			</span>
-			{#if deleteAllState.active}
-				<span
-					class="delete-countdown"
-					data-inspector-ui
-					in:scale={badgeTransition}
-					out:scale={{ ...badgeTransition, duration: 110 }}
-				>
-					{getDeleteAllRemainingSeconds(deleteAllState)}s
-				</span>
-			{/if}
-		</button>
+		{/if}
+	</button>
 
-		<button
-			class:active-pane={toolbar.settingsOpen}
-			class="toolbar-button"
-			data-inspector-ui
-			title="Toolbar settings"
-			type="button"
-			onclick={onToggleSettings}
-		>
-			<Settings size={16} />
-		</button>
+	<button
+		class:active-pane={toolbar.settingsOpen}
+		class="toolbar-button"
+		data-inspector-ui
+		title="Toolbar settings"
+		type="button"
+		onclick={onToggleSettings}
+	>
+		<Settings size={16} />
+	</button>
 
-		<div class="divider" data-inspector-ui></div>
+	<div class="divider" data-inspector-ui></div>
 
-		<button
-			class="toolbar-button"
-			data-inspector-ui
-			title="Collapse toolbar"
-			type="button"
-			onclick={onCloseToolbar}
-		>
-			<X size={17} />
-		</button>
-	</div>
+	<button
+		class="toolbar-button"
+		data-inspector-ui
+		title="Collapse toolbar"
+		type="button"
+		onclick={onCloseToolbar}
+	>
+		<X size={17} />
+	</button>
 </div>
 
 <style>
-	.toolbar-shell {
-		position: relative;
-		transform-origin: right bottom;
-		will-change: transform, opacity;
-		pointer-events: auto;
-	}
-
-	.toolbar-shell.drag-enabled {
-		cursor: grab;
-	}
-
-	.toolbar-shell.drag-enabled:active {
-		cursor: grabbing;
-	}
-
-	.toolbar {
+	.toolbar-actions {
+		width: 100%;
+		height: 100%;
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
 		padding: 7px 8px;
-		border: 1px solid var(--inspector-border);
-		border-radius: 999px;
-		background: var(--inspector-toolbar-surface);
-		box-shadow: none;
-		backdrop-filter: blur(18px);
+		box-sizing: border-box;
 	}
 
 	.toolbar-button {
@@ -258,8 +213,8 @@
 	}
 
 	.flash-button {
-		background: var(--inspector-success-soft);
-		color: var(--inspector-success);
+		background: var(--inspector-success-soft) !important;
+		color: var(--inspector-success) !important;
 		box-shadow: inset 0 0 0 1px rgba(20, 206, 76, 0.22);
 	}
 
@@ -345,7 +300,7 @@
 	}
 
 	@media (max-width: 640px) {
-		.toolbar {
+		.toolbar-actions {
 			gap: 5px;
 			padding: 7px;
 		}

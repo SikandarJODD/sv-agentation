@@ -173,8 +173,10 @@ Use this example:
 		'Inspect source-aware DOM elements and jump to their files quickly.',
 		'Annotate elements, text ranges, grouped targets, and selected areas.',
 		'Keep notes isolated per page automatically as routes change.',
+		'Hover saved note markers to preview the exact area that will be updated.',
 		'Copy output in compact, standard, detailed, or forensic modes.',
 		'Use the denser floating toolbar with compact settings and output cycling.',
+		'Composer add, save, cancel, and delete flows now close with smoother fade-out motion.',
 		'Hook into local callbacks for note events and copy output.',
 		'Mount it only in development with browser-only setup.'
 	];
@@ -208,7 +210,8 @@ Use this example:
 		{
 			name: 'toolbarPosition',
 			type: "'top-left' | 'top-center' | 'top-right' | 'mid-right' | 'mid-left' | 'bottom-left' | 'bottom-center' | 'bottom-right'",
-			description: 'When provided, keeps the toolbar anchored to this preset and overrides saved toolbar placements.'
+			description:
+				'When provided, keeps the toolbar anchored to this preset and overrides saved toolbar placements.'
 		},
 		{
 			name: 'pageSessionKey',
@@ -231,17 +234,20 @@ Use this example:
 		{
 			name: 'clearOnCopy',
 			type: 'boolean',
-			description: 'When provided, controls note clearing after copy and overrides saved toolbar settings.'
+			description:
+				'When provided, controls note clearing after copy and overrides saved toolbar settings.'
 		},
 		{
 			name: 'includeComponentContext',
 			type: 'boolean',
-			description: 'When provided, controls component-context capture and overrides saved toolbar settings.'
+			description:
+				'When provided, controls component-context capture and overrides saved toolbar settings.'
 		},
 		{
 			name: 'includeComputedStyles',
 			type: 'boolean',
-			description: 'When provided, controls computed-style capture and overrides saved toolbar settings.'
+			description:
+				'When provided, controls computed-style capture and overrides saved toolbar settings.'
 		},
 		{
 			name: 'copyToClipboard',
@@ -281,7 +287,7 @@ Use this example:
 	const examples = [
 		{
 			title: 'Typed prop-driven mount',
-			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit props stay in charge of toolbar behavior.',
+			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit prop changes resync the saved toolbar behavior.',
 			code: propsPlaygroundSnippet
 		},
 		{
@@ -333,7 +339,8 @@ Use this example:
 		{
 			key: 'r',
 			label: 'Reset toolbar position',
-			description: 'Move the floating toolbar back to the explicit prop value, or to bottom-right when uncontrolled.'
+			description:
+				'Move the floating toolbar back to the latest explicit prop value, saved placement, or default.'
 		},
 		{
 			key: 'o',
@@ -377,7 +384,7 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							v0.2.2
+							v0.2.5
 						</Badge>
 					</div>
 					<Paragraph
@@ -457,7 +464,14 @@ Use this example:
 
 				<Button size="sm" href={changelogUrl} variant="secondary" class="text-xs">Changelog</Button>
 			</div>
-			<Button href={githubUrl} size='sm' target="_blank" rel="noreferrer" variant="outline" class="text-xs">
+			<Button
+				href={githubUrl}
+				size="sm"
+				target="_blank"
+				rel="noreferrer"
+				variant="outline"
+				class="text-xs"
+			>
 				<svg viewBox="0 0 1024 1024" fill="none"
 					><path
 						fill-rule="evenodd"
@@ -480,7 +494,8 @@ Use this example:
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
 					The <Highlight class="px-1 text-sm font-normal" tone="green">toolbar</Highlight> is active on
-					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it.
+					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then hover a saved
+					note marker to preview the exact area before opening it.
 				</p>
 			</div>
 		</section>
@@ -507,8 +522,8 @@ Use this example:
 		<section aria-labelledby="features-title" class="flex flex-col">
 			<H2 id="features-title" class="text-[1.2rem]">Features</H2>
 			<Paragraph class="mt-3 mb-1 text-sm leading-6">
-				The current release focuses on page-based annotations, compact toolbar settings, and copy
-				modes that fit local AI workflows.
+				The current release keeps the surface small, but adds clearer hover previews for saved notes
+				and smoother composer transitions for everyday review work.
 			</Paragraph>
 			<OrderedList class="mt-2 space-y-2 pl-5 text-sm leading-6">
 				{#each features as feature}
@@ -637,7 +652,13 @@ Use this example:
 			<H2 class="mt-0 text-[1rem]">Inspiration</H2>
 			<p class="inline-flex items-center gap-2 text-[0.82rem] text-muted-foreground">
 				<!-- <SparklesIcon class="size-3.5" /> -->
-				<span>Highly inspired from <Link class="no-underline" target="_blank" href="https://www.agentation.com">Agentation.com</Link></span>
+				<span
+					>Highly inspired from <Link
+						class="no-underline"
+						target="_blank"
+						href="https://www.agentation.com">Agentation.com</Link
+					></span
+				>
 			</p>
 			<div class="flex flex-wrap gap-4">
 				<Link class="text-[0.86rem]" href={githubUrl}>GitHub</Link>

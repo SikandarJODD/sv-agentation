@@ -231,16 +231,16 @@ describe('note utils', () => {
 	});
 
 	it('keeps toolbar presets inside the viewport', () => {
-		expect(getToolbarCoordinatesForPreset('bottom-right', false)).toEqual({ x: 1210, y: 660 });
+		expect(getToolbarCoordinatesForPreset('bottom-right', false)).toEqual({ x: 1216, y: 666 });
 
 		const next = alignToolbarPositionForStateChange(
-			{ x: 1210, y: 660 },
+			{ x: 1216, y: 666 },
 			false,
 			true,
 			{ horizontal: 'right', vertical: 'bottom' }
 		);
 
-		expect(next.x).toBeLessThan(1210);
+		expect(next.x).toBeLessThan(1216);
 		expect(next.y).toBeGreaterThan(0);
 	});
 });

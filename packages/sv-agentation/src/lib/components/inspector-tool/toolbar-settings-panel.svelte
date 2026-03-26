@@ -9,9 +9,7 @@
 	import { DEFAULT_MARKER_COLORS, EXPANDED_TOOLBAR_WIDTH } from '../../utils/notes';
 
 	let {
-		controlledOptions,
 		settings,
-		toolbar,
 		toolbarPosition,
 		onSetBlockPageInteractions,
 		onSetClearOnCopy,
@@ -53,27 +51,61 @@
 	const outputModeOptions: {
 		value: OutputMode;
 		label: string;
-		description: string;
 	}[] = [
-		{ value: 'compact', label: 'Compact', description: 'Minimal notes only' },
-		{ value: 'standard', label: 'Standard', description: 'Filtered context' },
-		{ value: 'detailed', label: 'Detailed', description: 'Smart nearby context' },
-		{ value: 'forensic', label: 'Forensic', description: 'All metadata + styles' }
+		{ value: 'compact', label: 'Compact' },
+		{ value: 'standard', label: 'Standard' },
+		{ value: 'detailed', label: 'Detailed' },
+		{ value: 'forensic', label: 'Forensic' }
 	];
+	const behaviorOptions = [
+		{
+			key: 'block-page-interactions',
+			label: 'Block page interactions',
+			checked: () => settings.blockPageInteractions,
+			onChange: (value: boolean) => onSetBlockPageInteractions(value)
+		},
+		{
+			key: 'pause-animations',
+			label: 'Pause animations',
+			checked: () => settings.pauseAnimations,
+			onChange: (value: boolean) => onSetPauseAnimations(value)
+		},
+		{
+			key: 'clear-on-copy',
+			label: 'Clear on copy',
+			checked: () => settings.clearOnCopy,
+			onChange: (value: boolean) => onSetClearOnCopy(value)
+		},
+		{
+			key: 'component-context',
+			label: 'Component context',
+			checked: () => settings.includeComponentContext,
+			onChange: (value: boolean) => onSetIncludeComponentContext(value)
+		},
+		{
+			key: 'computed-styles',
+			label: 'Computed styles',
+			checked: () => settings.includeComputedStyles,
+			onChange: (value: boolean) => onSetIncludeComputedStyles(value)
+		}
+	] as const;
 	const getOutputModeMeta = (outputMode: OutputMode) =>
 		outputModeOptions.find((option) => option.value === outputMode) ?? outputModeOptions[0];
-	const getControlledHint = (controlled: boolean) => (controlled ? 'Controlled by prop' : null);
 	const cycleOutputMode = () => {
-		const currentIndex = outputModeOptions.findIndex((option) => option.value === settings.outputMode);
+		const currentIndex = outputModeOptions.findIndex(
+			(option) => option.value === settings.outputMode
+		);
 		const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % outputModeOptions.length;
 		onSetOutputMode(outputModeOptions[nextIndex]?.value ?? 'standard');
 	};
 	const getOutputModeIndex = (outputMode: OutputMode) =>
-		Math.max(0, outputModeOptions.findIndex((option) => option.value === outputMode));
-	const getToolbarResetHint = () =>
-		controlledOptions.toolbarPosition
-			? 'Controlled by prop. Press R to reset to the prop value.'
-			: 'Press R to reset to bottom right.';
+		Math.max(
+			0,
+			outputModeOptions.findIndex((option) => option.value === outputMode)
+		);
+		// Press R to reset to the latest prop value, saved placement, or default.
+	const toolbarResetHint =
+		'Press R to reset to the position of toolbar';
 </script>
 
 <div
@@ -91,7 +123,7 @@
 			<span class="brand-name" data-inspector-ui>sv-agentation</span>
 		</div>
 		<div class="settings-meta" data-inspector-ui>
-			<span class="version" data-inspector-ui>0.2.2</span>
+			<span class="version" data-inspector-ui>0.2.5</span>
 			<button
 				aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
 				class="theme-toggle"
@@ -112,19 +144,15 @@
 	<div class="settings-list" data-inspector-ui>
 		<button
 			aria-label="Cycle output mode"
-			disabled={controlledOptions.outputMode}
 			class="settings-row-button interactive-row"
 			data-inspector-ui
-			title={getControlledHint(controlledOptions.outputMode) ?? 'Cycle output mode'}
+			title="Cycle output mode"
 			type="button"
 			onclick={cycleOutputMode}
 		>
 			<span class="settings-row-copy" data-inspector-ui>
 				<span class="settings-row-label-group" data-inspector-ui>
 					<span class="settings-row-label" data-inspector-ui>Output Mode</span>
-					{#if controlledOptions.outputMode}
-						<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-					{/if}
 				</span>
 			</span>
 			<span class="settings-row-value output-value" data-inspector-ui>
@@ -177,7 +205,7 @@
 			>
 				<span class="settings-row-label" data-inspector-ui>Behavior</span>
 				<span class="settings-row-value accordion-value" data-inspector-ui>
-					<span class="accordion-summary" data-inspector-ui>5 options</span>
+					<span class="accordion-summary" data-inspector-ui>{behaviorOptions.length} options</span>
 					{#if behaviorOpen}
 						<ChevronDown size={14} />
 					{:else}
@@ -193,88 +221,19 @@
 					in:slide={{ duration: 210, easing: cubicOut }}
 					out:slide={{ duration: 180, easing: cubicOut }}
 				>
-					<label class="toggle-row switch-row" data-inspector-ui>
-						<span class="toggle-copy" data-inspector-ui>Block page interactions</span>
-						<input
-							checked={settings.blockPageInteractions}
-							class="settings-switch"
-							data-inspector-ui
-							type="checkbox"
-							onchange={(event) =>
-								onSetBlockPageInteractions((event.currentTarget as HTMLInputElement).checked)}
-						/>
-					</label>
-
-					<label class="toggle-row switch-row" data-inspector-ui>
-						<span class="toggle-copy" data-inspector-ui>
-							<span data-inspector-ui>Pause animations</span>
-							{#if controlledOptions.pauseAnimations}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
-						</span>
-						<input
-							checked={settings.pauseAnimations}
-							class="settings-switch"
-							data-inspector-ui
-							disabled={controlledOptions.pauseAnimations}
-							type="checkbox"
-							onchange={(event) =>
-								onSetPauseAnimations((event.currentTarget as HTMLInputElement).checked)}
-						/>
-					</label>
-
-					<label class="toggle-row switch-row" data-inspector-ui>
-						<span class="toggle-copy" data-inspector-ui>
-							<span data-inspector-ui>Clear on copy</span>
-							{#if controlledOptions.clearOnCopy}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
-						</span>
-						<input
-							checked={settings.clearOnCopy}
-							class="settings-switch"
-							data-inspector-ui
-							disabled={controlledOptions.clearOnCopy}
-							type="checkbox"
-							onchange={(event) => onSetClearOnCopy((event.currentTarget as HTMLInputElement).checked)}
-						/>
-					</label>
-
-					<label class="toggle-row switch-row" data-inspector-ui>
-						<span class="toggle-copy" data-inspector-ui>
-							<span data-inspector-ui>Component context</span>
-							{#if controlledOptions.includeComponentContext}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
-						</span>
-						<input
-							checked={settings.includeComponentContext}
-							class="settings-switch"
-							data-inspector-ui
-							disabled={controlledOptions.includeComponentContext}
-							type="checkbox"
-							onchange={(event) =>
-								onSetIncludeComponentContext((event.currentTarget as HTMLInputElement).checked)}
-						/>
-					</label>
-
-					<label class="toggle-row switch-row" data-inspector-ui>
-						<span class="toggle-copy" data-inspector-ui>
-							<span data-inspector-ui>Computed styles</span>
-							{#if controlledOptions.includeComputedStyles}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
-						</span>
-						<input
-							checked={settings.includeComputedStyles}
-							class="settings-switch"
-							data-inspector-ui
-							disabled={controlledOptions.includeComputedStyles}
-							type="checkbox"
-							onchange={(event) =>
-								onSetIncludeComputedStyles((event.currentTarget as HTMLInputElement).checked)}
-						/>
-					</label>
+					{#each behaviorOptions as option (option.key)}
+						<label class="toggle-row switch-row" data-inspector-ui>
+							<span class="toggle-copy" data-inspector-ui>{option.label}</span>
+							<input
+								checked={option.checked()}
+								class="settings-switch"
+								data-inspector-ui
+								type="checkbox"
+								onchange={(event) =>
+									option.onChange((event.currentTarget as HTMLInputElement).checked)}
+							/>
+						</label>
+					{/each}
 				</div>
 			{/if}
 		</div>
@@ -291,12 +250,11 @@
 			>
 				<span class="settings-row-label-group" data-inspector-ui>
 					<span class="settings-row-label" data-inspector-ui>Toolbar Position</span>
-					{#if controlledOptions.toolbarPosition}
-						<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-					{/if}
 				</span>
 				<span class="settings-row-value accordion-value" data-inspector-ui>
-					<span class="accordion-summary" data-inspector-ui>{getToolbarPositionLabel(toolbarPosition)}</span>
+					<span class="accordion-summary" data-inspector-ui
+						>{getToolbarPositionLabel(toolbarPosition)}</span
+					>
 					{#if toolbarPositionOpen}
 						<ChevronDown size={14} />
 					{:else}
@@ -323,7 +281,6 @@
 											class:position-active={toolbarPosition === position}
 											class="position-chip"
 											data-inspector-ui
-											disabled={controlledOptions.toolbarPosition}
 											title={getToolbarPositionLabel(position)}
 											type="button"
 											onclick={() => onSetToolbarPosition(position)}
@@ -341,7 +298,7 @@
 							{/each}
 						</div>
 					</div>
-					<p class="settings-hint" data-inspector-ui>{getToolbarResetHint()}</p>
+					<p class="settings-hint" data-inspector-ui>{toolbarResetHint}</p>
 				</div>
 			{/if}
 		</div>
@@ -376,8 +333,8 @@
 
 	.settings-panel {
 		width: min(var(--settings-panel-width), calc(100vw - 16px));
-		padding: 14px 16px 15px;
-		border-radius: 28px;
+		padding: 14px 12px 15px;
+		border-radius: 20px;
 	}
 
 	.settings-head {
@@ -444,7 +401,7 @@
 	.settings-list,
 	.settings-block {
 		display: grid;
-		gap: 12px;
+		gap: 10px;
 	}
 
 	.settings-block-compact {
@@ -471,16 +428,16 @@
 	}
 
 	.interactive-row {
-		padding: 6px 4px;
-		border-radius: 14px;
+		padding: 6px 6px;
+		border-radius: 10px;
 		transition:
 			background 160ms ease,
 			transform 160ms ease;
 	}
 
 	.accordion-trigger {
-		padding: 6px 4px;
-		border-radius: 14px;
+		padding: 6px 6px;
+		border-radius: 10px;
 		transition:
 			background 160ms ease,
 			transform 160ms ease;
@@ -515,13 +472,8 @@
 	}
 
 	.settings-row-label {
-		font-size: 0.92rem;
+		font-size: 0.8rem;
 		color: var(--inspector-text-secondary);
-	}
-
-	.settings-row-hint {
-		font-size: 0.7rem;
-		color: var(--inspector-text-muted);
 	}
 
 	.settings-row-value {
@@ -529,27 +481,13 @@
 		align-items: center;
 		gap: 6px;
 		color: var(--inspector-text-primary);
-		font-size: 0.92rem;
+		font-size: 0.8rem;
 		font-weight: 470;
 	}
 
 	.output-value,
 	.accordion-value {
 		color: var(--inspector-text-primary);
-	}
-
-	.control-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.18rem 0.42rem;
-		border: 1px solid color-mix(in srgb, var(--inspector-border-strong) 88%, transparent);
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--inspector-surface-soft) 92%, transparent);
-		color: var(--inspector-text-muted);
-		font-size: 0.66rem;
-		font-weight: 600;
-		line-height: 1;
-		white-space: nowrap;
 	}
 
 	.output-value {
@@ -576,14 +514,14 @@
 	}
 
 	.mode-dot.mode-dot-active {
-		background: rgba(255, 255, 255, 0.96);
+		background: var(--inspector-text-primary);
 		opacity: 1;
 		transform: scale(1.28);
 	}
 
 	.accordion-summary {
 		color: var(--inspector-text-muted);
-		font-size: 0.78rem;
+		font-size: 0.68rem;
 		font-weight: 500;
 	}
 
@@ -594,9 +532,9 @@
 	}
 
 	.position-picker {
-		padding: 8px;
+		padding: 6px;
 		border: 1px solid var(--inspector-border);
-		border-radius: 18px;
+		border-radius: 12px;
 		background: color-mix(in srgb, var(--inspector-surface-soft) 84%, transparent);
 	}
 
@@ -713,32 +651,20 @@
 		color: var(--inspector-text-muted);
 		font-size: 0.72rem;
 		line-height: 1.3;
+		padding-left: 4px;
+		font-weight: 300 !important;
 	}
 
-	.settings-row,
 	.toggle-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
-		font-size: 0.88rem;
-	}
-
-	.settings-row-label,
-	.detail-pill {
-		font-size: 0.88rem;
-	}
-
-	.detail-pill {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		color: var(--inspector-text-primary);
-		font-weight: 600;
+		font-size: 0.79rem;
 	}
 
 	.settings-label {
-		font-size: 0.84rem;
+		font-size: 0.72rem;
 		color: var(--inspector-text-muted);
 	}
 
@@ -783,14 +709,13 @@
 
 	.accordion-content {
 		display: grid;
-		gap: 10px;
-		padding-top: 4px;
+		gap: 8px;
+		/* padding-top: 4px; */
 		overflow: hidden;
 	}
 
-	.block-toggle,
 	.switch-row {
-		font-size: 0.84rem;
+		font-size: 0.79rem;
 	}
 
 	.settings-switch {
