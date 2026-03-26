@@ -23,6 +23,6 @@
 <svelte:head><link rel="icon" href={asset('/main-favicon-light.svg')} /></svelte:head>
 {@render children()}
 
-{#if browser && dev}
+<!-- {#if browser && dev} -->
 	<Agentation {workspaceRoot} {...playgroundAgentationProps} />
-{/if}
+<!-- {/if} -->
