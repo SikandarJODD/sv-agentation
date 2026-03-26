@@ -4,6 +4,26 @@
 
 	const releases = [
 		{
+			version: '0.2.3',
+			date: 'March 26, 2026',
+			sections: [
+				{
+					label: 'Fixed',
+					items: [
+						'Persisted props now sync into local storage without permanently locking the toolbar UI.',
+						'Parent rerenders with the same prop values no longer overwrite user changes or trigger effect loops.'
+					]
+				},
+				{
+					label: 'Updated',
+					items: [
+						'Removed the old controlled-prop badges and disabled settings states.',
+						'Reset now returns to the latest explicit prop value, saved placement, or package default.'
+					]
+				}
+			]
+		},
+		{
 			version: '0.2.2',
 			date: 'March 24, 2026',
 			sections: [
@@ -133,10 +153,10 @@
 					</div>
 
 					<div class="release-body">
-						{#if release.version === '0.2.2'}
+						{#if release.version === '0.2.3'}
 							<p class="release-note">
 								<Highlight>Current patch</Highlight>
-								<span>Props now win over saved state, and toolbar placement works correctly.</span>
+								<span>Props now resync cleanly with saved state while keeping the toolbar editable.</span>
 							</p>
 						{/if}
 

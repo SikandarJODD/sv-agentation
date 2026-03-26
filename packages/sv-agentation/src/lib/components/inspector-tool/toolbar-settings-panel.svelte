@@ -9,7 +9,6 @@
 	import { DEFAULT_MARKER_COLORS, EXPANDED_TOOLBAR_WIDTH } from '../../utils/notes';
 
 	let {
-		controlledOptions,
 		settings,
 		toolbar,
 		toolbarPosition,
@@ -62,7 +61,6 @@
 	];
 	const getOutputModeMeta = (outputMode: OutputMode) =>
 		outputModeOptions.find((option) => option.value === outputMode) ?? outputModeOptions[0];
-	const getControlledHint = (controlled: boolean) => (controlled ? 'Controlled by prop' : null);
 	const cycleOutputMode = () => {
 		const currentIndex = outputModeOptions.findIndex((option) => option.value === settings.outputMode);
 		const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % outputModeOptions.length;
@@ -71,9 +69,7 @@
 	const getOutputModeIndex = (outputMode: OutputMode) =>
 		Math.max(0, outputModeOptions.findIndex((option) => option.value === outputMode));
 	const getToolbarResetHint = () =>
-		controlledOptions.toolbarPosition
-			? 'Controlled by prop. Press R to reset to the prop value.'
-			: 'Press R to reset to bottom right.';
+		'Press R to reset to the latest prop value, saved placement, or default.';
 </script>
 
 <div
@@ -91,7 +87,7 @@
 			<span class="brand-name" data-inspector-ui>sv-agentation</span>
 		</div>
 		<div class="settings-meta" data-inspector-ui>
-			<span class="version" data-inspector-ui>0.2.2</span>
+			<span class="version" data-inspector-ui>0.2.3</span>
 			<button
 				aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
 				class="theme-toggle"
@@ -112,19 +108,15 @@
 	<div class="settings-list" data-inspector-ui>
 		<button
 			aria-label="Cycle output mode"
-			disabled={controlledOptions.outputMode}
 			class="settings-row-button interactive-row"
 			data-inspector-ui
-			title={getControlledHint(controlledOptions.outputMode) ?? 'Cycle output mode'}
+			title="Cycle output mode"
 			type="button"
 			onclick={cycleOutputMode}
 		>
 			<span class="settings-row-copy" data-inspector-ui>
 				<span class="settings-row-label-group" data-inspector-ui>
 					<span class="settings-row-label" data-inspector-ui>Output Mode</span>
-					{#if controlledOptions.outputMode}
-						<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-					{/if}
 				</span>
 			</span>
 			<span class="settings-row-value output-value" data-inspector-ui>
@@ -208,15 +200,11 @@
 					<label class="toggle-row switch-row" data-inspector-ui>
 						<span class="toggle-copy" data-inspector-ui>
 							<span data-inspector-ui>Pause animations</span>
-							{#if controlledOptions.pauseAnimations}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
 						</span>
 						<input
 							checked={settings.pauseAnimations}
 							class="settings-switch"
 							data-inspector-ui
-							disabled={controlledOptions.pauseAnimations}
 							type="checkbox"
 							onchange={(event) =>
 								onSetPauseAnimations((event.currentTarget as HTMLInputElement).checked)}
@@ -226,15 +214,11 @@
 					<label class="toggle-row switch-row" data-inspector-ui>
 						<span class="toggle-copy" data-inspector-ui>
 							<span data-inspector-ui>Clear on copy</span>
-							{#if controlledOptions.clearOnCopy}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
 						</span>
 						<input
 							checked={settings.clearOnCopy}
 							class="settings-switch"
 							data-inspector-ui
-							disabled={controlledOptions.clearOnCopy}
 							type="checkbox"
 							onchange={(event) => onSetClearOnCopy((event.currentTarget as HTMLInputElement).checked)}
 						/>
@@ -243,15 +227,11 @@
 					<label class="toggle-row switch-row" data-inspector-ui>
 						<span class="toggle-copy" data-inspector-ui>
 							<span data-inspector-ui>Component context</span>
-							{#if controlledOptions.includeComponentContext}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
 						</span>
 						<input
 							checked={settings.includeComponentContext}
 							class="settings-switch"
 							data-inspector-ui
-							disabled={controlledOptions.includeComponentContext}
 							type="checkbox"
 							onchange={(event) =>
 								onSetIncludeComponentContext((event.currentTarget as HTMLInputElement).checked)}
@@ -261,15 +241,11 @@
 					<label class="toggle-row switch-row" data-inspector-ui>
 						<span class="toggle-copy" data-inspector-ui>
 							<span data-inspector-ui>Computed styles</span>
-							{#if controlledOptions.includeComputedStyles}
-								<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-							{/if}
 						</span>
 						<input
 							checked={settings.includeComputedStyles}
 							class="settings-switch"
 							data-inspector-ui
-							disabled={controlledOptions.includeComputedStyles}
 							type="checkbox"
 							onchange={(event) =>
 								onSetIncludeComputedStyles((event.currentTarget as HTMLInputElement).checked)}
@@ -291,9 +267,6 @@
 			>
 				<span class="settings-row-label-group" data-inspector-ui>
 					<span class="settings-row-label" data-inspector-ui>Toolbar Position</span>
-					{#if controlledOptions.toolbarPosition}
-						<span class="control-badge" data-inspector-ui>Controlled by prop</span>
-					{/if}
 				</span>
 				<span class="settings-row-value accordion-value" data-inspector-ui>
 					<span class="accordion-summary" data-inspector-ui>{getToolbarPositionLabel(toolbarPosition)}</span>
@@ -323,7 +296,6 @@
 											class:position-active={toolbarPosition === position}
 											class="position-chip"
 											data-inspector-ui
-											disabled={controlledOptions.toolbarPosition}
 											title={getToolbarPositionLabel(position)}
 											type="button"
 											onclick={() => onSetToolbarPosition(position)}

@@ -7,7 +7,7 @@
 	import NoteComposer from './components/note-composer.svelte';
 	import NoteMarkers from './components/note-markers.svelte';
 	import SelectionPreview from './components/selection-preview.svelte';
-	import type { InspectorProps } from './types';
+	import type { InspectorPosition, InspectorProps, OutputMode } from './types';
 	import { DEFAULT_INSPECTOR_POSITION } from './utils/position';
 	import {
 		buildMarkerOutlineVars,
@@ -18,42 +18,69 @@
 
 	let rawProps: InspectorProps = $props();
 
+	type PersistedPropSnapshot = {
+		toolbarPosition?: InspectorPosition;
+		outputMode?: OutputMode;
+		pauseAnimations?: boolean;
+		clearOnCopy?: boolean;
+		includeComponentContext?: boolean;
+		includeComputedStyles?: boolean;
+	};
+	const hasSamePersistedProps = (current: PersistedPropSnapshot, next: PersistedPropSnapshot) =>
+		current.toolbarPosition === next.toolbarPosition &&
+		current.outputMode === next.outputMode &&
+		current.pauseAnimations === next.pauseAnimations &&
+		current.clearOnCopy === next.clearOnCopy &&
+		current.includeComponentContext === next.includeComponentContext &&
+		current.includeComputedStyles === next.includeComputedStyles;
+
 	const hasExplicitProp = <Key extends keyof InspectorProps>(key: Key) =>
 		Object.prototype.hasOwnProperty.call(rawProps, key);
-	const getControlledOptions = () => ({
-		toolbarPosition: hasExplicitProp('toolbarPosition'),
-		outputMode: hasExplicitProp('outputMode'),
-		pauseAnimations: hasExplicitProp('pauseAnimations'),
-		clearOnCopy: hasExplicitProp('clearOnCopy'),
-		includeComponentContext: hasExplicitProp('includeComponentContext'),
-		includeComputedStyles: hasExplicitProp('includeComputedStyles')
-	});
-	const getResolvedOptions = (resolvedPageSessionKey: string | null) => ({
+	const getRuntimeOptions = (resolvedPageSessionKey: string | null) => ({
 		workspaceRoot: rawProps.workspaceRoot ?? null,
 		pageSessionKey: resolvedPageSessionKey,
 		selector: rawProps.selector ?? null,
 		vscodeScheme: rawProps.vscodeScheme ?? 'vscode',
 		openSourceOnClick: rawProps.openSourceOnClick ?? true,
 		deleteAllDelayMs: rawProps.deleteAllDelayMs ?? DEFAULT_DELETE_ALL_DELAY_MS,
-		toolbarPosition: rawProps.toolbarPosition ?? DEFAULT_INSPECTOR_POSITION,
-		outputMode: rawProps.outputMode ?? DEFAULT_NOTES_SETTINGS.outputMode,
-		pauseAnimations: rawProps.pauseAnimations ?? DEFAULT_NOTES_SETTINGS.pauseAnimations,
-		clearOnCopy: rawProps.clearOnCopy ?? DEFAULT_NOTES_SETTINGS.clearOnCopy,
-		includeComponentContext:
-			rawProps.includeComponentContext ?? DEFAULT_NOTES_SETTINGS.includeComponentContext,
-		includeComputedStyles:
-			rawProps.includeComputedStyles ?? DEFAULT_NOTES_SETTINGS.includeComputedStyles,
 		copyToClipboard: rawProps.copyToClipboard ?? true,
 		onAnnotationAdd: rawProps.onAnnotationAdd,
 		onAnnotationUpdate: rawProps.onAnnotationUpdate,
 		onAnnotationDelete: rawProps.onAnnotationDelete,
 		onAnnotationsClear: rawProps.onAnnotationsClear,
-		onCopy: rawProps.onCopy,
-		controlled: getControlledOptions()
+		onCopy: rawProps.onCopy
 	});
+	const getExplicitPersistedProps = (): PersistedPropSnapshot => {
+		const next: PersistedPropSnapshot = {};
+
+		if (hasExplicitProp('toolbarPosition')) {
+			next.toolbarPosition = rawProps.toolbarPosition ?? DEFAULT_INSPECTOR_POSITION;
+		}
+		if (hasExplicitProp('outputMode')) {
+			next.outputMode = rawProps.outputMode ?? DEFAULT_NOTES_SETTINGS.outputMode;
+		}
+		if (hasExplicitProp('pauseAnimations')) {
+			next.pauseAnimations = rawProps.pauseAnimations ?? DEFAULT_NOTES_SETTINGS.pauseAnimations;
+		}
+		if (hasExplicitProp('clearOnCopy')) {
+			next.clearOnCopy = rawProps.clearOnCopy ?? DEFAULT_NOTES_SETTINGS.clearOnCopy;
+		}
+		if (hasExplicitProp('includeComponentContext')) {
+			next.includeComponentContext =
+				rawProps.includeComponentContext ?? DEFAULT_NOTES_SETTINGS.includeComponentContext;
+		}
+		if (hasExplicitProp('includeComputedStyles')) {
+			next.includeComputedStyles =
+				rawProps.includeComputedStyles ?? DEFAULT_NOTES_SETTINGS.includeComputedStyles;
+		}
+
+		return next;
+	};
 
 	const controller = new CopyOpenController();
 	let autoPageSessionKey = $state<string | null>(null);
+	let lastExplicitPersistedProps: PersistedPropSnapshot = {};
+	let lastPersistedPageSessionKey: string | null = null;
 	const getInspectorThemeStyle = (markerColor: string) => {
 		const outline = buildMarkerOutlineVars(markerColor);
 		return [
@@ -79,10 +106,22 @@
 
 	$effect.pre(() => {
 		const effectivePageSessionKey = rawProps.pageSessionKey ?? autoPageSessionKey;
-		const nextOptions = getResolvedOptions(effectivePageSessionKey);
+		const nextOptions = getRuntimeOptions(effectivePageSessionKey);
+		const nextExplicitPersistedProps = getExplicitPersistedProps();
+		const shouldSyncPersistedProps =
+			!hasSamePersistedProps(lastExplicitPersistedProps, nextExplicitPersistedProps) ||
+			lastPersistedPageSessionKey !== effectivePageSessionKey;
+
+		lastExplicitPersistedProps = nextExplicitPersistedProps;
+		lastPersistedPageSessionKey = effectivePageSessionKey;
 
 		// This effect should react to incoming props only, not controller state read during sync.
-		untrack(() => controller.updateOptions(nextOptions));
+		untrack(() => {
+			controller.updateOptions(nextOptions);
+			if (shouldSyncPersistedProps) {
+				controller.syncPersistedProps(nextExplicitPersistedProps);
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -113,12 +152,11 @@
 >
 	<InspectorTool
 		active={controller.enabled}
-		controlledOptions={controller.controlledOptions}
 		deleteAllState={controller.deleteAllState}
 		notes={controller.notes}
 		settings={controller.settings}
 		toolbar={controller.toolbar}
-		toolbarDragEnabled={!controller.controlledOptions.toolbarPosition}
+		toolbarDragEnabled
 		onCloseToolbar={controller.closeToolbar}
 		onCopyNotes={controller.copyNotes}
 		onDeleteAll={controller.requestDeleteAll}

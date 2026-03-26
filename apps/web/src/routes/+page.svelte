@@ -281,7 +281,7 @@ Use this example:
 	const examples = [
 		{
 			title: 'Typed prop-driven mount',
-			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit props stay in charge of toolbar behavior.',
+			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit prop changes resync the saved toolbar behavior.',
 			code: propsPlaygroundSnippet
 		},
 		{
@@ -333,7 +333,7 @@ Use this example:
 		{
 			key: 'r',
 			label: 'Reset toolbar position',
-			description: 'Move the floating toolbar back to the explicit prop value, or to bottom-right when uncontrolled.'
+			description: 'Move the floating toolbar back to the latest explicit prop value, saved placement, or default.'
 		},
 		{
 			key: 'o',
@@ -377,7 +377,7 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							v0.2.2
+							v0.2.3
 						</Badge>
 					</div>
 					<Paragraph

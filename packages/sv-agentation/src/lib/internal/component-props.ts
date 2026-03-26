@@ -11,7 +11,6 @@ import type {
 	ToolbarState
 } from '../types';
 import type { DeleteAllState } from './controller-state.svelte';
-import type { ControlledInspectorOptions } from './controlled-options';
 
 export interface HoverCardProps {
 	hoverInfo: InspectorHoverInfo | null;
@@ -42,7 +41,6 @@ export interface SelectionPreviewProps {
 
 export interface InspectorToolProps {
 	active: boolean;
-	controlledOptions: ControlledInspectorOptions;
 	deleteAllState: DeleteAllState;
 	notes: InspectorNote[];
 	settings: NotesSettings;
@@ -91,7 +89,6 @@ export interface InspectorToolbarLauncherProps {
 }
 
 export interface InspectorToolbarSettingsProps {
-	controlledOptions: ControlledInspectorOptions;
 	settings: NotesSettings;
 	toolbar: ToolbarState;
 	toolbarPosition: InspectorPosition;

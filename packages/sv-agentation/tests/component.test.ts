@@ -2,8 +2,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 
 import Agentation from '../src/lib/element-source-inspector.svelte';
-import { DEFAULT_NOTES_SETTINGS, writeStoredSettings } from '../src/lib/utils/notes';
-import { getToolbarCoordinatesForPreset, writeStoredToolbarPlacement } from '../src/lib/utils/position';
+import AgentationHarness from './fixtures/agentation-harness.svelte';
+import {
+	DEFAULT_NOTES_SETTINGS,
+	readStoredSettings,
+	writeStoredSettings
+} from '../src/lib/utils/notes';
+import {
+	getToolbarCoordinatesForPreset,
+	readStoredToolbarPlacement,
+	writeStoredToolbarPlacement
+} from '../src/lib/utils/position';
 
 const setViewport = (width: number, height: number) => {
 	Object.defineProperty(window, 'innerWidth', {
@@ -79,7 +88,7 @@ describe('Agentation component', () => {
 		document.body.innerHTML = '';
 	});
 
-	it('uses explicit controlled props instead of conflicting stored state', async () => {
+	it('syncs explicit persisted props into state and storage without locking the UI', async () => {
 		writeStoredSettings({
 			...DEFAULT_NOTES_SETTINGS,
 			blockPageInteractions: false,
@@ -122,29 +131,100 @@ describe('Agentation component', () => {
 			throw new Error('expected output mode button');
 		}
 
-		expect(outputModeButton.disabled).toBe(true);
-		expect(target.textContent).toContain('Controlled by prop');
-		expect(target.textContent).toContain('Press R to reset to the prop value.');
+		expect(outputModeButton.disabled).toBe(false);
+		expect(target.textContent).not.toContain('Controlled by prop');
+		expect(target.textContent).toContain('Press R to reset to the latest prop value, saved placement, or default.');
 
 		expect(findSwitchForLabel(target, 'Pause animations')).toMatchObject({
 			checked: true,
-			disabled: true
+			disabled: false
 		});
 		expect(findSwitchForLabel(target, 'Clear on copy')).toMatchObject({
 			checked: true,
-			disabled: true
+			disabled: false
 		});
 		expect(findSwitchForLabel(target, 'Component context')).toMatchObject({
 			checked: true,
-			disabled: true
+			disabled: false
 		});
 		expect(findSwitchForLabel(target, 'Computed styles')).toMatchObject({
 			checked: true,
-			disabled: true
+			disabled: false
 		});
 
 		const positionChips = Array.from(target.querySelectorAll('.position-chip'));
 		expect(positionChips.length).toBeGreaterThan(0);
-		expect(positionChips.every((chip) => chip instanceof HTMLButtonElement && chip.disabled)).toBe(true);
+		expect(positionChips.every((chip) => chip instanceof HTMLButtonElement && !chip.disabled)).toBe(true);
+		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS)).toMatchObject({
+			outputMode: 'compact',
+			pauseAnimations: true,
+			clearOnCopy: true,
+			includeComponentContext: true,
+			includeComputedStyles: true
+		});
+		expect(readStoredToolbarPlacement('/')).toMatchObject({ preset: 'bottom-left' });
+	});
+
+	it('does not overwrite user changes when the same explicit prop value rerenders', () => {
+		mountedComponent = mount(AgentationHarness, {
+			target,
+			props: {
+				initialProps: {
+					pauseAnimations: true
+				}
+			}
+		});
+		flushSync();
+
+		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+		clickButton(findButtonByText(target, 'Behavior'));
+
+		const pauseAnimationsSwitch = findSwitchForLabel(target, 'Pause animations');
+		expect(pauseAnimationsSwitch.checked).toBe(true);
+
+		pauseAnimationsSwitch.click();
+		flushSync();
+		expect(findSwitchForLabel(target, 'Pause animations').checked).toBe(false);
+
+		const setInspectorProps = mountedComponent?.setInspectorProps;
+		if (typeof setInspectorProps !== 'function') {
+			throw new Error('expected harness updater');
+		}
+
+		setInspectorProps({ pauseAnimations: true });
+		flushSync();
+
+		expect(findSwitchForLabel(target, 'Pause animations').checked).toBe(false);
+		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS).pauseAnimations).toBe(false);
+	});
+
+	it('resyncs runtime state when an explicit prop value actually changes later', () => {
+		mountedComponent = mount(AgentationHarness, {
+			target,
+			props: {
+				initialProps: {
+					outputMode: 'compact'
+				}
+			}
+		});
+		flushSync();
+
+		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+
+		clickButton(target.querySelector('button[aria-label="Cycle output mode"]'));
+		expect(target.textContent).toContain('Standard');
+
+		const setInspectorProps = mountedComponent?.setInspectorProps;
+		if (typeof setInspectorProps !== 'function') {
+			throw new Error('expected harness updater');
+		}
+
+		setInspectorProps({ outputMode: 'forensic' });
+		flushSync();
+
+		expect(target.textContent).toContain('Forensic');
+		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS).outputMode).toBe('forensic');
 	});
 });

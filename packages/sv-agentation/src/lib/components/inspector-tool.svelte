@@ -8,7 +8,6 @@
 
 	let {
 		active,
-		controlledOptions,
 		deleteAllState,
 		notes,
 		settings,
@@ -111,7 +110,6 @@
 	{#if toolbar.settingsOpen}
 		<ToolbarSettingsPanel
 			bind:panelElement={settingsPanelElement}
-			{controlledOptions}
 			placement={settingsPanelPlacement}
 			settings={settings}
 			style={getSettingsPanelStyle()}

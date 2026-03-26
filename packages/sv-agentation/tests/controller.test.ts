@@ -242,9 +242,9 @@ describe('CopyOpenController', () => {
 		const onCopy = vi.fn();
 		const controller = new CopyOpenController({
 			copyToClipboard: false,
-			onCopy,
-			pauseAnimations: true
+			onCopy
 		});
+		controller.syncPersistedProps({ pauseAnimations: true });
 
 		controller.composer = buildComposerState({
 			noteId: null,
@@ -282,7 +282,7 @@ describe('CopyOpenController', () => {
 		controller.destroy();
 	});
 
-	it('treats explicit persisted props as controlled and preserves conflicting stored state', () => {
+	it('syncs explicit persisted props into runtime state and storage', () => {
 		writeStoredSettings({
 			...DEFAULT_NOTES_SETTINGS,
 			blockPageInteractions: true,
@@ -299,21 +299,15 @@ describe('CopyOpenController', () => {
 		});
 
 		const controller = new CopyOpenController({
-			pageSessionKey: '/',
+			pageSessionKey: '/'
+		});
+		controller.syncPersistedProps({
 			toolbarPosition: 'bottom-left',
 			outputMode: 'compact',
 			pauseAnimations: true,
 			clearOnCopy: true,
 			includeComponentContext: true,
-			includeComputedStyles: true,
-			controlled: {
-				toolbarPosition: true,
-				outputMode: true,
-				pauseAnimations: true,
-				clearOnCopy: true,
-				includeComponentContext: true,
-				includeComputedStyles: true
-			}
+			includeComputedStyles: true
 		});
 
 		expect(controller.toolbarPositionPreset).toBe('bottom-left');
@@ -325,7 +319,7 @@ describe('CopyOpenController', () => {
 			includeComponentContext: true,
 			includeComputedStyles: true
 		});
-		expect(readStoredToolbarPlacement('/')).toMatchObject({ preset: 'bottom-right' });
+		expect(readStoredToolbarPlacement('/')).toMatchObject({ preset: 'bottom-left' });
 
 		const toolbarHandle = document.createElement('div');
 		Object.defineProperty(toolbarHandle, 'getBoundingClientRect', {
@@ -350,7 +344,10 @@ describe('CopyOpenController', () => {
 			currentTarget: toolbarHandle,
 			preventDefault: vi.fn()
 		} as unknown as PointerEvent);
-		expect(controller.toolbar.dragging).toBe(false);
+		expect(controller.toolbar.dragging).toBe(true);
+		controller.handlePointerUp({
+			pointerId: 1
+		} as PointerEvent);
 
 		controller.toolbar = {
 			...controller.toolbar,
@@ -365,22 +362,57 @@ describe('CopyOpenController', () => {
 		controller.setBlockPageInteractions(false);
 		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS)).toMatchObject({
 			blockPageInteractions: false,
-			outputMode: 'forensic',
-			pauseAnimations: false,
-			clearOnCopy: false,
-			includeComponentContext: false,
-			includeComputedStyles: false
+			outputMode: 'compact',
+			pauseAnimations: true,
+			clearOnCopy: true,
+			includeComponentContext: true,
+			includeComputedStyles: true
 		});
 
 		controller.destroy();
 	});
 
-	it('reanchors preset toolbar positions on viewport resize', () => {
-		const controller = new CopyOpenController({
-			toolbarPosition: 'bottom-right',
-			controlled: {
-				toolbarPosition: true
+	it('resets to saved placement when no explicit toolbar prop is active', () => {
+		writeStoredToolbarPlacement('/', {
+			mode: 'preset',
+			preset: 'top-center',
+			coordinates: getToolbarCoordinatesForPreset('top-center', false)
+		});
+
+		const controller = new CopyOpenController({ pageSessionKey: '/' });
+		controller.setToolbarPosition('bottom-left');
+
+		controller.toolbar = {
+			...controller.toolbar,
+			position: {
+				x: 300,
+				y: 100
 			}
+		};
+		controller.resetToolbarPosition();
+
+		expect(controller.toolbarPositionPreset).toBe('bottom-left');
+		expect(controller.toolbar.position).toEqual(getToolbarCoordinatesForPreset('bottom-left', false));
+
+		controller.syncPersistedProps({});
+		controller.toolbar = {
+			...controller.toolbar,
+			position: {
+				x: 520,
+				y: 240
+			}
+		};
+		controller.resetToolbarPosition();
+
+		expect(controller.toolbarPositionPreset).toBe('bottom-left');
+		expect(controller.toolbar.position).toEqual(getToolbarCoordinatesForPreset('bottom-left', false));
+		controller.destroy();
+	});
+
+	it('reanchors preset toolbar positions on viewport resize', () => {
+		const controller = new CopyOpenController();
+		controller.syncPersistedProps({
+			toolbarPosition: 'bottom-right'
 		});
 
 		expect(controller.toolbar.position).toEqual({ x: 1210, y: 660 });
