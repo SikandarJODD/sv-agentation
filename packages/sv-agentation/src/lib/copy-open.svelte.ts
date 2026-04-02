@@ -717,7 +717,7 @@ export class CopyOpenController {
 	};
 
 	handleKeyDown = async (event: KeyboardEvent) => {
-		if (event.defaultPrevented) return;
+		if (event.defaultPrevented || !event.key) return;
 
 		const key = event.key.toLowerCase();
 		if (key === 'meta' || key === 'control') {
@@ -783,6 +783,7 @@ export class CopyOpenController {
 	};
 
 	handleKeyUp = async (event: KeyboardEvent) => {
+		if (!event.key) return;
 		const key = event.key.toLowerCase();
 		if (key === 'meta' || key === 'control') {
 			this.#modifierState.metaOrCtrl = false;
