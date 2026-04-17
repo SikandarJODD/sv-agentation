@@ -1,4 +1,4 @@
-# sv-agentation
+# Svelte Agentation
 
 ![Svelte Agentation OG](https://sv-agentation.com/og.png)
 
@@ -7,156 +7,128 @@
 
 **Live Preview:** [Svelte Agentation](https://sv-agentation.com)
 
-Dev-mode Svelte inspector for source-aware element inspection and browser annotations.
-
 ## Overview
 
-`sv-agentation` helps developers inspect rendered DOM, jump to source, annotate UI directly in the browser, and copy structured output for developer or AI-assisted workflows.
+Svelte Agentation turns UI annotations into structured context that AI coding agents can understand and act on.
 
 ## Installation
 
 ```sh
-npm install sv-agentation
+pnpm i sv-agentation
 ```
 
 ```sh
-pnpm add sv-agentation
+npm i sv-agentation
+```
+
+```sh
+bun i sv-agentation
 ```
 
 ```sh
 yarn add sv-agentation
 ```
 
-```sh
-bun add sv-agentation
+# Usage
+
+```svelte
+<script lang="ts">
+	import { browser, dev } from '$app/environment';
+	import { Agentation } from 'sv-agentation';
+</script>
+
+{#if browser && dev}
+	<Agentation />
+{/if}
 ```
 
-## Usage
+Mount the inspector only in development and only in the browser.
+
+## Open in Editor
 
 ```svelte
 <script lang="ts">
 	import { browser, dev } from '$app/environment';
 	import { Agentation } from 'sv-agentation';
 
-	const workspaceRoot = '/absolute/path/to/your/repo';
+	// Absolute path to project root
+	let workspaceRoot = 'C:/Users/YourName/Projects/YourProject';
 </script>
 
 {#if browser && dev}
-	<Agentation {workspaceRoot} />
+	<Agentation {workspaceRoot} openSourceOnClick />
 {/if}
 ```
 
-Mount the inspector only in development and only in the browser.
+## Annotation Callbacks
 
-## Architecture
+```svelte
+<script lang="ts">
+	import { browser, dev } from '$app/environment';
+	import { Agentation } from 'sv-agentation';
+  import type { AgentationAnnotationSnapshot, AgentationExportPayload } from 'sv-agentation';
 
-```text
-Agentation
-  -> element-source-inspector.svelte
-  -> CopyOpenController
-      -> internal/controller-state.svelte.ts
-      -> internal/controller-selection.ts
-      -> internal/controller-composer.ts
-      -> internal/controller-browser.ts
-  -> components/*
-  -> utils/note-*.ts + utils/selection.ts + utils/source.ts
+	function handleAnnotationAdd(annotation : AgentationAnnotationSnapshot) {
+		console.log('New annotation added:', annotation);
+	}
+
+	function handleCopy(markdown : string, payload : AgentationExportPayload) {
+		console.log('Notes copied:', markdown, payload);
+	}
+</script>
+
+{#if browser && dev}
+	<Agentation onAnnotationAdd={handleAnnotationAdd} onCopy={handleCopy} />
+{/if}
 ```
-
-## Interaction Flow
-
-```text
-inspect / select
-  -> open composer
-  -> save note
-  -> persist to localStorage
-  -> render markers
-```
-
-## Code Map
-
-- `src/lib/element-source-inspector.svelte`: public mount shell that syncs props into the controller.
-- `src/lib/copy-open.svelte.ts`: main orchestration class for runtime state and browser events.
-- `src/lib/internal/*`: controller-private helpers for state, selection flow, composer flow, and browser side effects.
-- `src/lib/components/*`: visible inspector UI.
-- `src/lib/utils/note-*.ts`: note storage, formatting, rendering, and layout helpers.
-- `src/lib/utils/selection.ts`: text/group/area anchor serialization and recovery.
-
-## Features
-
-1. Inspect DOM elements and resolve source file location.
-2. Jump to source with VS Code or VS Code Insiders URL schemes.
-3. Annotate individual elements directly in the page.
-4. Annotate selected text ranges.
-5. Annotate grouped selections across multiple elements.
-6. Annotate selected page areas.
-7. Use a draggable floating toolbar.
-8. Choose toolbar position presets.
-9. Toggle the inspector theme inside the tool UI.
-10. Copy notes in `compact`, `standard`, `detailed`, or `forensic` output modes.
-11. Capture stable page metadata, selector paths, bounding boxes, nearby text, and component context for copied output.
-12. Include computed-style snapshots for forensic exports.
-13. Pause page animations while inspecting when needed.
-14. Toggle marker visibility for notes.
-15. Block normal page interactions while inspecting.
-16. Use a delete-all flow with configurable delay.
-17. Hook into annotation lifecycle and copy events with callbacks.
-18. Mount the inspector only in dev mode with `browser && dev`.
-
-## Props
-
-| Prop | Type | Description |
-| --- | --- | --- |
-| `workspaceRoot` | `string \| null` | Absolute project root for source lookup and editor links. |
-| `selector` | `string \| null` | Optional selector to scope inspectable elements. |
-| `vscodeScheme` | `'vscode' \| 'vscode-insiders'` | Choose the VS Code URL scheme for open-in-editor actions. |
-| `openSourceOnClick` | `boolean` | Open source directly on click instead of only showing metadata. |
-| `deleteAllDelayMs` | `number` | Confirmation delay for delete-all notes. |
-| `toolbarPosition` | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | When provided, syncs the floating toolbar to this preset and stores it as the latest saved placement. |
-| `outputMode` | `'compact' \| 'standard' \| 'detailed' \| 'forensic'` | When provided, syncs the copy/export mode and stores it for later sessions. |
-| `pauseAnimations` | `boolean` | When provided, syncs animation pausing while the inspector is active and stores it for later sessions. |
-| `clearOnCopy` | `boolean` | When provided, syncs whether copied notes are cleared and stores it for later sessions. |
-| `includeComponentContext` | `boolean` | When provided, syncs component-context capture and stores it for later sessions. |
-| `includeComputedStyles` | `boolean` | When provided, syncs computed-style capture and stores it for later sessions. |
-| `copyToClipboard` | `boolean` | Disable direct clipboard writes and use callbacks only. |
-| `onAnnotationAdd` | `(annotation) => void` | Called after a note is created. |
-| `onAnnotationUpdate` | `(annotation) => void` | Called after a note is updated. |
-| `onAnnotationDelete` | `(annotation) => void` | Called after a note is deleted. |
-| `onAnnotationsClear` | `(annotations) => void` | Called after all notes are cleared. |
-| `onCopy` | `(markdown, payload) => void` | Called after note export is prepared. |
 
 ## Shortcuts
 
-| Shortcut | Action | Description |
-| --- | --- | --- |
-| `i` | Toggle inspector | Open or close the inspector toolbar and annotation mode. |
-| `c` | Copy all notes | Copy notes as Markdown when at least one note exists. |
-| `r` | Reset toolbar position | Move the floating toolbar back to the latest explicit prop value, saved placement, or default. |
-| `o` | Open source | Open the currently hovered source location when the inspector is active. |
-| `esc` | Cancel current action | Clear transient selections, close the composer, or close settings/delete state. |
-| `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers. |
+| Shortcut                   | Action                  | Description                                                                                    |
+| -------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `i`                        | Toggle inspector        | Open or close the inspector toolbar and annotation mode.                                       |
+| `c`                        | Copy all notes          | Copy notes as Markdown when at least one note exists.                                          |
+| `r`                        | Reset toolbar position  | Move the floating toolbar back to the latest explicit prop value, saved placement, or default. |
+| `o`                        | Open source             | Open the currently hovered source location when the inspector is active.                       |
+| `esc`                      | Cancel current action   | Clear transient selections, close the composer, or close settings/delete state.                |
+| `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers.        |
 
-## Public API
+## Features
 
-- `Agentation`
-- `AgentationInspector`
-- `ElementSourceInspector`
-- `AGENTATION_ACTIVE_CHANGE_EVENT`
-- `AGENTATION_BLOCKED_INTERACTION_EVENT`
-- `COPY_OPEN_ACTIVE_CHANGE_EVENT`
-- `COPY_OPEN_BLOCKED_INTERACTION_EVENT`
-- `INSPECTOR_ACTIVE_CHANGE_EVENT`
-- `INSPECTOR_BLOCKED_INTERACTION_EVENT`
-- `AgentationProps`
-- `InspectorProps`
-- related exported `Inspector*` public types
+1. Annotate individual elements directly in the page.
+2. Annotate selected text ranges.
+3. Annotate grouped selections across multiple elements.
+4. Use a draggable floating toolbar.
+5. Toggle the inspector theme inside the tool UI.
+6. Copy notes in `compact`, `standard`, `detailed`, or `forensic` output modes.
+7. Include computed-style snapshots for forensic exports.
+8. Toggle marker visibility for notes.
+9. Block normal page interactions while inspecting.
+10. Use a delete-all flow with configurable delay.
+11. Hook into annotation lifecycle and copy events with callbacks.
+12. Mount the inspector only in dev mode with `browser && dev`.
 
-## Notes
+## Props
 
-- Targets Svelte 5 consumers.
-- Intended for browser/dev-mode use, not production collaboration flows.
-- Highly inspired from Agentation.
-- Source-opening depends on `element-source` metadata and your `workspaceRoot` plus editor setup.
-- Internal state now uses a hybrid approach: `*.svelte.ts` for stateful controller helpers and plain `.ts` for pure transforms.
+| Prop                      | Type                                                                                                                           | Description                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `workspaceRoot`           | `string \| null`                                                                                                               | Absolute project root for source lookup and editor links.                                              |
+| `selector`                | `string \| null`                                                                                                               | Optional selector to scope inspectable elements.                                                       |
+| `vscodeScheme`            | `'vscode' \| 'vscode-insiders'`                                                                                                | Choose the VS Code URL scheme for open-in-editor actions.                                              |
+| `openSourceOnClick`       | `boolean`                                                                                                                      | Open source directly on click instead of only showing metadata.                                        |
+| `deleteAllDelayMs`        | `number`                                                                                                                       | Confirmation delay for delete-all notes.                                                               |
+| `toolbarPosition`         | `'top-left' \| 'top-center' \| 'top-right' \| 'mid-right' \| 'mid-left' \| 'bottom-left' \| 'bottom-center' \| 'bottom-right'` | When provided, syncs the floating toolbar to this preset and stores it as the latest saved placement.  |
+| `outputMode`              | `'compact' \| 'standard' \| 'detailed' \| 'forensic'`                                                                          | When provided, syncs the copy/export mode and stores it for later sessions.                            |
+| `pauseAnimations`         | `boolean`                                                                                                                      | When provided, syncs animation pausing while the inspector is active and stores it for later sessions. |
+| `clearOnCopy`             | `boolean`                                                                                                                      | When provided, syncs whether copied notes are cleared and stores it for later sessions.                |
+| `includeComponentContext` | `boolean`                                                                                                                      | When provided, syncs component-context capture and stores it for later sessions.                       |
+| `includeComputedStyles`   | `boolean`                                                                                                                      | When provided, syncs computed-style capture and stores it for later sessions.                          |
+| `copyToClipboard`         | `boolean`                                                                                                                      | Disable direct clipboard writes and use callbacks only.                                                |
+| `onAnnotationAdd`         | `(annotation) => void`                                                                                                         | Called after a note is created.                                                                        |
+| `onAnnotationUpdate`      | `(annotation) => void`                                                                                                         | Called after a note is updated.                                                                        |
+| `onAnnotationDelete`      | `(annotation) => void`                                                                                                         | Called after a note is deleted.                                                                        |
+| `onAnnotationsClear`      | `(annotations) => void`                                                                                                        | Called after all notes are cleared.                                                                    |
+| `onCopy`                  | `(markdown, payload) => void`                                                                                                  | Called after note export is prepared.                                                                  |
 
 ## Credits
 
