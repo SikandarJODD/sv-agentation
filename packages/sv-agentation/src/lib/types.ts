@@ -4,6 +4,17 @@ export type ThemeMode = 'dark' | 'light';
 export type InspectorNoteKind = 'element' | 'text' | 'group' | 'area';
 export type NoteResolutionState = 'resolved' | 'partial' | 'unresolved';
 export type ComponentContextMode = 'filtered' | 'smart' | 'all';
+export type AgentationKeyAction =
+	| 'inspect'
+	| 'copy'
+	| 'reset'
+	| 'open'
+	| 'delete'
+	| 'cancel'
+	| 'submit';
+export type AgentationKeyBindingValue = string | null;
+export type AgentationKeyBindings = Partial<Record<AgentationKeyAction, AgentationKeyBindingValue>>;
+export type ResolvedAgentationKeyBindings = Record<AgentationKeyAction, AgentationKeyBindingValue>;
 
 export type InspectorPosition =
 	| 'top-left'
@@ -37,6 +48,7 @@ export interface InspectorProps {
 	includeComponentContext?: boolean;
 	includeComputedStyles?: boolean;
 	copyToClipboard?: boolean;
+	keyBindings?: AgentationKeyBindings;
 	onAnnotationAdd?: AnnotationLifecycleCallbacks['onAnnotationAdd'];
 	onAnnotationUpdate?: AnnotationLifecycleCallbacks['onAnnotationUpdate'];
 	onAnnotationDelete?: AnnotationLifecycleCallbacks['onAnnotationDelete'];
@@ -58,6 +70,7 @@ export interface InspectorRuntimeOptions extends AnnotationLifecycleCallbacks {
 	includeComponentContext: boolean;
 	includeComputedStyles: boolean;
 	copyToClipboard: boolean;
+	keyBindings: ResolvedAgentationKeyBindings;
 }
 
 export interface InspectorHoverInfo {

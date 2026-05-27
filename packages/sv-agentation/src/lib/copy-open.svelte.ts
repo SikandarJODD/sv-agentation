@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { resolveElementInfo } from 'element-source';
 
 import type {
+	AgentationKeyBindings,
 	AgentationAnnotationSnapshot,
 	DragSelectionState,
 	GroupSelectionPreviewState,
@@ -13,6 +14,7 @@ import type {
 	NoteSourceInfo,
 	NotesSettings,
 	OutputMode,
+	ResolvedAgentationKeyBindings,
 	RectBox,
 	RenderedInspectorNote,
 	ToolbarCoordinates,
@@ -62,6 +64,12 @@ import {
 	type ToolbarPositionMode,
 	writeStoredToolbarPlacement
 } from './utils/position';
+import {
+	DEFAULT_KEY_BINDINGS,
+	matchesKeyBinding,
+	resolveKeyBindings,
+	type ParsedKeyBindings
+} from './utils/shortcuts';
 import { serializeTextSelection } from './utils/selection';
 import { buildHoverInfo, getHoverGeometry } from './utils/source';
 import type { InspectorBlockedInteractionDetail } from './events';
@@ -120,6 +128,7 @@ const DEFAULT_OPTIONS: InspectorRuntimeOptions = {
 	includeComponentContext: DEFAULT_NOTES_SETTINGS.includeComponentContext,
 	includeComputedStyles: DEFAULT_NOTES_SETTINGS.includeComputedStyles,
 	copyToClipboard: true,
+	keyBindings: DEFAULT_KEY_BINDINGS,
 	onAnnotationAdd: undefined,
 	onAnnotationUpdate: undefined,
 	onAnnotationDelete: undefined,
@@ -149,8 +158,10 @@ type PersistedControllerOptions = Pick<
 type PersistedSettingsKey = (typeof PERSISTED_SETTINGS_KEYS)[number];
 type PersistedSettingsPatch = Partial<Pick<NotesSettings, PersistedSettingsKey>>;
 type CopyOpenControllerOptions = Partial<
-	Omit<InspectorRuntimeOptions, 'toolbarPosition' | PersistedSettingsKey>
->;
+	Omit<InspectorRuntimeOptions, 'toolbarPosition' | PersistedSettingsKey | 'keyBindings'>
+> & {
+	keyBindings?: AgentationKeyBindings;
+};
 
 export class CopyOpenController {
 	enabled = $state(false);
@@ -160,6 +171,7 @@ export class CopyOpenController {
 	toolbarPositionPreset = $state<InspectorPosition>(DEFAULT_INSPECTOR_POSITION);
 	deleteAllState = $state<DeleteAllState>(createDeleteAllState());
 	settings = $state<NotesSettings>(DEFAULT_NOTES_SETTINGS);
+	keyBindings = $state<ResolvedAgentationKeyBindings>(DEFAULT_KEY_BINDINGS);
 	notes = $state<InspectorNote[]>([]);
 	renderedNotes = $state<RenderedInspectorNote[]>([]);
 	composer = $state<NoteComposerState | null>(null);
@@ -176,6 +188,7 @@ export class CopyOpenController {
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
 	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
 	#copyToClipboard = DEFAULT_OPTIONS.copyToClipboard;
+	#parsedKeyBindings: ParsedKeyBindings = resolveKeyBindings(DEFAULT_OPTIONS.keyBindings).parsedKeyBindings;
 	#onAnnotationAdd = DEFAULT_OPTIONS.onAnnotationAdd;
 	#onAnnotationUpdate = DEFAULT_OPTIONS.onAnnotationUpdate;
 	#onAnnotationDelete = DEFAULT_OPTIONS.onAnnotationDelete;
@@ -268,6 +281,12 @@ export class CopyOpenController {
 
 		if ('copyToClipboard' in options) {
 			this.#copyToClipboard = options.copyToClipboard ?? DEFAULT_OPTIONS.copyToClipboard;
+		}
+
+		if ('keyBindings' in options) {
+			const resolvedBindings = resolveKeyBindings(options.keyBindings);
+			this.keyBindings = resolvedBindings.keyBindings;
+			this.#parsedKeyBindings = resolvedBindings.parsedKeyBindings;
 		}
 
 		if ('onAnnotationAdd' in options) {
@@ -729,7 +748,7 @@ export class CopyOpenController {
 			return;
 		}
 
-		if (key === 'escape') {
+		if (matchesKeyBinding(event, this.#parsedKeyBindings.cancel)) {
 			if (this.#groupSelectionItems.length > 0 || this.dragSelection) {
 				event.preventDefault();
 				this.#clearTransientSelections();
@@ -752,23 +771,22 @@ export class CopyOpenController {
 			return;
 		}
 
-		if (event.metaKey || event.ctrlKey || event.altKey) return;
 		if (isTypingTarget(event.target)) return;
 
-		if (key === 'i') {
+		if (matchesKeyBinding(event, this.#parsedKeyBindings.inspect)) {
 			event.preventDefault();
 			this.toggle();
 			return;
 		}
 
-		if (key === 'c') {
+		if (matchesKeyBinding(event, this.#parsedKeyBindings.copy)) {
 			if (this.notes.length === 0) return;
 			event.preventDefault();
 			await this.copyNotes();
 			return;
 		}
 
-		if (key === 'r') {
+		if (matchesKeyBinding(event, this.#parsedKeyBindings.reset)) {
 			event.preventDefault();
 			this.resetToolbarPosition();
 			return;
@@ -776,7 +794,7 @@ export class CopyOpenController {
 
 		if (!this.enabled || this.composer) return;
 
-		if (key === 'o') {
+		if (matchesKeyBinding(event, this.#parsedKeyBindings.open)) {
 			event.preventDefault();
 			this.open();
 		}

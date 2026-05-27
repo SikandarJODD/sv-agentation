@@ -37,6 +37,17 @@ const clickButton = (button: Element | null) => {
 	flushSync();
 };
 
+const dispatchWindowKey = (key: string, init: KeyboardEventInit = {}) => {
+	window.dispatchEvent(
+		new KeyboardEvent('keydown', {
+			key,
+			bubbles: true,
+			...init
+		})
+	);
+	flushSync();
+};
+
 const findButtonByText = (target: ParentNode, text: string) =>
 	Array.from(target.querySelectorAll('button')).find((button) =>
 		button.textContent?.includes(text)
@@ -139,7 +150,7 @@ describe('Agentation component', () => {
 		expect(outputModeButton.disabled).toBe(false);
 		expect(target.textContent).not.toContain('Controlled by prop');
 		expect(target.textContent).toContain(
-			'Press R to reset to the position of toolbar'
+			'Press R to reset the position of toolbar'
 		);
 
 		expect(findSwitchForLabel(target, 'Pause animations')).toMatchObject({
@@ -235,6 +246,46 @@ describe('Agentation component', () => {
 
 		expect(target.textContent).toContain('Forensic');
 		expect(readStoredSettings(DEFAULT_NOTES_SETTINGS).outputMode).toBe('forensic');
+	});
+
+	it('applies key binding prop updates at runtime', () => {
+		mountedComponent = mount(AgentationHarness, {
+			target,
+			props: {
+				initialProps: {
+					keyBindings: {
+						inspect: 'Alt+I'
+					}
+				}
+			}
+		});
+		flushSync();
+
+		clickButton(target.querySelector('button[title="Open toolbar"]'));
+
+		const getInspectButton = () => target.querySelector('button[aria-pressed]') as HTMLButtonElement | null;
+		expect(getInspectButton()?.title).toBe('Start annotation mode (Alt+I)');
+
+		dispatchWindowKey('i');
+		expect(getInspectButton()?.title).toBe('Start annotation mode (Alt+I)');
+
+		dispatchWindowKey('i', { altKey: true });
+		expect(getInspectButton()?.title).toBe('Pause annotation mode (Alt+I)');
+
+		const setInspectorProps = mountedComponent?.setInspectorProps;
+		if (typeof setInspectorProps !== 'function') {
+			throw new Error('expected harness updater');
+		}
+
+		setInspectorProps({
+			keyBindings: {
+				inspect: 'Ctrl+I'
+			}
+		});
+		flushSync();
+
+		dispatchWindowKey('i', { altKey: true });
+		expect(getInspectButton()?.title).toBe('Pause annotation mode (Ctrl+I)');
 	});
 
 	it('keeps one toolbar shell mounted while toggling open and closed', () => {

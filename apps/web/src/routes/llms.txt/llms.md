@@ -76,6 +76,8 @@ Route-based note sessions are automatic by default.
   When provided, keeps the floating toolbar anchored to this preset and overrides saved toolbar placements.
 - `pageSessionKey?: string | null`
   Optional advanced override for note session scoping. Most apps do not need this.
+- `keyBindings?: Partial<Record<'inspect' | 'copy' | 'reset' | 'open' | 'delete' | 'cancel' | 'submit', string | null>>`
+  Override or disable keyboard actions without changing saved toolbar settings.
 
 ### Behavior
 
@@ -94,23 +96,23 @@ Route-based note sessions are automatic by default.
 
 ### Callbacks
 
-- `onAnnotationAdd?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationAdd?: (annotation: Annotation) => void`
   Fires when a new annotation is saved.
-- `onAnnotationUpdate?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationUpdate?: (annotation: Annotation) => void`
   Fires when an existing annotation is edited.
-- `onAnnotationDelete?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationDelete?: (annotation: Annotation) => void`
   Fires when one annotation is removed.
-- `onAnnotationsClear?: (annotations: AgentationAnnotationSnapshot[]) => void`
+- `onAnnotationsClear?: (annotations: Annotation[]) => void`
   Fires after the current page notes are cleared.
-- `onCopy?: (markdown: string, payload: AgentationExportPayload) => void`
+- `onCopy?: (markdown: string, payload: AnnotationPayload) => void`
   Receives the generated markdown and structured export payload.
 
 ## Exported Types
 
-- `AgentationProps`
+- `AnnotationProps`
 - `OutputMode`
-- `AgentationAnnotationSnapshot`
-- `AgentationExportPayload`
+- `Annotation`
+- `AnnotationPayload`
 - `ComputedStyleSnapshot`
 - `ComponentContextMode`
 
@@ -118,19 +120,15 @@ Route-based note sessions are automatic by default.
 
 ```svelte
 <script lang="ts">
-	import {
-		Agentation,
-		type AgentationAnnotationSnapshot,
-		type AgentationExportPayload
-	} from 'sv-agentation';
+	import { Agentation, type Annotation, type AnnotationPayload } from 'sv-agentation';
 
 	const workspaceRoot = '/absolute/path/to/your/repo';
 
-	const handleAnnotationAdd = (annotation: AgentationAnnotationSnapshot) => {
+	const handleAnnotationAdd = (annotation: Annotation) => {
 		console.log(annotation.targetLabel);
 	};
 
-	const handleCopy = (markdown: string, payload: AgentationExportPayload) => {
+	const handleCopy = (markdown: string, payload: AnnotationPayload) => {
 		console.log(markdown);
 		console.log(payload.annotations.length);
 	};
@@ -139,6 +137,13 @@ Route-based note sessions are automatic by default.
 <Agentation
 	{workspaceRoot}
 	outputMode="detailed"
+	keyBindings={{
+		inspect: 'Alt+I',
+		copy: 'Alt+C',
+		reset: 'Alt+R',
+		open: 'Alt+O',
+		delete: 'Alt+D'
+	}}
 	copyToClipboard={false}
 	onAnnotationAdd={handleAnnotationAdd}
 	onCopy={handleCopy}
@@ -147,9 +152,11 @@ Route-based note sessions are automatic by default.
 
 ## Shortcuts
 
-- `i` toggles the inspector.
-- `c` copies notes for the current page.
-- `r` resets toolbar position.
-- `o` opens the current source target.
-- `esc` cancels the current action.
+- `i` toggles inspect mode by default and maps to `keyBindings.inspect`.
+- `c` copies notes for the current page and maps to `keyBindings.copy`.
+- `r` resets toolbar position and maps to `keyBindings.reset`.
+- `o` opens the current source target and maps to `keyBindings.open`.
+- `d` deletes the currently edited note and maps to `keyBindings.delete`.
+- `esc` cancels the current action and maps to `keyBindings.cancel`.
+- `enter` submits the current note and maps to `keyBindings.submit`.
 - `shift + ctrl/cmd + click` builds a grouped selection.

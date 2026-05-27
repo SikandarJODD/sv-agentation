@@ -53,7 +53,11 @@
 	}
 
 	:global(pre.shiki) {
-		@apply overflow-x-auto rounded-lg bg-inherit py-4 text-sm;
+		@apply overflow-x-auto rounded-lg bg-inherit py-4 font-mono text-sm;
+		font-variant-ligatures: none;
+		font-feature-settings:
+			'liga' 0,
+			'calt' 0;
 	}
 
 	:global(pre.shiki:not([data-code-overflow] *):not([data-code-overflow])) {
@@ -65,6 +69,11 @@
 		@apply grid min-w-full rounded-none border-0 bg-transparent p-0 break-words;
 		counter-reset: line;
 		box-decoration-break: clone;
+		font-variant-ligatures: none;
+		font-feature-settings:
+			'liga' 0,
+			'calt' 0;
+		white-space: pre;
 	}
 
 	:global(pre.line-numbers) {

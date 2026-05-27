@@ -2,6 +2,7 @@ import type {
 	DragSelectionState,
 	GroupSelectionPreviewState,
 	InspectorHoverInfo,
+	ResolvedAgentationKeyBindings,
 	InspectorNote,
 	InspectorPosition,
 	OutputMode,
@@ -14,11 +15,13 @@ import type { DeleteAllState } from './controller-state.svelte';
 
 export interface HoverCardProps {
 	hoverInfo: InspectorHoverInfo | null;
+	openShortcut: string | null;
 	onOpen: () => boolean;
 }
 
 export interface NoteComposerProps {
 	composer: NoteComposerState | null;
+	keyBindings: Pick<ResolvedAgentationKeyBindings, 'delete' | 'submit'>;
 	value: string;
 	onCancel: () => void;
 	onDelete: (noteId: string) => void;
@@ -47,6 +50,7 @@ export interface InspectorToolProps {
 	toolbar: ToolbarState;
 	toolbarDragEnabled: boolean;
 	toolbarPosition: InspectorPosition;
+	keyBindings: ResolvedAgentationKeyBindings;
 	onCloseToolbar: () => void;
 	onCopyNotes: () => Promise<boolean>;
 	onDeleteAll: () => void;
@@ -69,6 +73,7 @@ export interface InspectorToolProps {
 export interface InspectorToolbarActionsProps {
 	active: boolean;
 	deleteAllState: DeleteAllState;
+	keyBindings: ResolvedAgentationKeyBindings;
 	notes: InspectorNote[];
 	toolbar: ToolbarState;
 	onCloseToolbar: () => void;
@@ -85,6 +90,7 @@ export interface InspectorToolbarLauncherProps {
 }
 
 export interface InspectorToolbarSettingsProps {
+	keyBindings: ResolvedAgentationKeyBindings;
 	settings: NotesSettings;
 	toolbarPosition: InspectorPosition;
 	onSetBlockPageInteractions: (value: boolean) => void;

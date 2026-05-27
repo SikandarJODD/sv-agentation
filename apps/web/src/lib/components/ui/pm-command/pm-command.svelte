@@ -39,7 +39,7 @@
 		command,
 		agents = ['npm', 'pnpm', 'yarn', 'bun'],
 		args,
-		agent = $bindable('npm')
+		agent = $bindable('pnpm')
 	}: PMCommandProps = $props();
 
 	const cmd = $derived(resolveCommand(agent, command, args));
@@ -58,7 +58,7 @@
 					{#each agents as pm (pm)}
 						<Tabs.Trigger
 							value={pm}
-							class="h-7 font-mono font-normal shadow-none! transition-all duration-300"
+							class="h-7 font-mono font-normal shadow-none! border-none transition-all duration-300"
 						>
 							{pm}
 						</Tabs.Trigger>

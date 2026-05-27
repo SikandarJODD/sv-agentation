@@ -3,13 +3,16 @@
 
 	import type { HoverCardProps } from '../internal/component-props';
 
-	let { hoverInfo, onOpen }: HoverCardProps = $props();
+	let { hoverInfo, onOpen, openShortcut }: HoverCardProps = $props();
 
 	const handleOpenClick = (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
 		onOpen();
 	};
+
+	const getOpenTitle = () =>
+		openShortcut ? `Open in VS Code (${openShortcut})` : 'Open in VS Code';
 </script>
 
 {#if hoverInfo}
@@ -32,17 +35,19 @@
 		<span class="hover-label" data-inspector-ui>{hoverInfo.targetLabel}</span>
 
 		<button
-			aria-keyshortcuts="O"
+			aria-keyshortcuts={openShortcut ?? undefined}
 			aria-label="Open in VS Code"
 			class="action-button"
 			data-inspector-ui
 			disabled={!hoverInfo.canOpen}
-			title="Open in VS Code (O)"
+			title={getOpenTitle()}
 			type="button"
 			onclick={handleOpenClick}
 		>
 			<span>open</span>
-			<kbd>o</kbd>
+			{#if openShortcut}
+				<kbd>{openShortcut}</kbd>
+			{/if}
 		</button>
 	</div>
 {/if}

@@ -18,6 +18,7 @@
 	let {
 		active,
 		deleteAllState,
+		keyBindings,
 		notes,
 		toolbar,
 		onCloseToolbar,
@@ -46,16 +47,24 @@
 		state.active
 			? `Cancel delete all notes (${getDeleteAllRemainingSeconds(state)}s left)`
 			: 'Delete all notes';
+	const getShortcutTitle = (label: string, binding: string | null) =>
+		binding ? `${label} (${binding})` : label;
 </script>
 
 <div class="toolbar-actions" data-inspector-ui>
 	<button
-		aria-label={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
+		aria-label={getShortcutTitle(
+			active ? 'Pause annotation mode' : 'Start annotation mode',
+			keyBindings.inspect
+		)}
 		aria-pressed={active}
 		class:active-button={active}
 		class="toolbar-button primary"
 		data-inspector-ui
-		title={active ? 'Pause annotation mode (I)' : 'Start annotation mode (I)'}
+		title={getShortcutTitle(
+			active ? 'Pause annotation mode' : 'Start annotation mode',
+			keyBindings.inspect
+		)}
 		type="button"
 		onclick={onToggle}
 	>
@@ -88,7 +97,7 @@
 		class="toolbar-button"
 		data-inspector-ui
 		disabled={notes.length === 0}
-		title="Copy notes as Markdown"
+		title={getShortcutTitle('Copy notes as Markdown', keyBindings.copy)}
 		type="button"
 		onclick={handleNotesCopyClick}
 	>

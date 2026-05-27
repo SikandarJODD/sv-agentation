@@ -4,5 +4,6 @@
 
 ### Patch Changes
 
+- Updated dependencies [52c846e]
 - Updated dependencies [f2e60ac]
-  - sv-agentation@0.2.6
+  - sv-agentation@0.3.0
