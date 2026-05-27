@@ -32,6 +32,7 @@
 	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
 	let siteUrl = 'https://sv-agentation.com';
 	const githubUrl = 'https://github.com/SikandarJODD/sv-agentation';
+	const sponsorUrl = 'https://github.com/sponsors/SikandarJODD';
 	const npmxUrl = 'https://npmx.dev/package/sv-agentation';
 	let llmsUrl = 'https://sv-agentation.com/llms.txt';
 	const changelogUrl = '/changelog';
@@ -68,86 +69,112 @@
 
 	const usageSnippet = `<script lang="ts">
   import { browser, dev } from '$app/environment';
-  import { Agentation } from 'sv-agentation';
+  import { Agentation, type AnnotationProps } from 'sv-agentation';
 
   //  provide the absolute path to your project
   //  to open directly in vs code (optional)
   const workspaceRoot = '/absolute/path/to/your/repo';
+  const annotationProps: AnnotationProps = {
+    workspaceRoot
+  };
 <\/script>
 
 {#if browser && dev}
-  <Agentation {workspaceRoot} />
+  <Agentation {...annotationProps} />
 {/if}`;
 
 	const propsPlaygroundSnippet = `<script lang="ts">
   import { browser, dev } from '$app/environment';
-  import { Agentation, type AgentationInspectorProps } from 'sv-agentation';
+  import {
+    Agentation,
+    type AnnotationProps,
+    type KeyBindings
+  } from 'sv-agentation';
 
-  let playgroundAgentationProps: AgentationInspectorProps = {
+  const keyBindings: KeyBindings = {
+    inspect: 'Alt+I',
+    copy: 'Alt+C',
+    reset: 'Alt+R',
+    open: 'Alt+O',
+    delete: 'Alt+D'
+  };
+
+  let playgroundAnnotationProps: AnnotationProps = {
     toolbarPosition: 'top-left',
     outputMode: 'compact',
     pauseAnimations: true,
     clearOnCopy: true,
     includeComponentContext: false,
     includeComputedStyles: false,
-    keyBindings: {
-      inspect: 'Alt+I',
-      copy: 'Alt+C',
-      reset: 'Alt+R',
-      open: 'Alt+O',
-      delete: 'Alt+D'
-    }
+    keyBindings
   };
 <\/script>
 
 {#if browser && dev}
-  <Agentation {...playgroundAgentationProps} />
+  <Agentation {...playgroundAnnotationProps} />
 {/if}`;
 
-	const behaviorSnippet = `<Agentation
-  {workspaceRoot}
-  outputMode="detailed"
-  pauseAnimations={true}
-  includeComponentContext={true}
-  includeComputedStyles={false}
-  clearOnCopy={false}
-/>`;
+	const behaviorSnippet = `<script lang="ts">
+  import { Agentation, type AnnotationProps } from 'sv-agentation';
+
+  const workspaceRoot = '/absolute/path/to/your/repo';
+  const behaviorProps: AnnotationProps = {
+    workspaceRoot,
+    outputMode: 'detailed',
+    pauseAnimations: true,
+    includeComponentContext: true,
+    includeComputedStyles: false,
+    clearOnCopy: false
+  };
+<\/script>
+
+<Agentation {...behaviorProps} />`;
 
 	const callbacksSnippet = `<script lang="ts">
   import {
     Agentation,
-    type AgentationAnnotationSnapshot,
-    type AgentationExportPayload
+    type Annotation,
+    type AnnotationPayload,
+    type AnnotationProps
   } from 'sv-agentation';
 
   let copied = $state('');
+  const workspaceRoot = '/absolute/path/to/your/repo';
 
   const handleAnnotationAdd = (
-    annotation: AgentationAnnotationSnapshot
+    annotation: Annotation
   ) => {
     console.log('added', annotation.targetLabel);
   };
 
   const handleCopy = (
     markdown: string,
-    payload: AgentationExportPayload
+    payload: AnnotationPayload
   ) => {
     copied = markdown;
     console.log(payload.annotations.length);
   };
+
+  const callbackAnnotationProps: AnnotationProps = {
+    workspaceRoot,
+    copyToClipboard: false,
+    onAnnotationAdd: handleAnnotationAdd,
+    onCopy: handleCopy
+  };
 <\/script>
 
-<Agentation
-  {workspaceRoot}
-  copyToClipboard={false}
-  onAnnotationAdd={handleAnnotationAdd}
-  onCopy={handleCopy}
-/>`;
+<Agentation {...callbackAnnotationProps} />`;
 
-	const advancedSessionSnippet = `<Agentation
-  {workspaceRoot}
-  pageSessionKey="/docs/reference"
-/>`;
+	const advancedSessionSnippet = `<script lang="ts">
+  import { Agentation, type AnnotationProps } from 'sv-agentation';
+
+  const advancedAnnotationProps: AnnotationProps = {
+    workspaceRoot: '/absolute/path/to/your/repo',
+    pageSessionKey: '/docs/reference'
+  };
+<\/script>
+
+<Agentation {...advancedAnnotationProps} />`;
 
 	const installationPrompt = `Install sv-agentation in this SvelteKit project and wire it into the app shell.
 
@@ -161,16 +188,18 @@ Use this example:
 <script lang="ts">
   import './layout.css';
   import { browser, dev } from '$app/environment';
-  import { Agentation } from 'sv-agentation';
+  import { Agentation, type AnnotationProps } from 'sv-agentation';
 
   let { children } = $props();
-  const workspaceRoot = '/absolute/path/to/your/repo';
+  const annotationProps: AnnotationProps = {
+    workspaceRoot: '/absolute/path/to/your/repo'
+  };
 <\/script>
 
 {@render children()}
 
 {#if browser && dev}
-  <Agentation {workspaceRoot} />
+  <Agentation {...annotationProps} />
 {/if}
 
 3. Keep it disabled in production.
@@ -271,27 +300,27 @@ Use this example:
 	const callbackProps = [
 		{
 			name: 'onAnnotationAdd',
-			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			type: '(annotation: Annotation) => void',
 			description: 'Fires when a new annotation is saved.'
 		},
 		{
 			name: 'onAnnotationUpdate',
-			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			type: '(annotation: Annotation) => void',
 			description: 'Fires when an existing annotation is edited.'
 		},
 		{
 			name: 'onAnnotationDelete',
-			type: '(annotation: AgentationAnnotationSnapshot) => void',
+			type: '(annotation: Annotation) => void',
 			description: 'Fires when one annotation is removed.'
 		},
 		{
 			name: 'onAnnotationsClear',
-			type: '(annotations: AgentationAnnotationSnapshot[]) => void',
+			type: '(annotations: Annotation[]) => void',
 			description: 'Fires after the current page notes are cleared.'
 		},
 		{
 			name: 'onCopy',
-			type: '(markdown: string, payload: AgentationExportPayload) => void',
+			type: '(markdown: string, payload: AnnotationPayload) => void',
 			description: 'Receives the generated markdown and structured export payload.'
 		}
 	];
@@ -299,41 +328,23 @@ Use this example:
 	const examples = [
 		{
 			title: 'Typed prop-driven mount',
-			copy: 'Keep a typed props object in your layout or playground and spread it into Agentation so explicit prop changes resync the saved toolbar behavior.',
+			copy: 'Start with one typed props object and spread it into Agentation when you want a small, predictable setup.',
 			code: propsPlaygroundSnippet
 		},
 		{
 			title: 'Behavior controls',
-			copy: 'Set a default output mode, pause animations, and keep component context enabled for richer local reviews.',
+			copy: 'Set default copy and capture behavior up front so every review starts with the same output shape.',
 			code: behaviorSnippet
 		},
 		{
 			title: 'Lifecycle callbacks',
-			copy: 'Use annotation and copy callbacks to feed your own local tooling, metrics, or AI workflow prompts.',
+			copy: 'Tap into save and copy events when you want to forward notes into your own local tooling or prompts.',
 			code: callbacksSnippet
 		},
 		{
 			title: 'Advanced session override',
-			copy: 'Use pageSessionKey only when you want to manually scope notes. Most apps can rely on automatic route tracking.',
+			copy: 'Only reach for manual session scoping when route-based note isolation is not enough for your app.',
 			code: advancedSessionSnippet
-		}
-	];
-
-	const propGroups = [
-		{
-			title: 'Core Props',
-			description: 'Mounting, source opening, and route/session controls.',
-			rows: coreProps
-		},
-		{
-			title: 'Behavior Props',
-			description: 'Copy output, toolbar behavior, and capture detail controls.',
-			rows: behaviorProps
-		},
-		{
-			title: 'Lifecycle Callbacks',
-			description: 'Local integration hooks for notes and copy output.',
-			rows: callbackProps
 		}
 	];
 
@@ -341,12 +352,14 @@ Use this example:
 		{
 			key: 'i',
 			label: 'Inspect',
-			description: 'Toggle the inspector toolbar and annotation mode. Configurable with keyBindings.inspect.'
+			description:
+				'Toggle the inspector toolbar and annotation mode. Configurable with keyBindings.inspect.'
 		},
 		{
 			key: 'c',
 			label: 'Copy',
-			description: 'Copy notes as Markdown when at least one note exists. Configurable with keyBindings.copy.'
+			description:
+				'Copy notes as Markdown when at least one note exists. Configurable with keyBindings.copy.'
 		},
 		{
 			key: 'r',
@@ -356,27 +369,32 @@ Use this example:
 		{
 			key: 'o',
 			label: 'Open',
-			description: 'Open the currently hovered source location when the inspector is active. Configurable with keyBindings.open.'
+			description:
+				'Open the currently hovered source location when the inspector is active. Configurable with keyBindings.open.'
 		},
 		{
 			key: 'd',
 			label: 'Delete',
-			description: 'Delete the currently edited note from the composer. Configurable with keyBindings.delete.'
+			description:
+				'Delete the currently edited note from the composer. Configurable with keyBindings.delete.'
 		},
 		{
 			key: 'esc',
 			label: 'Cancel',
-			description: 'Clear transient selections, close the composer, or close settings/delete state. Configurable with keyBindings.cancel.'
+			description:
+				'Clear transient selections, close the composer, or close settings/delete state. Configurable with keyBindings.cancel.'
 		},
 		{
 			key: 'enter',
 			label: 'Submit',
-			description: 'Submit the current note from the composer. Configurable with keyBindings.submit.'
+			description:
+				'Submit the current note from the composer. Configurable with keyBindings.submit.'
 		},
 		{
 			key: 'shift + ctrl/cmd + click',
 			label: 'Build a group selection',
-			description: 'Add or remove elements from a grouped annotation target before releasing the modifiers. This pointer gesture stays fixed in v1.'
+			description:
+				'Add or remove elements from a grouped annotation target before releasing the modifiers. This pointer gesture stays fixed in v1.'
 		}
 	];
 </script>
@@ -484,32 +502,44 @@ Use this example:
 
 				<Button size="sm" href={changelogUrl} variant="secondary" class="text-xs">Changelog</Button>
 			</div>
-			<Button
-				href={githubUrl}
-				size="sm"
-				target="_blank"
-				rel="noreferrer"
-				variant="outline"
-				class="text-xs"
-			>
-				<svg viewBox="0 0 1024 1024" fill="none"
-					><path
-						fill-rule="evenodd"
-						clip-rule="evenodd"
-						d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z"
-						transform="scale(64)"
-						fill="currentColor"
-					/></svg
+			<div class="flex flex-wrap items-center gap-3">
+				<Button
+					href={sponsorUrl}
+					size="sm"
+					target="_blank"
+					rel="noreferrer"
+					variant="outline"
+					class="border-violet-300/70 bg-violet-500/5 text-xs text-violet-700 hover:border-violet-400 hover:bg-violet-500/10 hover:text-violet-800 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:border-violet-400 dark:hover:bg-violet-500/15 dark:hover:text-violet-100"
 				>
-				<span>Star on GitHub</span>
-			</Button>
+					<span>Sponsor</span>
+				</Button>
+				<Button
+					href={githubUrl}
+					size="sm"
+					target="_blank"
+					rel="noreferrer"
+					variant="outline"
+					class="text-xs"
+				>
+					<svg viewBox="0 0 1024 1024" fill="none"
+						><path
+							fill-rule="evenodd"
+							clip-rule="evenodd"
+							d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.55 2.84 11.84 2.5 11.65C2.22 11.5 1.82 11.13 2.49 11.12C3.12 11.11 3.57 11.7 3.72 11.94C4.44 13.15 5.59 12.81 6.05 12.6C6.12 12.08 6.33 11.73 6.56 11.53C4.78 11.33 2.92 10.64 2.92 7.58C2.92 6.71 3.23 5.99 3.74 5.43C3.66 5.23 3.38 4.41 3.82 3.31C3.82 3.31 4.49 3.1 6.02 4.13C6.66 3.95 7.34 3.86 8.02 3.86C8.7 3.86 9.38 3.95 10.02 4.13C11.55 3.09 12.22 3.31 12.22 3.31C12.66 4.41 12.38 5.23 12.3 5.43C12.81 5.99 13.12 6.7 13.12 7.58C13.12 10.65 11.25 11.33 9.47 11.53C9.76 11.78 10.01 12.26 10.01 13.01C10.01 14.08 10 14.94 10 15.21C10 15.42 10.15 15.67 10.55 15.59C13.71 14.53 16 11.53 16 8C16 3.58 12.42 0 8 0Z"
+							transform="scale(64)"
+							fill="currentColor"
+						/></svg
+					>
+					<span>Star on GitHub</span>
+				</Button>
+			</div>
 		</div>
 
 		<Divider class="my-8" />
 
 		<section aria-labelledby="installation-title" class="grid gap-3">
 			<H2 id="installation-title" class="mt-0 text-[1.2rem]">Installation</H2>
-			<PMCommand command="add" variant='secondary' args={['sv-agentation']} />
+			<PMCommand command="add" variant="secondary" args={['sv-agentation']} />
 			<div class="mt-0 rounded-md border border-border bg-card p-3">
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -531,7 +561,7 @@ Use this example:
 			<Code.Root
 				code={usageSnippet}
 				lang="svelte"
-				variant='secondary'
+				variant="secondary"
 				class="mt-1 rounded-xl border-border bg-card/40 pr-12 text-sm [&_pre.shiki]:text-[0.82rem]"
 			>
 				<Code.CopyButton />
@@ -540,28 +570,11 @@ Use this example:
 
 		<Divider class="my-8" />
 
-		<section aria-labelledby="features-title" class="flex flex-col">
-			<H2 id="features-title" class="text-[1.2rem]">Features</H2>
-			<Paragraph class="mt-3 mb-1 text-sm leading-6">
-				The current release keeps the surface small, but adds clearer hover previews for saved notes
-				and smoother composer transitions for everyday review work.
-			</Paragraph>
-			<OrderedList class="mt-2 space-y-2 pl-5 text-sm leading-6">
-				{#each features as feature}
-					<ListItem>{feature}</ListItem>
-				{/each}
-			</OrderedList>
-		</section>
-
-		<Divider class="my-8" />
-
 		<section aria-labelledby="examples-title" class="flex flex-col">
 			<H2 id="examples-title" class="text-[1.2rem]">Examples</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				These examples focus on the newer surface area added after the first alpha: <Highlight
-					class="mx-1 px-1 text-sm font-normal"
-					tone="aqua">page-based annotations</Highlight
-				>, richer copy behavior, and callback-driven local integrations.
+				After the basic mount, these are the most common ways to configure the inspector for real
+				project workflows.
 			</Paragraph>
 			<div class="mt-3 grid gap-8">
 				{#each examples as example}
@@ -587,10 +600,13 @@ Use this example:
 		<Divider class="my-8" />
 
 		<section aria-labelledby="shortcuts-title" class="flex flex-col">
-			<H2 id="shortcuts-title" class="mt-0 text-[1.2rem]">Shortcuts</H2>
+			<H2 id="shortcuts-title" class="mt-0 text-[1.2rem]">Keyboard Shortcuts</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
 				These are the default keyboard shortcuts and selection gestures used by the inspector. The
-				keyboard actions can be overridden with the <CodeSpan class="mx-1 border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground">keyBindings</CodeSpan>
+				keyboard actions can be overridden with the <CodeSpan
+					class="mx-1 border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground"
+					>keyBindings</CodeSpan
+				>
 				prop.
 			</Paragraph>
 			<Table class="mt-2 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
@@ -624,49 +640,125 @@ Use this example:
 		<section aria-labelledby="props-title" class="flex flex-col">
 			<H2 id="props-title" class="text-[1.2rem]">Props</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				After the examples, this is the full prop reference for copy modes, route-aware sessions,
-				and local callbacks.
+				Start here for the core mount and routing options that most apps touch first.
 			</Paragraph>
-			<div class="mt-3 grid gap-8">
-				{#each propGroups as group}
-					<div class="grid gap-3">
-						<div class="grid gap-1">
-							<h3 class="text-sm font-medium text-foreground">{group.title}</h3>
-							<p class="text-sm leading-6 text-muted-foreground">{group.description}</p>
-						</div>
-						<Table class="text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
-							<Thead>
-								<Tr class="border-b border-border">
-									<Th>Prop</Th>
-									<Th>Type</Th>
-									<Th>Description</Th>
-								</Tr>
-							</Thead>
-							<Tbody>
-								{#each group.rows as prop}
-									<Tr class="border-b border-border last:border-b-0">
-										<Td>
-											<CodeSpan
-												class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground"
-											>
-												{prop.name}
-											</CodeSpan>
-										</Td>
-										<Td>
-											<CodeSpan
-												class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
-											>
-												{prop.type}
-											</CodeSpan>
-										</Td>
-										<Td>{prop.description}</Td>
-									</Tr>
-								{/each}
-							</Tbody>
-						</Table>
-					</div>
+			<Table class="mt-3 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+				<Thead>
+					<Tr class="border-b border-border">
+						<Th>Prop</Th>
+						<Th>Type</Th>
+						<Th>Description</Th>
+					</Tr>
+				</Thead>
+				<Tbody>
+					{#each coreProps as prop}
+						<Tr class="border-b border-border last:border-b-0">
+							<Td>
+								<CodeSpan class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground">
+									{prop.name}
+								</CodeSpan>
+							</Td>
+							<Td>
+								<CodeSpan
+									class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
+								>
+									{prop.type}
+								</CodeSpan>
+							</Td>
+							<Td>{prop.description}</Td>
+						</Tr>
+					{/each}
+				</Tbody>
+			</Table>
+		</section>
+
+		<Divider class="my-8" />
+
+		<section aria-labelledby="behavior-props-title" class="flex flex-col">
+			<H2 id="behavior-props-title" class="text-[1.2rem]">Behavior Props</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				Use these when you want to tune output mode, capture detail, and copy behavior.
+			</Paragraph>
+			<Table class="mt-3 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+				<Thead>
+					<Tr class="border-b border-border">
+						<Th>Prop</Th>
+						<Th>Type</Th>
+						<Th>Description</Th>
+					</Tr>
+				</Thead>
+				<Tbody>
+					{#each behaviorProps as prop}
+						<Tr class="border-b border-border last:border-b-0">
+							<Td>
+								<CodeSpan class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground">
+									{prop.name}
+								</CodeSpan>
+							</Td>
+							<Td>
+								<CodeSpan
+									class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
+								>
+									{prop.type}
+								</CodeSpan>
+							</Td>
+							<Td>{prop.description}</Td>
+						</Tr>
+					{/each}
+				</Tbody>
+			</Table>
+		</section>
+
+		<Divider class="my-8" />
+
+		<section aria-labelledby="callbacks-title" class="flex flex-col">
+			<H2 id="callbacks-title" class="text-[1.2rem]">Lifecycle Callbacks</H2>
+			<Paragraph class="mt-3 mb-2 text-sm leading-6">
+				These hooks let you react to note creation, updates, deletes, clears, and copy events.
+			</Paragraph>
+			<Table class="mt-3 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
+				<Thead>
+					<Tr class="border-b border-border">
+						<Th>Prop</Th>
+						<Th>Type</Th>
+						<Th>Description</Th>
+					</Tr>
+				</Thead>
+				<Tbody>
+					{#each callbackProps as prop}
+						<Tr class="border-b border-border last:border-b-0">
+							<Td>
+								<CodeSpan class="border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground">
+									{prop.name}
+								</CodeSpan>
+							</Td>
+							<Td>
+								<CodeSpan
+									class="break-word border-0 bg-secondary px-2 py-1 text-xs! whitespace-normal text-muted-foreground"
+								>
+									{prop.type}
+								</CodeSpan>
+							</Td>
+							<Td>{prop.description}</Td>
+						</Tr>
+					{/each}
+				</Tbody>
+			</Table>
+		</section>
+
+		<Divider class="my-8" />
+
+		<section aria-labelledby="features-title" class="flex flex-col">
+			<H2 id="features-title" class="text-[1.2rem]">Features</H2>
+			<Paragraph class="mt-3 mb-1 text-sm leading-6">
+				The tool stays small on purpose, but still covers the key annotation and review flows needed
+				for daily local work.
+			</Paragraph>
+			<OrderedList class="mt-2 space-y-2 pl-5 text-sm leading-6">
+				{#each features as feature}
+					<ListItem>{feature}</ListItem>
 				{/each}
-			</div>
+			</OrderedList>
 		</section>
 
 		<Divider class="my-8" />

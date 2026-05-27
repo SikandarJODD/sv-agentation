@@ -66,13 +66,13 @@ Mount the inspector only in development and only in the browser.
 <script lang="ts">
 	import { browser, dev } from '$app/environment';
 	import { Agentation } from 'sv-agentation';
-  import type { AgentationAnnotationSnapshot, AgentationExportPayload } from 'sv-agentation';
+	import type { Annotation, AnnotationPayload } from 'sv-agentation';
 
-	function handleAnnotationAdd(annotation : AgentationAnnotationSnapshot) {
+	function handleAnnotationAdd(annotation: Annotation) {
 		console.log('New annotation added:', annotation);
 	}
 
-	function handleCopy(markdown : string, payload : AgentationExportPayload) {
+	function handleCopy(markdown: string, payload: AnnotationPayload) {
 		console.log('Notes copied:', markdown, payload);
 	}
 </script>
@@ -141,7 +141,7 @@ Mount the inspector only in development and only in the browser.
 | `includeComponentContext` | `boolean`                                                                                                                      | When provided, syncs component-context capture and stores it for later sessions.                       |
 | `includeComputedStyles`   | `boolean`                                                                                                                      | When provided, syncs computed-style capture and stores it for later sessions.                          |
 | `copyToClipboard`         | `boolean`                                                                                                                      | Disable direct clipboard writes and use callbacks only.                                                |
-| `keyBindings`             | `Partial<Record<'inspect' \| 'copy' \| 'reset' \| 'open' \| 'delete' \| 'cancel' \| 'submit', string \| null>>`             | Override or disable keyboard actions without changing persisted toolbar settings.                      |
+| `keyBindings`             | `Partial<Record<'inspect' \| 'copy' \| 'reset' \| 'open' \| 'delete' \| 'cancel' \| 'submit', string \| null>>`                | Override or disable keyboard actions without changing persisted toolbar settings.                      |
 | `onAnnotationAdd`         | `(annotation) => void`                                                                                                         | Called after a note is created.                                                                        |
 | `onAnnotationUpdate`      | `(annotation) => void`                                                                                                         | Called after a note is updated.                                                                        |
 | `onAnnotationDelete`      | `(annotation) => void`                                                                                                         | Called after a note is deleted.                                                                        |

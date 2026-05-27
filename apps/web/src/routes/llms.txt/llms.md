@@ -96,23 +96,23 @@ Route-based note sessions are automatic by default.
 
 ### Callbacks
 
-- `onAnnotationAdd?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationAdd?: (annotation: Annotation) => void`
   Fires when a new annotation is saved.
-- `onAnnotationUpdate?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationUpdate?: (annotation: Annotation) => void`
   Fires when an existing annotation is edited.
-- `onAnnotationDelete?: (annotation: AgentationAnnotationSnapshot) => void`
+- `onAnnotationDelete?: (annotation: Annotation) => void`
   Fires when one annotation is removed.
-- `onAnnotationsClear?: (annotations: AgentationAnnotationSnapshot[]) => void`
+- `onAnnotationsClear?: (annotations: Annotation[]) => void`
   Fires after the current page notes are cleared.
-- `onCopy?: (markdown: string, payload: AgentationExportPayload) => void`
+- `onCopy?: (markdown: string, payload: AnnotationPayload) => void`
   Receives the generated markdown and structured export payload.
 
 ## Exported Types
 
-- `AgentationProps`
+- `AnnotationProps`
 - `OutputMode`
-- `AgentationAnnotationSnapshot`
-- `AgentationExportPayload`
+- `Annotation`
+- `AnnotationPayload`
 - `ComputedStyleSnapshot`
 - `ComponentContextMode`
 
@@ -120,19 +120,15 @@ Route-based note sessions are automatic by default.
 
 ```svelte
 <script lang="ts">
-	import {
-		Agentation,
-		type AgentationAnnotationSnapshot,
-		type AgentationExportPayload
-	} from 'sv-agentation';
+	import { Agentation, type Annotation, type AnnotationPayload } from 'sv-agentation';
 
 	const workspaceRoot = '/absolute/path/to/your/repo';
 
-	const handleAnnotationAdd = (annotation: AgentationAnnotationSnapshot) => {
+	const handleAnnotationAdd = (annotation: Annotation) => {
 		console.log(annotation.targetLabel);
 	};
 
-	const handleCopy = (markdown: string, payload: AgentationExportPayload) => {
+	const handleCopy = (markdown: string, payload: AnnotationPayload) => {
 		console.log(markdown);
 		console.log(payload.annotations.length);
 	};

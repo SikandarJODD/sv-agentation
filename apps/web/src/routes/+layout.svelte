@@ -2,12 +2,12 @@
 	import './layout.css';
 	import { browser, dev } from '$app/environment';
 	import { ModeWatcher } from 'mode-watcher';
-	import { Agentation, type AgentationInspectorProps } from 'sv-agentation';
+	import { Agentation, type AnnotationProps } from 'sv-agentation';
 	import { asset } from '$app/paths';
 
 	// Use the repo root so source links can resolve both the demo app and the package workspace.
 	let workspaceRoot = 's:/advance_svelte/exp/svelte-learning';
-	let playgroundAgentationProps: AgentationInspectorProps = {
+	let playgroundAnnotationProps: AnnotationProps = {
 		toolbarPosition: 'bottom-right',
 		outputMode: 'detailed',
 		pauseAnimations: true,
@@ -17,7 +17,7 @@
 		keyBindings: {
 			inspect: '1',
 			open: '2',
-			delete: '3',
+			delete: '3'
 		}
 	};
 
@@ -30,5 +30,5 @@
 {@render children()}
 
 {#if browser && dev}
-	<Agentation {workspaceRoot} {...playgroundAgentationProps} />
+	<Agentation {workspaceRoot} {...playgroundAnnotationProps} />
 {/if}
