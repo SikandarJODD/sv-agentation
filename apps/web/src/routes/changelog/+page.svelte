@@ -4,6 +4,15 @@
 
 	const releases = [
 		{
+			version: '0.3.0',
+			date: 'May 27, 2026',
+			notes: [
+				'Added simpler public type names like `AnnotationProps`, `Annotation`, `AnnotationPayload`, and `KeyBindings`.',
+				'Deprecated the older `Agentation*` and `InspectorProps` type aliases for the compatibility window.',
+				'Updated the docs and example snippets so the new typed API is easier to understand and copy.'
+			]
+		},
+		{
 			version: '0.2.5',
 			date: 'March 26, 2026',
 			notes: [

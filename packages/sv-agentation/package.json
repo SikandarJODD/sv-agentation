@@ -1,6 +1,6 @@
 {
 	"name": "sv-agentation",
-	"version": "0.2.5",
+	"version": "0.3.0",
 	"description": "Dev-mode Svelte inspector for annotating elements, text selections, groups, and areas in the browser.",
 	"license": "MIT",
 	"repository": {

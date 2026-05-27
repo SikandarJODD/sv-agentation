@@ -125,7 +125,7 @@
 			<span class="brand-name" data-inspector-ui>sv-agentation</span>
 		</div>
 		<div class="settings-meta" data-inspector-ui>
-			<span class="version" data-inspector-ui>0.2.5</span>
+			<span class="version" data-inspector-ui>0.3.0</span>
 			<button
 				aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
 				class="theme-toggle"

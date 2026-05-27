@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DollarSignIcon from '@lucide/svelte/icons/dollar-sign';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import SunIcon from '@lucide/svelte/icons/sun';
@@ -92,6 +93,14 @@
   } from 'sv-agentation';
 
   const keyBindings: KeyBindings = {
+    // Defaults:
+    // inspect: 'i',
+    // copy: 'c',
+    // reset: 'r',
+    // open: 'o',
+    // delete: 'd',
+    // cancel: 'esc',
+    // submit: 'enter',
     inspect: 'Alt+I',
     copy: 'Alt+C',
     reset: 'Alt+R',
@@ -401,8 +410,15 @@ Use this example:
 
 <MetaTags {...metaTags} />
 
-<main class="min-h-screen bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10">
-	<div class="mx-auto flex w-full max-w-2xl flex-col">
+<main
+	class="required: min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10"
+>
+	<div aria-hidden="true" class="absolute inset-0 -z-10 size-full overflow-hidden">
+		<div
+			class="absolute inset-0 isolate -z-10 bg-[radial-gradient(20%_80%_at_20%_0%,color-mix(in_oklab,var(--foreground)_10%,transparent),transparent)]"
+		></div>
+	</div>
+	<div class="z-50 mx-auto flex w-full max-w-2xl flex-col">
 		<header class="flex items-start justify-between gap-4">
 			<div class="flex min-w-0 flex-col items-start">
 				{#if mode.current === 'dark'}
@@ -422,7 +438,7 @@ Use this example:
 					<div class="flex items-center gap-3">
 						<H1 class="mt-0 text-[1.8rem] sm:text-[1.95rem]">Svelte Agentation</H1>
 						<Badge variant="yellow" class="mt-1 rounded-md px-2 py-0.5 text-[0.7rem] uppercase">
-							v0.2.5
+							v0.3.0
 						</Badge>
 					</div>
 					<Paragraph
@@ -511,6 +527,7 @@ Use this example:
 					variant="outline"
 					class="border-violet-300/70 bg-violet-500/5 text-xs text-violet-700 hover:border-violet-400 hover:bg-violet-500/10 hover:text-violet-800 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:border-violet-400 dark:hover:bg-violet-500/15 dark:hover:text-violet-100"
 				>
+					<DollarSignIcon class="size-3.5" />
 					<span>Sponsor</span>
 				</Button>
 				<Button
