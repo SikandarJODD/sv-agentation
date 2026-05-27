@@ -89,7 +89,14 @@
     pauseAnimations: true,
     clearOnCopy: true,
     includeComponentContext: false,
-    includeComputedStyles: false
+    includeComputedStyles: false,
+    keyBindings: {
+      inspect: 'Alt+I',
+      copy: 'Alt+C',
+      reset: 'Alt+R',
+      open: 'Alt+O',
+      delete: 'Alt+D'
+    }
   };
 <\/script>
 
@@ -217,6 +224,11 @@ Use this example:
 			name: 'pageSessionKey',
 			type: 'string | null',
 			description: 'Optional advanced override for route scoping. Normal usage does not need this.'
+		},
+		{
+			name: 'keyBindings',
+			type: "Partial<Record<'inspect' | 'copy' | 'reset' | 'open' | 'delete' | 'cancel' | 'submit', string | null>>",
+			description: 'Override or disable keyboard actions without changing saved toolbar settings.'
 		}
 	];
 
@@ -328,35 +340,43 @@ Use this example:
 	const shortcuts = [
 		{
 			key: 'i',
-			label: 'Toggle inspector',
-			description: 'Open or close the inspector toolbar and annotation mode.'
+			label: 'Inspect',
+			description: 'Toggle the inspector toolbar and annotation mode. Configurable with keyBindings.inspect.'
 		},
 		{
 			key: 'c',
-			label: 'Copy all notes',
-			description: 'Copy notes as Markdown when at least one note exists.'
+			label: 'Copy',
+			description: 'Copy notes as Markdown when at least one note exists. Configurable with keyBindings.copy.'
 		},
 		{
 			key: 'r',
-			label: 'Reset toolbar position',
-			description:
-				'Move the floating toolbar back to the latest explicit prop value, saved placement, or default.'
+			label: 'Reset',
+			description: 'Reset the floating toolbar position. Configurable with keyBindings.reset.'
 		},
 		{
 			key: 'o',
-			label: 'Open source',
-			description: 'Open the currently hovered source location when the inspector is active.'
+			label: 'Open',
+			description: 'Open the currently hovered source location when the inspector is active. Configurable with keyBindings.open.'
+		},
+		{
+			key: 'd',
+			label: 'Delete',
+			description: 'Delete the currently edited note from the composer. Configurable with keyBindings.delete.'
 		},
 		{
 			key: 'esc',
-			label: 'Cancel current action',
-			description: 'Clear transient selections, close the composer, or close settings/delete state.'
+			label: 'Cancel',
+			description: 'Clear transient selections, close the composer, or close settings/delete state. Configurable with keyBindings.cancel.'
+		},
+		{
+			key: 'enter',
+			label: 'Submit',
+			description: 'Submit the current note from the composer. Configurable with keyBindings.submit.'
 		},
 		{
 			key: 'shift + ctrl/cmd + click',
 			label: 'Build a group selection',
-			description:
-				'Add or remove elements from a grouped annotation target before releasing the modifiers.'
+			description: 'Add or remove elements from a grouped annotation target before releasing the modifiers. This pointer gesture stays fixed in v1.'
 		}
 	];
 </script>
@@ -489,7 +509,7 @@ Use this example:
 
 		<section aria-labelledby="installation-title" class="grid gap-3">
 			<H2 id="installation-title" class="mt-0 text-[1.2rem]">Installation</H2>
-			<PMCommand command="add" args={['sv-agentation']} />
+			<PMCommand command="add" variant='secondary' args={['sv-agentation']} />
 			<div class="mt-0 rounded-md border border-border bg-card p-3">
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -511,6 +531,7 @@ Use this example:
 			<Code.Root
 				code={usageSnippet}
 				lang="svelte"
+				variant='secondary'
 				class="mt-1 rounded-xl border-border bg-card/40 pr-12 text-sm [&_pre.shiki]:text-[0.82rem]"
 			>
 				<Code.CopyButton />
@@ -568,7 +589,9 @@ Use this example:
 		<section aria-labelledby="shortcuts-title" class="flex flex-col">
 			<H2 id="shortcuts-title" class="mt-0 text-[1.2rem]">Shortcuts</H2>
 			<Paragraph class="mt-3 mb-2 text-sm leading-6">
-				These are the keyboard shortcuts and selection gestures currently used by the inspector.
+				These are the default keyboard shortcuts and selection gestures used by the inspector. The
+				keyboard actions can be overridden with the <CodeSpan class="mx-1 border-0 bg-secondary px-2 py-1 text-xs! text-muted-foreground">keyBindings</CodeSpan>
+				prop.
 			</Paragraph>
 			<Table class="mt-2 text-sm [&_td]:px-4 [&_td]:py-3 [&_th]:h-10 [&_th]:px-4">
 				<Thead>

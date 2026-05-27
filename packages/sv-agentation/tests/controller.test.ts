@@ -48,6 +48,24 @@ const createToolbarHandle = (width: number, height: number) => {
 	return toolbarHandle;
 };
 
+const createKeyboardEvent = (
+	key: string,
+	init: Partial<KeyboardEvent> = {}
+) =>
+	({
+		key,
+		altKey: false,
+		ctrlKey: false,
+		metaKey: false,
+		shiftKey: false,
+		defaultPrevented: false,
+		preventDefault: vi.fn(),
+		stopPropagation: vi.fn(),
+		stopImmediatePropagation: vi.fn(),
+		target: document.body,
+		...init
+	}) as unknown as KeyboardEvent;
+
 describe('CopyOpenController', () => {
 	beforeEach(() => {
 		localStorage.clear();
@@ -68,6 +86,145 @@ describe('CopyOpenController', () => {
 
 		controller.toggleSettings();
 		expect(controller.toolbar.settingsOpen).toBe(true);
+
+		controller.destroy();
+	});
+
+	it('honors default keyboard shortcuts for inspect, copy, reset, and open', async () => {
+		const controller = new CopyOpenController();
+		const copyNotesSpy = vi.spyOn(controller, 'copyNotes').mockResolvedValue(true);
+		const resetSpy = vi.spyOn(controller, 'resetToolbarPosition');
+		const openSpy = vi.spyOn(controller, 'open').mockReturnValue(true);
+
+		await controller.handleKeyDown(createKeyboardEvent('i'));
+		expect(controller.enabled).toBe(true);
+
+		controller.notes = [{} as any];
+		await controller.handleKeyDown(createKeyboardEvent('c'));
+		expect(copyNotesSpy).toHaveBeenCalledTimes(1);
+
+		await controller.handleKeyDown(createKeyboardEvent('r'));
+		expect(resetSpy).toHaveBeenCalledTimes(1);
+
+		await controller.handleKeyDown(createKeyboardEvent('o'));
+		expect(openSpy).toHaveBeenCalledTimes(1);
+
+		controller.destroy();
+	});
+
+	it('supports custom modifier shortcuts and disabled actions', async () => {
+		const controller = new CopyOpenController({
+			keyBindings: {
+				inspect: 'Alt+I',
+				open: 'Alt+O',
+				copy: null
+			}
+		});
+		const copyNotesSpy = vi.spyOn(controller, 'copyNotes').mockResolvedValue(true);
+		const openSpy = vi.spyOn(controller, 'open').mockReturnValue(true);
+
+		await controller.handleKeyDown(createKeyboardEvent('i'));
+		expect(controller.enabled).toBe(false);
+
+		await controller.handleKeyDown(createKeyboardEvent('i', { altKey: true }));
+		expect(controller.enabled).toBe(true);
+
+		controller.notes = [{} as any];
+		await controller.handleKeyDown(createKeyboardEvent('c'));
+		expect(copyNotesSpy).not.toHaveBeenCalled();
+
+		await controller.handleKeyDown(createKeyboardEvent('o'));
+		expect(openSpy).not.toHaveBeenCalled();
+
+		await controller.handleKeyDown(createKeyboardEvent('o', { altKey: true }));
+		expect(openSpy).toHaveBeenCalledTimes(1);
+
+		controller.destroy();
+	});
+
+	it('does not trigger open when the inspector is disabled or the composer is active', async () => {
+		const controller = new CopyOpenController();
+		const openSpy = vi.spyOn(controller, 'open').mockReturnValue(true);
+
+		await controller.handleKeyDown(createKeyboardEvent('o'));
+		expect(openSpy).not.toHaveBeenCalled();
+
+		controller.toggle();
+		controller.composer = buildComposerState({
+			noteId: null,
+			noteKind: 'element',
+			initialValue: '',
+			targetSummary: 'button',
+			targetLabel: 'button.primary',
+			placeholder: 'What should change ?',
+			accentColor: '#14CE4C',
+			markerLeft: 120,
+			markerTop: 120,
+			outlineRects: [],
+			highlightRects: [],
+			selectedText: null,
+			anchor: {
+				domPath: '0/0',
+				relativeX: 0.5,
+				relativeY: 0.5,
+				viewportX: 120,
+				viewportY: 120
+			},
+			sourceInfo: createEmptySourceInfo('button')
+		});
+
+		await controller.handleKeyDown(createKeyboardEvent('o'));
+		expect(openSpy).not.toHaveBeenCalled();
+
+		controller.destroy();
+	});
+
+	it('uses the cancel shortcut to clear transient state, close the composer, and dismiss settings', async () => {
+		const controller = new CopyOpenController();
+
+		controller.dragSelection = {
+			left: 10,
+			top: 10,
+			width: 40,
+			height: 40,
+			highlightRects: []
+		};
+		await controller.handleKeyDown(createKeyboardEvent('Escape'));
+		expect(controller.dragSelection).toBeNull();
+
+		controller.composer = buildComposerState({
+			noteId: null,
+			noteKind: 'element',
+			initialValue: '',
+			targetSummary: 'paragraph',
+			targetLabel: 'paragraph',
+			placeholder: 'What should change ?',
+			accentColor: '#14CE4C',
+			markerLeft: 120,
+			markerTop: 120,
+			outlineRects: [],
+			highlightRects: [],
+			selectedText: null,
+			anchor: {
+				domPath: '0/0',
+				relativeX: 0.5,
+				relativeY: 0.5,
+				viewportX: 120,
+				viewportY: 120
+			},
+			sourceInfo: createEmptySourceInfo('p')
+		});
+		await controller.handleKeyDown(createKeyboardEvent('Escape'));
+		expect(controller.composer).toBeNull();
+
+		controller.toolbar = {
+			...controller.toolbar,
+			settingsOpen: true,
+			confirmDeleteAll: true
+		};
+		await controller.handleKeyDown(createKeyboardEvent('Escape'));
+		expect(controller.toolbar.settingsOpen).toBe(false);
+		expect(controller.toolbar.confirmDeleteAll).toBe(false);
 
 		controller.destroy();
 	});

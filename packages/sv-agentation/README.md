@@ -82,15 +82,32 @@ Mount the inspector only in development and only in the browser.
 {/if}
 ```
 
+## Custom Shortcuts
+
+```svelte
+<Agentation
+	{workspaceRoot}
+	keyBindings={{
+		inspect: 'Alt+I',
+		copy: 'Alt+C',
+		reset: 'Alt+R',
+		open: 'Alt+O',
+		delete: 'Alt+D'
+	}}
+/>
+```
+
 ## Shortcuts
 
 | Shortcut                   | Action                  | Description                                                                                    |
 | -------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
-| `i`                        | Toggle inspector        | Open or close the inspector toolbar and annotation mode.                                       |
-| `c`                        | Copy all notes          | Copy notes as Markdown when at least one note exists.                                          |
-| `r`                        | Reset toolbar position  | Move the floating toolbar back to the latest explicit prop value, saved placement, or default. |
-| `o`                        | Open source             | Open the currently hovered source location when the inspector is active.                       |
-| `esc`                      | Cancel current action   | Clear transient selections, close the composer, or close settings/delete state.                |
+| `i`                        | Inspect                 | Toggle the inspector toolbar and annotation mode. Configurable through `keyBindings.inspect`.  |
+| `c`                        | Copy                    | Copy notes as Markdown when at least one note exists. Configurable through `keyBindings.copy`. |
+| `r`                        | Reset                   | Reset the floating toolbar position. Configurable through `keyBindings.reset`.                 |
+| `o`                        | Open                    | Open the hovered source location. Configurable through `keyBindings.open`.                     |
+| `d`                        | Delete                  | Delete the currently edited note. Configurable through `keyBindings.delete`.                   |
+| `esc`                      | Cancel                  | Clear transient selections, close the composer, or dismiss settings/delete state.              |
+| `enter`                    | Submit                  | Submit the current note from the composer. Configurable through `keyBindings.submit`.          |
 | `shift + ctrl/cmd + click` | Build a group selection | Add or remove elements from a grouped annotation target before releasing the modifiers.        |
 
 ## Features
@@ -124,6 +141,7 @@ Mount the inspector only in development and only in the browser.
 | `includeComponentContext` | `boolean`                                                                                                                      | When provided, syncs component-context capture and stores it for later sessions.                       |
 | `includeComputedStyles`   | `boolean`                                                                                                                      | When provided, syncs computed-style capture and stores it for later sessions.                          |
 | `copyToClipboard`         | `boolean`                                                                                                                      | Disable direct clipboard writes and use callbacks only.                                                |
+| `keyBindings`             | `Partial<Record<'inspect' \| 'copy' \| 'reset' \| 'open' \| 'delete' \| 'cancel' \| 'submit', string \| null>>`             | Override or disable keyboard actions without changing persisted toolbar settings.                      |
 | `onAnnotationAdd`         | `(annotation) => void`                                                                                                         | Called after a note is created.                                                                        |
 | `onAnnotationUpdate`      | `(annotation) => void`                                                                                                         | Called after a note is updated.                                                                        |
 | `onAnnotationDelete`      | `(annotation) => void`                                                                                                         | Called after a note is deleted.                                                                        |

@@ -3,10 +3,14 @@
 	import { ChevronRight, Plus, Trash2 } from '@lucide/svelte';
 
 	import type { NoteComposerProps } from '../internal/component-props';
+	import { parseKeyBinding, matchesKeyBinding } from '../utils/shortcuts';
 
-	let { composer, value, onCancel, onDelete, onInput, onSubmit }: NoteComposerProps = $props();
+	let { composer, keyBindings, value, onCancel, onDelete, onInput, onSubmit }: NoteComposerProps =
+		$props();
 
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let submitBinding = $derived(parseKeyBinding(keyBindings.submit));
+	let deleteBinding = $derived(parseKeyBinding(keyBindings.delete));
 
 	$effect(() => {
 		if (!composer || !textareaElement) return;
@@ -19,15 +23,17 @@
 	};
 
 	const handleKeyDown = (event: KeyboardEvent) => {
-		if (
-			event.key === 'Enter' &&
-			!event.shiftKey &&
-			!event.metaKey &&
-			!event.ctrlKey &&
-			!event.altKey
-		) {
+		if (matchesKeyBinding(event, submitBinding)) {
 			event.preventDefault();
+			event.stopPropagation();
 			onSubmit();
+			return;
+		}
+
+		if (composer?.noteId && matchesKeyBinding(event, deleteBinding)) {
+			event.preventDefault();
+			event.stopPropagation();
+			onDelete(composer.noteId);
 		}
 	};
 
@@ -53,6 +59,8 @@
 		composerState: NonNullable<NoteComposerProps['composer']>,
 		nextValue: string
 	) => nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
+	const getButtonTitle = (label: string, binding: string | null) =>
+		binding ? `${label} (${binding})` : label;
 
 	const getOutlineClass = (composerState: NonNullable<NoteComposerProps['composer']>) =>
 		composerState.noteKind === 'group' || composerState.noteKind === 'area'
@@ -140,7 +148,7 @@
 					aria-label="Delete note"
 					class="delete-button"
 					data-inspector-ui
-					title="Delete note"
+					title={getButtonTitle('Delete note', keyBindings.delete)}
 					type="button"
 					onclick={handleDelete}
 				>
@@ -163,6 +171,7 @@
 				data-inspector-ui
 				disabled={!getCanSubmit(composer, value)}
 				style={`--composer-accent:${composer.accentColor};`}
+				title={getButtonTitle(composer.noteId ? 'Save note' : 'Add note', keyBindings.submit)}
 				type="button"
 				onclick={handleSubmit}
 			>

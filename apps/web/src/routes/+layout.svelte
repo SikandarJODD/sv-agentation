@@ -13,7 +13,12 @@
 		pauseAnimations: true,
 		clearOnCopy: false,
 		includeComponentContext: true,
-		includeComputedStyles: false
+		includeComputedStyles: false,
+		keyBindings: {
+			inspect: '1',
+			open: '2',
+			delete: '3',
+		}
 	};
 
 	let { children } = $props();
@@ -24,6 +29,6 @@
 <svelte:head><link rel="icon" href={asset('/main-favicon-light.svg')} /></svelte:head>
 {@render children()}
 
-<!-- {#if browser && dev} -->
-<Agentation {workspaceRoot} {...playgroundAgentationProps} />
-<!-- {/if} -->
+{#if browser && dev}
+	<Agentation {workspaceRoot} {...playgroundAgentationProps} />
+{/if}

@@ -11,6 +11,9 @@ export {
 } from './events';
 export type {
 	AbsoluteRectBox,
+	AgentationKeyAction,
+	AgentationKeyBindingValue,
+	AgentationKeyBindings,
 	AgentationAnnotationSnapshot,
 	AgentationExportPayload,
 	AnnotationBoundingBox,
@@ -45,6 +48,7 @@ export type {
 	NotesSettings,
 	OutputMode,
 	RectBox,
+	ResolvedAgentationKeyBindings,
 	RenderedInspectorNote,
 	ResolvedNotePosition,
 	TextInspectorNote,

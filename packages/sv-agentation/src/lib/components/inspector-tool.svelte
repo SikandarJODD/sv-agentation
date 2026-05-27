@@ -8,6 +8,7 @@
 	let {
 		active,
 		deleteAllState,
+		keyBindings,
 		notes,
 		settings,
 		toolbar,
@@ -162,6 +163,7 @@
 	{#if toolbar.settingsOpen}
 		<ToolbarSettingsPanel
 			bind:panelElement={settingsPanelElement}
+			{keyBindings}
 			placement={settingsPanelPlacement}
 			{settings}
 			style={getSettingsPanelStyle()}
@@ -209,6 +211,7 @@
 			<ToolbarActions
 				{active}
 				{deleteAllState}
+				{keyBindings}
 				{notes}
 				{toolbar}
 				{onCloseToolbar}

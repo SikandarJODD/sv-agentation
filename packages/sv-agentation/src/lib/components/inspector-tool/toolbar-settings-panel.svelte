@@ -9,6 +9,7 @@
 	import { DEFAULT_MARKER_COLORS, EXPANDED_TOOLBAR_WIDTH } from '../../utils/notes';
 
 	let {
+		keyBindings,
 		settings,
 		toolbarPosition,
 		onSetBlockPageInteractions,
@@ -103,9 +104,10 @@
 			0,
 			outputModeOptions.findIndex((option) => option.value === outputMode)
 		);
-		// Press R to reset to the latest prop value, saved placement, or default.
-	const toolbarResetHint =
-		'Press R to reset to the position of toolbar';
+	const getToolbarResetHint = () =>
+		keyBindings.reset
+			? `Press ${keyBindings.reset} to reset the position of toolbar`
+			: 'Use the reset shortcut to restore the position of toolbar';
 </script>
 
 <div
@@ -298,7 +300,7 @@
 							{/each}
 						</div>
 					</div>
-					<p class="settings-hint" data-inspector-ui>{toolbarResetHint}</p>
+					<p class="settings-hint" data-inspector-ui>{getToolbarResetHint()}</p>
 				</div>
 			{/if}
 		</div>

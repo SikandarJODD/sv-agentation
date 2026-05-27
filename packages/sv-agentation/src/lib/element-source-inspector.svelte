@@ -44,6 +44,7 @@
 		openSourceOnClick: rawProps.openSourceOnClick ?? true,
 		deleteAllDelayMs: rawProps.deleteAllDelayMs ?? DEFAULT_DELETE_ALL_DELAY_MS,
 		copyToClipboard: rawProps.copyToClipboard ?? true,
+		keyBindings: rawProps.keyBindings,
 		onAnnotationAdd: rawProps.onAnnotationAdd,
 		onAnnotationUpdate: rawProps.onAnnotationUpdate,
 		onAnnotationDelete: rawProps.onAnnotationDelete,
@@ -175,6 +176,7 @@
 		onToggleToolbar={controller.toggleToolbar}
 		onToolbarPointerDown={controller.handleToolbarPointerDown}
 		toolbarPosition={controller.toolbarPositionPreset}
+		keyBindings={controller.keyBindings}
 	/>
 
 	<NoteMarkers
@@ -192,6 +194,10 @@
 
 	<NoteComposer
 		composer={controller.composer}
+		keyBindings={{
+			delete: controller.keyBindings.delete,
+			submit: controller.keyBindings.submit
+		}}
 		onCancel={controller.closeComposer}
 		onDelete={controller.deleteNote}
 		onInput={controller.updateNoteDraft}
@@ -200,7 +206,11 @@
 	/>
 
 	{#if controller.enabled && !controller.composer}
-		<HoverCard hoverInfo={controller.hoverInfo} onOpen={controller.open} />
+		<HoverCard
+			hoverInfo={controller.hoverInfo}
+			onOpen={controller.open}
+			openShortcut={controller.keyBindings.open}
+		/>
 	{/if}
 </div>
 

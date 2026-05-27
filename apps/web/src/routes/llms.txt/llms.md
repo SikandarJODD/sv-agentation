@@ -76,6 +76,8 @@ Route-based note sessions are automatic by default.
   When provided, keeps the floating toolbar anchored to this preset and overrides saved toolbar placements.
 - `pageSessionKey?: string | null`
   Optional advanced override for note session scoping. Most apps do not need this.
+- `keyBindings?: Partial<Record<'inspect' | 'copy' | 'reset' | 'open' | 'delete' | 'cancel' | 'submit', string | null>>`
+  Override or disable keyboard actions without changing saved toolbar settings.
 
 ### Behavior
 
@@ -139,6 +141,13 @@ Route-based note sessions are automatic by default.
 <Agentation
 	{workspaceRoot}
 	outputMode="detailed"
+	keyBindings={{
+		inspect: 'Alt+I',
+		copy: 'Alt+C',
+		reset: 'Alt+R',
+		open: 'Alt+O',
+		delete: 'Alt+D'
+	}}
 	copyToClipboard={false}
 	onAnnotationAdd={handleAnnotationAdd}
 	onCopy={handleCopy}
@@ -147,9 +156,11 @@ Route-based note sessions are automatic by default.
 
 ## Shortcuts
 
-- `i` toggles the inspector.
-- `c` copies notes for the current page.
-- `r` resets toolbar position.
-- `o` opens the current source target.
-- `esc` cancels the current action.
+- `i` toggles inspect mode by default and maps to `keyBindings.inspect`.
+- `c` copies notes for the current page and maps to `keyBindings.copy`.
+- `r` resets toolbar position and maps to `keyBindings.reset`.
+- `o` opens the current source target and maps to `keyBindings.open`.
+- `d` deletes the currently edited note and maps to `keyBindings.delete`.
+- `esc` cancels the current action and maps to `keyBindings.cancel`.
+- `enter` submits the current note and maps to `keyBindings.submit`.
 - `shift + ctrl/cmd + click` builds a grouped selection.
