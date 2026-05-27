@@ -411,13 +411,8 @@ Use this example:
 <MetaTags {...metaTags} />
 
 <main
-	class="required: min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10"
+	class="min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10"
 >
-	<div aria-hidden="true" class="absolute inset-0 -z-10 size-full overflow-hidden">
-		<div
-			class="absolute inset-0 isolate -z-10 bg-[radial-gradient(20%_80%_at_20%_0%,color-mix(in_oklab,var(--foreground)_10%,transparent),transparent)]"
-		></div>
-	</div>
 	<div class="z-50 mx-auto flex w-full max-w-2xl flex-col">
 		<header class="flex items-start justify-between gap-4">
 			<div class="flex min-w-0 flex-col items-start">
