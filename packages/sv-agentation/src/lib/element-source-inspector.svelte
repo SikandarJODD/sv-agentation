@@ -154,13 +154,15 @@
 	<InspectorTool
 		active={controller.enabled}
 		deleteAllState={controller.deleteAllState}
-		notes={controller.notes}
+		notes={controller.renderedNotes}
 		settings={controller.settings}
 		toolbar={controller.toolbar}
 		toolbarDragEnabled
 		onCloseToolbar={controller.closeToolbar}
+		onCloseToolbarPanel={controller.closeToolbarPanel}
 		onCopyNotes={controller.copyNotes}
 		onDeleteAll={controller.requestDeleteAll}
+		onOpenNote={controller.openNote}
 		onSetBlockPageInteractions={controller.setBlockPageInteractions}
 		onSetClearOnCopy={controller.setClearOnCopy}
 		onSetIncludeComponentContext={controller.setIncludeComponentContext}
@@ -171,6 +173,7 @@
 		onSetToolbarPosition={controller.setToolbarPosition}
 		onToggle={controller.toggle}
 		onToggleNotesVisibility={controller.toggleNotesVisibility}
+		onTogglePreview={controller.togglePreview}
 		onToggleSettings={controller.toggleSettings}
 		onToggleThemeMode={controller.toggleThemeMode}
 		onToggleToolbar={controller.toggleToolbar}
@@ -239,7 +242,7 @@
 		--inspector-divider: rgba(255, 255, 255, 0.1);
 		--inspector-text-primary: rgba(255, 255, 255, 0.94);
 		--inspector-text-secondary: rgba(255, 255, 255, 0.78);
-		--inspector-text-muted: rgba(255, 255, 255, 0.80);
+		--inspector-text-muted: rgba(255, 255, 255, 0.8);
 		--inspector-text-subtle: rgba(255, 255, 255, 0.35);
 		--inspector-toolbar-hover: rgba(255, 255, 255, 0.06);
 		--inspector-surface-soft: rgba(255, 255, 255, 0.03);

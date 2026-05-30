@@ -143,6 +143,14 @@ describe('NoteComposer shortcuts', () => {
 		textarea.dispatchEvent(
 			new KeyboardEvent('keydown', {
 				key: 'd',
+				bubbles: true
+			})
+		);
+		expect(onDelete).not.toHaveBeenCalled();
+
+		textarea.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'd',
 				altKey: true,
 				bubbles: true
 			})

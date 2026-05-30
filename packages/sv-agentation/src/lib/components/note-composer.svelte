@@ -22,6 +22,9 @@
 		onInput((event.currentTarget as HTMLTextAreaElement).value);
 	};
 
+	const shouldHandleDeleteShortcut = (event: KeyboardEvent) =>
+		event.metaKey || event.ctrlKey || event.altKey || event.key.length > 1;
+
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (matchesKeyBinding(event, submitBinding)) {
 			event.preventDefault();
@@ -30,7 +33,11 @@
 			return;
 		}
 
-		if (composer?.noteId && matchesKeyBinding(event, deleteBinding)) {
+		if (
+			composer?.noteId &&
+			shouldHandleDeleteShortcut(event) &&
+			matchesKeyBinding(event, deleteBinding)
+		) {
 			event.preventDefault();
 			event.stopPropagation();
 			onDelete(composer.noteId);
@@ -292,6 +299,23 @@
 		resize: none;
 		outline: none;
 		box-sizing: border-box;
+		scrollbar-color: color-mix(in srgb, var(--inspector-text-muted) 30%, transparent) transparent;
+		scrollbar-width: thin;
+	}
+
+	.composer-input::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.composer-input::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.composer-input::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--inspector-text-muted) 24%, transparent);
+		background-clip: padding-box;
 	}
 
 	.composer-input::placeholder {
@@ -367,10 +391,10 @@
 		opacity: 0.92;
 		transform: translateY(-1px);
 	} */
-	.cancel-button:hover  {
+	.cancel-button:hover {
 		opacity: 0.92;
-		background: rgba(255, 255, 255, 0.1);
-		color: rgba(255, 255, 255, 0.8);
+		background: var(--inspector-toolbar-hover);
+		color: var(--inspector-text-primary);
 	}
 
 	/* .submit-button:disabled:hover {

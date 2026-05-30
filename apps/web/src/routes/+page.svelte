@@ -410,9 +410,7 @@ Use this example:
 
 <MetaTags {...metaTags} />
 
-<main
-	class="min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10"
->
+<main class="min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10">
 	<div class="z-50 mx-auto flex w-full max-w-2xl flex-col">
 		<header class="flex items-start justify-between gap-4">
 			<div class="flex min-w-0 flex-col items-start">
@@ -556,8 +554,8 @@ Use this example:
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
 					The <Highlight class="px-1 text-sm font-normal" tone="green">toolbar</Highlight> is active on
-					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then hover a saved
-					note marker to preview the exact area before opening it.
+					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then use the new preview
+					button to scan saved notes or hover a marker to preview the exact area before opening it.
 				</p>
 			</div>
 		</section>

@@ -119,11 +119,12 @@ Mount the inspector only in development and only in the browser.
 5. Toggle the inspector theme inside the tool UI.
 6. Copy notes in `compact`, `standard`, `detailed`, or `forensic` output modes.
 7. Include computed-style snapshots for forensic exports.
-8. Toggle marker visibility for notes.
-9. Block normal page interactions while inspecting.
-10. Use a delete-all flow with configurable delay.
-11. Hook into annotation lifecycle and copy events with callbacks.
-12. Mount the inspector only in dev mode with `browser && dev`.
+8. Preview all current-page notes together from the toolbar and jump directly into any saved note.
+9. Toggle marker visibility for notes.
+10. Block normal page interactions while inspecting.
+11. Use a delete-all flow with configurable delay.
+12. Hook into annotation lifecycle and copy events with callbacks.
+13. Mount the inspector only in dev mode with `browser && dev`.
 
 ## Props
 

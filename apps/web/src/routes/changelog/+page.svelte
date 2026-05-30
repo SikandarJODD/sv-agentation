@@ -4,6 +4,15 @@
 
 	const releases = [
 		{
+			version: '0.3.1',
+			date: 'May 30, 2026',
+			notes: [
+				'Added a Preview Notes toolbar panel so saved notes can be scanned in one scrollable list.',
+				'Clicking a preview item now jumps straight to that saved note and opens it for editing.',
+				'Toolbar panel state is now shared so settings and preview overlays stay mutually exclusive.'
+			]
+		},
+		{
 			version: '0.3.0',
 			date: 'May 27, 2026',
 			notes: [

@@ -109,10 +109,12 @@ export interface NotesSettings {
 	includeComputedStyles: boolean;
 }
 
+export type ToolbarPanel = 'settings' | 'preview';
+
 export interface ToolbarState {
 	expanded: boolean;
 	dragging: boolean;
-	settingsOpen: boolean;
+	openPanel: ToolbarPanel | null;
 	confirmDeleteAll: boolean;
 	notesVisible: boolean;
 	copyFeedback: boolean;

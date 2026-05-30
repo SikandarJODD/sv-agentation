@@ -9,6 +9,7 @@ import {
 	DEFAULT_NOTES_SETTINGS,
 	EXPANDED_TOOLBAR_WIDTH,
 	readStoredSettings,
+	writeStoredNotes,
 	writeStoredSettings
 } from '../src/lib/utils/notes';
 import {
@@ -34,6 +35,17 @@ const clickButton = (button: Element | null) => {
 	}
 
 	button.click();
+	flushSync();
+};
+
+const clickButtonAsync = async (button: Element | null) => {
+	if (!(button instanceof HTMLButtonElement)) {
+		throw new Error('expected button');
+	}
+
+	button.click();
+	await Promise.resolve();
+	await Promise.resolve();
 	flushSync();
 };
 
@@ -70,6 +82,74 @@ const findSwitchForLabel = (target: ParentNode, labelText: string) => {
 	return input;
 };
 
+const createStoredAreaNote = (id: string, note: string, targetSummary: string, pathname = '/') => ({
+	id,
+	kind: 'area' as const,
+	note,
+	targetSummary,
+	targetLabel: 'Area selection (120 x 60)',
+	createdAt: '2026-03-26T00:00:00.000Z',
+	updatedAt: '2026-03-26T00:00:00.000Z',
+	componentName: null,
+	tagName: 'section',
+	filePath: '/src/routes/+page.svelte',
+	shortFileName: '+page.svelte',
+	lineNumber: 12,
+	columnNumber: 4,
+	anchor: {
+		bounds: {
+			left: 40,
+			top: 80,
+			width: 120,
+			height: 60
+		},
+		fallbackMarker: {
+			xPercent: 25,
+			yAbsolute: 140
+		}
+	},
+	capture: {
+		page: {
+			title: pathname,
+			pathname,
+			url: `http://localhost${pathname}`,
+			viewport: {
+				width: 1280,
+				height: 720
+			},
+			userAgent: 'vitest',
+			devicePixelRatio: 1,
+			timestamp: '2026-03-26T00:00:00.000Z'
+		},
+		element: {
+			selector: null,
+			fullDomPath: null,
+			cssClasses: [],
+			components: {
+				filtered: [],
+				smart: [],
+				all: []
+			},
+			boundingBox: {
+				x: 40,
+				y: 80,
+				width: 120,
+				height: 60
+			},
+			position: {
+				x: 40,
+				y: 80,
+				xPercent: 25,
+				yAbsolute: 140
+			},
+			selectedText: null,
+			nearbyText: null,
+			accessibility: null,
+			computedStyles: null
+		}
+	}
+});
+
 describe('Agentation component', () => {
 	let mountedComponent: Record<string, any> | null = null;
 	let target: HTMLDivElement;
@@ -91,6 +171,10 @@ describe('Agentation component', () => {
 				})
 			});
 		}
+		Object.defineProperty(window, 'scrollTo', {
+			configurable: true,
+			value: () => {}
+		});
 		target = document.createElement('div');
 		document.body.appendChild(target);
 	});
@@ -149,9 +233,7 @@ describe('Agentation component', () => {
 
 		expect(outputModeButton.disabled).toBe(false);
 		expect(target.textContent).not.toContain('Controlled by prop');
-		expect(target.textContent).toContain(
-			'Press R to reset the position of toolbar'
-		);
+		expect(target.textContent).toContain('Press R to reset the position of toolbar');
 
 		expect(findSwitchForLabel(target, 'Pause animations')).toMatchObject({
 			checked: true,
@@ -263,7 +345,8 @@ describe('Agentation component', () => {
 
 		clickButton(target.querySelector('button[title="Open toolbar"]'));
 
-		const getInspectButton = () => target.querySelector('button[aria-pressed]') as HTMLButtonElement | null;
+		const getInspectButton = () =>
+			target.querySelector('button[aria-pressed]') as HTMLButtonElement | null;
 		expect(getInspectButton()?.title).toBe('Start annotation mode (Alt+I)');
 
 		dispatchWindowKey('i');
@@ -360,6 +443,67 @@ describe('Agentation component', () => {
 		expect(target.querySelector('button[title="Toolbar settings"]')?.className).not.toContain(
 			'active-pane'
 		);
+	});
+
+	it('disables preview when the current page has no notes', () => {
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		clickButton(target.querySelector('button[title="Open toolbar"]'));
+
+		const previewButton = target.querySelector('button[title="Preview notes"]');
+		if (!(previewButton instanceof HTMLButtonElement)) {
+			throw new Error('expected preview button');
+		}
+
+		expect(previewButton.disabled).toBe(true);
+	});
+
+	it('renders a current-page preview list and opens the selected note from it', async () => {
+		writeStoredNotes('/', [
+			createStoredAreaNote(
+				'note-1',
+				'Adjust the spacing and make the heading easier to scan across breakpoints.',
+				'Landing hero heading with a very long title that should clamp cleanly in preview'
+			),
+			createStoredAreaNote(
+				'note-2',
+				'This should stay hidden on another route.',
+				'Other route note',
+				'/other'
+			)
+		]);
+
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(target.querySelector('button[title="Preview notes"]'));
+
+		expect(target.querySelector('.preview-panel')).toBeTruthy();
+		expect(target.textContent).toContain('Preview Notes');
+		expect(target.textContent).toContain('1 note');
+		expect(target.textContent).toContain('Note 1');
+		expect(target.textContent).toContain(
+			'Landing hero heading with a very long title that should clamp cleanly in preview'
+		);
+		expect(target.textContent).not.toContain('Other route note');
+		expect(target.querySelectorAll('.preview-item')).toHaveLength(1);
+		expect(target.querySelectorAll('.toolbar-shell')).toHaveLength(1);
+
+		await clickButtonAsync(target.querySelector('.preview-item'));
+		const previewButton = target.querySelector('button[title="Preview notes"]');
+		expect(previewButton?.className).not.toContain('active-pane');
+		const composerInput = target.querySelector('.composer-input');
+		if (!(composerInput instanceof HTMLTextAreaElement)) {
+			throw new Error('expected composer input');
+		}
+
+		expect(composerInput.value).toContain('Adjust the spacing');
 	});
 
 	it('shows a pencil icon for the note currently being edited', () => {
@@ -469,5 +613,4 @@ describe('Agentation component', () => {
 		expect(marker.textContent).toContain('1');
 		expect(marker.querySelector('svg')).toBeFalsy();
 	});
-
 });

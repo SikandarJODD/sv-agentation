@@ -311,9 +311,9 @@
 	.panel {
 		position: absolute;
 		bottom: calc(100% + 10px);
-		left: var(--settings-panel-offset-x, 0px);
+		left: var(--toolbar-panel-offset-x, 0px);
 		width: min(340px, calc(100vw - 40px));
-		max-height: var(--settings-panel-max-height, none);
+		max-height: var(--toolbar-panel-max-height, none);
 		overflow-y: auto;
 		padding: 18px;
 		border: 1px solid var(--inspector-border);

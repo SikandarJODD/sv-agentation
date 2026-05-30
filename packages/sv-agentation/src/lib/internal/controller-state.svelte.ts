@@ -1,7 +1,4 @@
-import type {
-	GroupSelectionPreviewState,
-	ToolbarState
-} from '../types';
+import type { GroupSelectionPreviewState, ToolbarState } from '../types';
 import { DEFAULT_DELETE_ALL_DELAY_MS, createDefaultToolbarPosition } from '../utils/notes';
 
 export type ToolbarDragState = {
@@ -50,7 +47,7 @@ export const DRAG_CANDIDATE_SELECTOR =
 export const createToolbarState = (): ToolbarState => ({
 	expanded: false,
 	dragging: false,
-	settingsOpen: false,
+	openPanel: null,
 	confirmDeleteAll: false,
 	notesVisible: true,
 	copyFeedback: false,

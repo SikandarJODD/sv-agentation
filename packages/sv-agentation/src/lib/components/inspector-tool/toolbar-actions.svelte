@@ -5,6 +5,7 @@
 		Copy,
 		Eye,
 		EyeOff,
+		List,
 		Pause,
 		Play,
 		RotateCcw,
@@ -26,6 +27,7 @@
 		onDeleteAll,
 		onToggle,
 		onToggleNotesVisibility,
+		onTogglePreview,
 		onToggleSettings
 	}: InspectorToolbarActionsProps = $props();
 
@@ -109,6 +111,18 @@
 	</button>
 
 	<button
+		class:active-pane={toolbar.openPanel === 'preview'}
+		class="toolbar-button"
+		data-inspector-ui
+		disabled={notes.length === 0}
+		title="Preview notes"
+		type="button"
+		onclick={onTogglePreview}
+	>
+		<List size={16} />
+	</button>
+
+	<button
 		aria-label={getDeleteAllTitle(deleteAllState)}
 		class:pending-delete={deleteAllState.active}
 		class="toolbar-button delete-button"
@@ -145,7 +159,7 @@
 	</button>
 
 	<button
-		class:active-pane={toolbar.settingsOpen}
+		class:active-pane={toolbar.openPanel === 'settings'}
 		class="toolbar-button"
 		data-inspector-ui
 		title="Toolbar settings"
@@ -174,8 +188,8 @@
 		height: 100%;
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 7px 8px;
+		gap: 5px;
+		padding: 6px;
 		box-sizing: border-box;
 	}
 
@@ -310,8 +324,8 @@
 
 	@media (max-width: 640px) {
 		.toolbar-actions {
-			gap: 5px;
-			padding: 7px;
+			gap: 4px;
+			padding: 6px;
 		}
 
 		.toolbar-button {
