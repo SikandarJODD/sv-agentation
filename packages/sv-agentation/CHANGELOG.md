@@ -1,5 +1,12 @@
 # sv-agentation
 
+## 0.3.1
+
+### Patch Changes
+
+- Improved animations and visual effects across the inspector experience.
+- Fixed the toolbar transition issue.
+
 ## 0.3.0
 
 ### Minor Changes
