@@ -92,6 +92,18 @@ const findButtonByText = (target: ParentNode, text: string) =>
 		button.textContent?.includes(text)
 	) ?? null;
 
+const findButtonByTitle = (target: ParentNode, title: string) =>
+	target.querySelector(`button[title="${title}"]`);
+
+const findTooltipById = (target: ParentNode, id: string) => {
+	const tooltip = target.querySelector(`#${id}`);
+	if (!(tooltip instanceof HTMLDivElement)) {
+		throw new Error(`expected tooltip ${id}`);
+	}
+
+	return tooltip;
+};
+
 const findSwitchForLabel = (target: ParentNode, labelText: string) => {
 	const label = Array.from(target.querySelectorAll('label')).find((candidate) =>
 		candidate.textContent?.includes(labelText)
@@ -250,8 +262,8 @@ describe('Agentation component', () => {
 		expect(toolbarLayer?.getAttribute('style')).toContain('left: 8px');
 		expect(toolbarLayer?.getAttribute('style')).toContain('top: 666px');
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
-		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+		clickButton(findButtonByTitle(target, 'Settings'));
 		clickButton(findButtonByText(target, 'Behavior'));
 		clickButton(findButtonByText(target, 'Toolbar Position'));
 
@@ -307,8 +319,8 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
-		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+		clickButton(findButtonByTitle(target, 'Settings'));
 		clickButton(findButtonByText(target, 'Behavior'));
 
 		const pauseAnimationsSwitch = findSwitchForLabel(target, 'Pause animations');
@@ -341,8 +353,8 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
-		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+		clickButton(findButtonByTitle(target, 'Settings'));
 
 		clickButton(target.querySelector('button[aria-label="Cycle output mode"]'));
 		expect(target.textContent).toContain('Standard');
@@ -372,7 +384,7 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
 
 		const getInspectButton = () =>
 			target.querySelector('button[aria-pressed]') as HTMLButtonElement | null;
@@ -426,7 +438,7 @@ describe('Agentation component', () => {
 			`--toolbar-shell-width: ${COLLAPSED_TOOLBAR_SIZE}px`
 		);
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
 
 		expect(target.querySelector('.toolbar-shell')).toBe(toolbarShell);
 		expect(toolbarLayer?.getAttribute('style')).toContain(`left: ${expandedPosition.x}px`);
@@ -434,7 +446,7 @@ describe('Agentation component', () => {
 			`--toolbar-shell-width: ${EXPANDED_TOOLBAR_WIDTH}px`
 		);
 
-		clickButton(target.querySelector('button[title="Collapse toolbar"]'));
+		clickButton(findButtonByTitle(target, 'Exit (Escape)'));
 
 		expect(target.querySelector('.toolbar-shell')).toBe(toolbarShell);
 		expect(toolbarLayer?.getAttribute('style')).toContain(`left: ${collapsedPosition.x}px`);
@@ -449,8 +461,8 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
-		clickButton(target.querySelector('button[title="Toolbar settings"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+		clickButton(findButtonByTitle(target, 'Settings'));
 		clickButton(findButtonByText(target, 'Behavior'));
 
 		const computedStylesSwitch = findSwitchForLabel(target, 'Computed styles');
@@ -468,8 +480,8 @@ describe('Agentation component', () => {
 			includeComputedStyles: false
 		});
 
-		clickButton(target.querySelector('button[title="Toolbar settings"]'));
-		expect(target.querySelector('button[title="Toolbar settings"]')?.className).not.toContain(
+		clickButton(findButtonByTitle(target, 'Settings'));
+		expect(findButtonByTitle(target, 'Settings')?.className).not.toContain(
 			'active-pane'
 		);
 	});
@@ -480,9 +492,9 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
 
-		const previewButton = target.querySelector('button[title="Preview notes"]');
+		const previewButton = findButtonByTitle(target, 'Preview notes');
 		if (!(previewButton instanceof HTMLButtonElement)) {
 			throw new Error('expected preview button');
 		}
@@ -510,8 +522,8 @@ describe('Agentation component', () => {
 		});
 		flushSync();
 
-		clickButton(target.querySelector('button[title="Open toolbar"]'));
-		clickButton(target.querySelector('button[title="Preview notes"]'));
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+		clickButton(findButtonByTitle(target, 'Preview notes'));
 
 		expect(target.querySelector('.preview-panel')).toBeTruthy();
 		expect(target.textContent).toContain('Preview Notes');
@@ -525,7 +537,7 @@ describe('Agentation component', () => {
 		expect(target.querySelectorAll('.toolbar-shell')).toHaveLength(1);
 
 		await clickButtonAsync(target.querySelector('.preview-item'));
-		const previewButton = target.querySelector('button[title="Preview notes"]');
+		const previewButton = findButtonByTitle(target, 'Preview notes');
 		expect(previewButton?.className).not.toContain('active-pane');
 		const composerInput = target.querySelector('.composer-input');
 		if (!(composerInput instanceof HTMLTextAreaElement)) {
@@ -533,6 +545,123 @@ describe('Agentation component', () => {
 		}
 
 		expect(composerInput.value).toContain('Adjust the spacing');
+	});
+
+	it('renders toolbar tooltips with shortcuts and removes the first divider', () => {
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+
+		expect(target.querySelectorAll('.toolbar-actions .divider')).toHaveLength(1);
+		expect(findTooltipById(target, 'toolbar-tooltip-inspect').textContent).toContain(
+			'Start annotation mode'
+		);
+		expect(findTooltipById(target, 'toolbar-tooltip-inspect').textContent).toContain('I');
+		expect(findTooltipById(target, 'toolbar-tooltip-markers').textContent).toContain(
+			'Hide markers'
+		);
+		expect(findTooltipById(target, 'toolbar-tooltip-markers').textContent).toContain('H');
+		expect(findTooltipById(target, 'toolbar-tooltip-copy').textContent).toContain('Copy notes');
+		expect(findTooltipById(target, 'toolbar-tooltip-copy').textContent).toContain('C');
+		expect(findTooltipById(target, 'toolbar-tooltip-preview').textContent?.trim()).toBe(
+			'Preview notes'
+		);
+		expect(findTooltipById(target, 'toolbar-tooltip-settings').textContent?.trim()).toBe(
+			'Settings'
+		);
+		expect(findTooltipById(target, 'toolbar-tooltip-clear-all').textContent).toContain('Clear all');
+		expect(findTooltipById(target, 'toolbar-tooltip-clear-all').textContent).toContain('X');
+		expect(findTooltipById(target, 'toolbar-tooltip-exit').textContent).toContain('Exit');
+		expect(findTooltipById(target, 'toolbar-tooltip-exit').textContent).toContain('Escape');
+		expect(findButtonByTitle(target, 'Exit (Escape)')).toBeInstanceOf(HTMLButtonElement);
+
+		clickButton(findButtonByTitle(target, 'Settings'));
+		expect(findButtonByTitle(target, 'Settings')?.className).toContain('active-pane');
+
+		dispatchWindowKey('Escape');
+		expect(findButtonByTitle(target, 'Settings')?.className).not.toContain('active-pane');
+	});
+
+	it('updates toolbar tooltip shortcuts when key binding props change', () => {
+		mountedComponent = mount(AgentationHarness, {
+			target,
+			props: {
+				initialProps: {
+					keyBindings: {
+						toggleMarkers: 'Alt+H',
+						clearAll: 'Shift+X'
+					}
+				}
+			}
+		});
+		flushSync();
+
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+
+		expect(findButtonByTitle(target, 'Hide markers (Alt+H)')).toBeInstanceOf(HTMLButtonElement);
+		expect(findTooltipById(target, 'toolbar-tooltip-markers').textContent).toContain('Alt+H');
+		expect(findTooltipById(target, 'toolbar-tooltip-clear-all').textContent).toContain('Shift+X');
+
+		const setInspectorProps = mountedComponent?.setInspectorProps;
+		if (typeof setInspectorProps !== 'function') {
+			throw new Error('expected harness updater');
+		}
+
+		setInspectorProps({
+			keyBindings: {
+				toggleMarkers: 'Ctrl+H',
+				clearAll: 'Ctrl+X'
+			}
+		});
+		flushSync();
+
+		expect(findButtonByTitle(target, 'Hide markers (Ctrl+H)')).toBeInstanceOf(HTMLButtonElement);
+		expect(findTooltipById(target, 'toolbar-tooltip-markers').textContent).toContain('Ctrl+H');
+		expect(findTooltipById(target, 'toolbar-tooltip-clear-all').textContent).toContain('Ctrl+X');
+	});
+
+	it('toggles marker visibility with the default H shortcut', () => {
+		writeStoredNotes('/', [createStoredAreaNote('note-1', 'Marker note', 'Primary marker target')]);
+
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		expect(target.querySelectorAll('.marker')).toHaveLength(1);
+
+		dispatchWindowKey('h');
+		expect(target.querySelectorAll('.marker')).toHaveLength(0);
+
+		dispatchWindowKey('h');
+		expect(target.querySelectorAll('.marker')).toHaveLength(1);
+	});
+
+	it('starts the clear-all flow with the default X shortcut when the inspector is active', () => {
+		writeStoredNotes('/', [createStoredAreaNote('note-1', 'Clear me', 'Current page note')]);
+
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		dispatchWindowKey('i');
+		clickButton(findButtonByTitle(target, 'Open toolbar'));
+
+		const clearAllButton = findButtonByTitle(target, 'Clear all');
+		if (!(clearAllButton instanceof HTMLButtonElement)) {
+			throw new Error('expected clear all button');
+		}
+
+		expect(clearAllButton.querySelector('.delete-progress-ring')).toBeNull();
+
+		dispatchWindowKey('x');
+
+		expect(clearAllButton.title).toContain('Cancel clear all');
+		expect(clearAllButton.querySelector('.delete-progress-ring')).toBeTruthy();
 	});
 
 	it('shows a pencil icon for the note currently being edited', () => {
