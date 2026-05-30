@@ -1,3 +1,5 @@
+import type { RectBox } from '../types';
+
 export const INSPECTOR_UI_ATTRIBUTE = 'data-inspector-ui';
 const DOM_PATH_SEPARATOR = '/';
 
@@ -45,6 +47,39 @@ export const isElementTarget = (target: EventTarget | null): target is Element =
 
 export const clampNumber = (value: number, min: number, max: number) =>
 	Math.min(Math.max(value, min), max);
+
+export const resolveInteractionHost = (target: Element | null) => {
+	if (!(target instanceof HTMLElement)) return null;
+
+	const host = target.closest('[data-slot="dialog-content"], [role="dialog"], [role="alertdialog"]');
+	return host instanceof HTMLElement ? host : null;
+};
+
+export const toInteractionHostPoint = (
+	left: number,
+	top: number,
+	host: HTMLElement | null
+) => {
+	if (!host || !document.contains(host)) return { left, top };
+
+	const rect = host.getBoundingClientRect();
+	return {
+		left: left - rect.left,
+		top: top - rect.top
+	};
+};
+
+export const toInteractionHostRect = (rect: RectBox, host: HTMLElement | null): RectBox => {
+	if (!host || !document.contains(host)) return rect;
+
+	const hostRect = host.getBoundingClientRect();
+	return {
+		left: rect.left - hostRect.left,
+		top: rect.top - hostRect.top,
+		width: rect.width,
+		height: rect.height
+	};
+};
 
 export const isTypingTarget = (target: EventTarget | null) => {
 	if (!(target instanceof HTMLElement)) return false;

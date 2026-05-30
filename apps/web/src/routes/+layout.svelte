@@ -14,6 +14,7 @@
 		clearOnCopy: false,
 		includeComponentContext: true,
 		includeComputedStyles: false,
+		deleteAllDelayMs: 10
 	};
 
 	let { children } = $props();

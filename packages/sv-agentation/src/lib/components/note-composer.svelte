@@ -1,12 +1,21 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
-	import { ChevronRight, Plus, Trash2 } from '@lucide/svelte';
+	import { Plus, Trash2 } from '@lucide/svelte';
 
 	import type { NoteComposerProps } from '../internal/component-props';
-	import { parseKeyBinding, matchesKeyBinding } from '../utils/shortcuts';
+	import { toInteractionHostPoint, toInteractionHostRect } from '../utils/dom';
+	import { matchesKeyBinding, parseKeyBinding } from '../utils/shortcuts';
 
-	let { composer, keyBindings, value, onCancel, onDelete, onInput, onSubmit }: NoteComposerProps =
-		$props();
+	let {
+		composer,
+		keyBindings,
+		value,
+		onCancel,
+		onDelete,
+		onInput,
+		onSubmit,
+		hosted = false
+	}: NoteComposerProps = $props();
 
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 	let submitBinding = $derived(parseKeyBinding(keyBindings.submit));
@@ -22,6 +31,9 @@
 		onInput((event.currentTarget as HTMLTextAreaElement).value);
 	};
 
+	const shouldHandleDeleteShortcut = (event: KeyboardEvent) =>
+		event.metaKey || event.ctrlKey || event.altKey || event.key.length > 1;
+
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (matchesKeyBinding(event, submitBinding)) {
 			event.preventDefault();
@@ -30,7 +42,11 @@
 			return;
 		}
 
-		if (composer?.noteId && matchesKeyBinding(event, deleteBinding)) {
+		if (
+			composer?.noteId &&
+			shouldHandleDeleteShortcut(event) &&
+			matchesKeyBinding(event, deleteBinding)
+		) {
 			event.preventDefault();
 			event.stopPropagation();
 			onDelete(composer.noteId);
@@ -59,6 +75,7 @@
 		composerState: NonNullable<NoteComposerProps['composer']>,
 		nextValue: string
 	) => nextValue.trim().length > 0 && getHasChanges(composerState, nextValue);
+
 	const getButtonTitle = (label: string, binding: string | null) =>
 		binding ? `${label} (${binding})` : label;
 
@@ -66,6 +83,17 @@
 		composerState.noteKind === 'group' || composerState.noteKind === 'area'
 			? 'outline dashed'
 			: 'outline solid';
+
+	const getRectStyle = (rect: { left: number; top: number; width: number; height: number }) => {
+		const nextRect = toInteractionHostRect(rect, composer?.interactionHost ?? null);
+		return `left:${nextRect.left}px;top:${nextRect.top}px;width:${nextRect.width}px;height:${nextRect.height}px;--composer-accent:${composer?.accentColor ?? '#14CE4C'};`;
+	};
+
+	const getPointStyle = (left: number, top: number, accentColor: string) => {
+		const nextPosition = toInteractionHostPoint(left, top, composer?.interactionHost ?? null);
+		return `left:${nextPosition.left}px;top:${nextPosition.top}px;--composer-accent:${accentColor};`;
+	};
+
 	let outlineTransition = { duration: 130 };
 	let highlightTransition = { duration: 120 };
 	let anchorTransition = { duration: 150, start: 0.74, opacity: 0 };
@@ -77,9 +105,10 @@
 	{#each composer.outlineRects as rect, index (`outline-${index}`)}
 		<div
 			aria-hidden="true"
+			class:hosted-layer={hosted}
 			class={getOutlineClass(composer)}
 			data-inspector-ui
-			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+			style={getRectStyle(rect)}
 			in:fade={outlineTransition}
 			out:fade={{ duration: 100 }}
 		></div>
@@ -88,9 +117,10 @@
 	{#each composer.highlightRects as rect, index (`highlight-${index}`)}
 		<div
 			aria-hidden="true"
+			class:hosted-layer={hosted}
 			class="highlight-rect"
 			data-inspector-ui
-			style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;--composer-accent:${composer.accentColor};`}
+			style={getRectStyle(rect)}
 			in:fade={highlightTransition}
 			out:fade={{ duration: 90 }}
 		></div>
@@ -98,9 +128,10 @@
 
 	<button
 		aria-label="Active note anchor"
+		class:hosted-layer={hosted}
 		class="anchor-marker"
 		data-inspector-ui
-		style={`left:${composer.markerLeft}px;top:${composer.markerTop}px;--composer-accent:${composer.accentColor};`}
+		style={getPointStyle(composer.markerLeft, composer.markerTop, composer.accentColor)}
 		type="button"
 		in:scale|global={anchorTransition}
 		out:scale={{ duration: 120, start: 1, opacity: 0 }}
@@ -111,15 +142,15 @@
 	</button>
 
 	<div
+		class:hosted-layer={hosted}
 		class="composer"
 		data-inspector-ui
-		style={`left:${composer.panelLeft}px;top:${composer.panelTop}px;`}
+		style={getPointStyle(composer.panelLeft, composer.panelTop, composer.accentColor)}
 		in:scale={composerEnter}
 		out:scale|global={composerExit}
 	>
 		<div class="composer-head" data-inspector-ui>
 			<div class="target-label" data-inspector-ui>
-				<!-- <ChevronRight size={14} /> -->
 				<span data-inspector-ui>{composer.targetLabel}</span>
 			</div>
 		</div>
@@ -190,6 +221,11 @@
 		pointer-events: none;
 	}
 
+	.outline.hosted-layer,
+	.highlight-rect.hosted-layer {
+		position: absolute;
+	}
+
 	.outline.solid {
 		border: 1.5px solid color-mix(in srgb, var(--composer-accent) 70%, transparent);
 		border-radius: 4px;
@@ -226,6 +262,10 @@
 		pointer-events: none;
 	}
 
+	.anchor-marker.hosted-layer {
+		position: absolute;
+	}
+
 	.anchor-marker span {
 		font-size: 1.15rem;
 		line-height: 1;
@@ -242,6 +282,11 @@
 		background: var(--inspector-composer-surface);
 		box-shadow: var(--inspector-shadow-composer);
 		backdrop-filter: blur(18px);
+		pointer-events: auto;
+	}
+
+	.composer.hosted-layer {
+		position: absolute;
 	}
 
 	.composer-head {
@@ -292,6 +337,23 @@
 		resize: none;
 		outline: none;
 		box-sizing: border-box;
+		scrollbar-color: color-mix(in srgb, var(--inspector-text-muted) 30%, transparent) transparent;
+		scrollbar-width: thin;
+	}
+
+	.composer-input::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.composer-input::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.composer-input::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--inspector-text-muted) 24%, transparent);
+		background-clip: padding-box;
 	}
 
 	.composer-input::placeholder {
@@ -355,26 +417,14 @@
 	}
 
 	.submit-button:disabled {
-		/* background: var(--inspector-surface-soft); */
-		/* color: var(--inspector-text-subtle); */
 		opacity: 0.5;
 		cursor: not-allowed !important;
 		transform: none;
 	}
 
-	/* .cancel-button:hover,
-	.submit-button:hover {
+	.cancel-button:hover {
 		opacity: 0.92;
-		transform: translateY(-1px);
-	} */
-	.cancel-button:hover  {
-		opacity: 0.92;
-		background: rgba(255, 255, 255, 0.1);
-		color: rgba(255, 255, 255, 0.8);
+		background: var(--inspector-toolbar-hover);
+		color: var(--inspector-text-primary);
 	}
-
-	/* .submit-button:disabled:hover {
-		opacity: 1;
-		transform: none;
-	} */
 </style>

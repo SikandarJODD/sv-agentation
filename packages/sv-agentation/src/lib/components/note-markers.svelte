@@ -4,8 +4,16 @@
 	import { PenLine } from '@lucide/svelte';
 
 	import type { NoteMarkersProps } from '../internal/component-props';
+	import { toInteractionHostPoint, toInteractionHostRect } from '../utils/dom';
 
-	let { activeNoteId, composerNoteId, notes, visible, onOpenNote }: NoteMarkersProps = $props();
+	let {
+		activeNoteId,
+		composerNoteId,
+		notes,
+		visible,
+		onOpenNote,
+		hosted = false
+	}: NoteMarkersProps = $props();
 
 	let hoveredNoteId = $state<string | null>(null);
 
@@ -47,8 +55,31 @@
 			window.innerWidth - previewWidth - 12
 		);
 		const top = Math.max(12, note.position.markerTop - 88);
+		const nextPosition = toInteractionHostPoint(left, top, note.position.interactionHost);
 
-		return `left:${left}px;top:${top}px;`;
+		return `left:${nextPosition.left}px;top:${nextPosition.top}px;`;
+	};
+
+	const getPointStyle = (note: NoteMarkersProps['notes'][number]) => {
+		if (!note.position) {
+			return 'left:12px;top:12px;';
+		}
+
+		const nextPosition = toInteractionHostPoint(
+			note.position.markerLeft,
+			note.position.markerTop,
+			note.position.interactionHost
+		);
+
+		return `left:${nextPosition.left}px;top:${nextPosition.top}px;`;
+	};
+
+	const getRectStyle = (
+		note: NoteMarkersProps['notes'][number],
+		rect: { left: number; top: number; width: number; height: number }
+	) => {
+		const nextRect = toInteractionHostRect(rect, note.position?.interactionHost ?? null);
+		return `left:${nextRect.left}px;top:${nextRect.top}px;width:${nextRect.width}px;height:${nextRect.height}px;`;
 	};
 
 	const markerEnter = {
@@ -73,13 +104,14 @@
 			aria-label={`Open note ${index + 1}`}
 			class:active-marker={activeNoteId === note.id}
 			class:group-marker={note.kind === 'group' || note.kind === 'area'}
+			class:hosted-layer={hosted}
 			class:hovered-marker={hoveredNoteId === note.id}
 			class:marker-hidden={!visible}
 			class:unresolved-marker={note.resolution === 'unresolved'}
 			class="marker"
 			data-inspector-ui
 			disabled={!visible}
-			style={`left:${note.position.markerLeft}px;top:${note.position.markerTop}px;`}
+			style={getPointStyle(note)}
 			type="button"
 			onclick={(event) => handleOpenNote(event, note.id)}
 			onmouseenter={() => setHoveredNote(note.id)}
@@ -110,9 +142,10 @@
 			{#each note.position.outlineRects as rect, outlineIndex (`hover-outline-${note.id}-${outlineIndex}`)}
 				<div
 					aria-hidden="true"
+					class:hosted-layer={hosted}
 					class={getHoverOutlineClass(note)}
 					data-inspector-ui
-					style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;`}
+					style={getRectStyle(note, rect)}
 					in:fade={{ duration: 120 }}
 					out:fade={{ duration: 90 }}
 				></div>
@@ -121,15 +154,17 @@
 			{#each note.position.highlightRects as rect, highlightIndex (`hover-highlight-${note.id}-${highlightIndex}`)}
 				<div
 					aria-hidden="true"
+					class:hosted-layer={hosted}
 					class="hover-highlight-rect"
 					data-inspector-ui
-					style={`left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;`}
+					style={getRectStyle(note, rect)}
 					in:fade={{ duration: 120 }}
 					out:fade={{ duration: 90 }}
 				></div>
 			{/each}
 
 			<div
+				class:hosted-layer={hosted}
 				class="note-preview"
 				data-inspector-ui
 				style={getPreviewStyle(note)}
@@ -163,12 +198,17 @@
 		box-shadow: var(--inspector-shadow-marker);
 		transform: translate(-50%, -50%);
 		cursor: pointer;
+		pointer-events: auto;
 		will-change: transform, opacity;
 		transition:
 			opacity 180ms ease,
 			transform 180ms ease,
 			box-shadow 180ms ease,
 			filter 180ms ease;
+	}
+
+	.marker.hosted-layer {
+		position: absolute;
 	}
 
 	.marker-content,
@@ -232,12 +272,21 @@
 		pointer-events: none;
 	}
 
+	.note-preview.hosted-layer {
+		position: absolute;
+	}
+
 	.hover-outline,
 	.hover-highlight-rect {
 		position: fixed;
 		z-index: 9996;
 		box-sizing: border-box;
 		pointer-events: none;
+	}
+
+	.hover-outline.hosted-layer,
+	.hover-highlight-rect.hosted-layer {
+		position: absolute;
 	}
 
 	.hover-outline.solid {

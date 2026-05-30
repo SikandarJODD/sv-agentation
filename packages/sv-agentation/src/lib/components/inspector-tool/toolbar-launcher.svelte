@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { PanelBottom } from '@lucide/svelte';
-
 	import type { InspectorToolbarLauncherProps } from '../../internal/component-props';
-	import { fade, scale } from 'svelte/transition';
+	import { scale } from 'svelte/transition';
 
-	let { notes, onToggleToolbar }: InspectorToolbarLauncherProps = $props();
+	let { badgeFloating, badgeVisible, notes, onToggleToolbar }: InspectorToolbarLauncherProps =
+		$props();
 
 	const getNoteCountLabel = () => (notes.length > 99 ? '99+' : `${notes.length}`);
 </script>
@@ -51,6 +50,8 @@
 	>
 	{#if notes.length > 0}
 		<span
+			class:badge-floating={badgeFloating}
+			class:badge-visible={badgeVisible}
 			in:scale|global={{ duration: 200, start: 0.7 }}
 			class="launcher-badge"
 			data-inspector-ui>{getNoteCountLabel()}</span
@@ -84,9 +85,8 @@
 
 	.launcher-badge {
 		position: absolute;
-		/* -6px, -6px - initially */
-		top: -5px;
-		right: -3px;
+		top: 6px;
+		right: 6px;
 		z-index: 1;
 		display: inline-flex;
 		align-items: center;
@@ -101,9 +101,26 @@
 		font-weight: 600;
 		line-height: 1;
 		letter-spacing: -0.01em;
+		opacity: 0;
 		pointer-events: none;
+		transform: translate3d(0, 0, 0);
+		transition:
+			opacity 140ms ease,
+			top 160ms cubic-bezier(0.2, 0.92, 0.24, 1),
+			right 160ms cubic-bezier(0.2, 0.92, 0.24, 1),
+			transform 160ms cubic-bezier(0.2, 0.92, 0.24, 1);
 		box-shadow:
 			0 1px 3px rgba(0, 0, 0, 0.15),
 			inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+	}
+
+	.launcher-badge.badge-floating {
+		top: -5px;
+		right: -3px;
+		transform: translate3d(0, 0, 0);
+	}
+
+	.launcher-badge.badge-visible {
+		opacity: 1;
 	}
 </style>

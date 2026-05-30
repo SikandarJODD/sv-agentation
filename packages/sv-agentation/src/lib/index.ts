@@ -54,6 +54,7 @@ export type {
 	TextInspectorNote,
 	TextSelectionAnchor,
 	ToolbarCoordinates,
+	ToolbarPanel,
 	ToolbarState,
 	VsCodeScheme
 } from './types';

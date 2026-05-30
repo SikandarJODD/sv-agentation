@@ -1,9 +1,4 @@
-import type {
-	NotesSettings,
-	RectBox,
-	ThemeMode,
-	ToolbarCoordinates
-} from '../types';
+import type { NotesSettings, RectBox, ThemeMode, ToolbarCoordinates } from '../types';
 import { clampNumber } from './dom';
 import {
 	buildAreaSelectionAnchor,
@@ -16,7 +11,7 @@ const PANEL_GAP = 20;
 
 export const DEFAULT_DELETE_ALL_DELAY_MS = 3000;
 export const COLLAPSED_TOOLBAR_SIZE = 46;
-export const EXPANDED_TOOLBAR_WIDTH = 266;
+export const EXPANDED_TOOLBAR_WIDTH = 292;
 export const EXPANDED_TOOLBAR_HEIGHT = 46;
 export const COMPOSER_WIDTH = 280;
 export const COMPOSER_HEIGHT = 180;

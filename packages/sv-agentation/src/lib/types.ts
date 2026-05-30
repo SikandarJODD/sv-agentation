@@ -91,6 +91,7 @@ export interface InspectorHoverInfo {
 	vscodeUrl: string | null;
 	canCopy: boolean;
 	canOpen: boolean;
+	interactionHost: HTMLElement | null;
 }
 
 export interface ToolbarCoordinates {
@@ -109,10 +110,12 @@ export interface NotesSettings {
 	includeComputedStyles: boolean;
 }
 
+export type ToolbarPanel = 'settings' | 'preview';
+
 export interface ToolbarState {
 	expanded: boolean;
 	dragging: boolean;
-	settingsOpen: boolean;
+	openPanel: ToolbarPanel | null;
 	confirmDeleteAll: boolean;
 	notesVisible: boolean;
 	copyFeedback: boolean;
@@ -306,6 +309,7 @@ export interface ResolvedNotePosition {
 	outlineRects: RectBox[];
 	highlightRects: RectBox[];
 	visibleInViewport: boolean;
+	interactionHost: HTMLElement | null;
 }
 
 export type RenderedInspectorNote = InspectorNote & {
@@ -329,6 +333,7 @@ export interface NoteComposerState extends NoteSourceInfo {
 	highlightRects: RectBox[];
 	selectedText: string | null;
 	anchor: InspectorNoteAnchor;
+	interactionHost: HTMLElement | null;
 }
 
 export interface GroupSelectionPreviewState {

@@ -17,6 +17,7 @@ import type {
 	ResolvedAgentationKeyBindings,
 	RectBox,
 	RenderedInspectorNote,
+	ToolbarPanel,
 	ToolbarCoordinates,
 	ToolbarState,
 	VsCodeScheme
@@ -188,7 +189,8 @@ export class CopyOpenController {
 	#openSourceOnClick = DEFAULT_OPTIONS.openSourceOnClick;
 	#deleteAllDelayMs = DEFAULT_OPTIONS.deleteAllDelayMs;
 	#copyToClipboard = DEFAULT_OPTIONS.copyToClipboard;
-	#parsedKeyBindings: ParsedKeyBindings = resolveKeyBindings(DEFAULT_OPTIONS.keyBindings).parsedKeyBindings;
+	#parsedKeyBindings: ParsedKeyBindings = resolveKeyBindings(DEFAULT_OPTIONS.keyBindings)
+		.parsedKeyBindings;
 	#onAnnotationAdd = DEFAULT_OPTIONS.onAnnotationAdd;
 	#onAnnotationUpdate = DEFAULT_OPTIONS.onAnnotationUpdate;
 	#onAnnotationDelete = DEFAULT_OPTIONS.onAnnotationDelete;
@@ -371,19 +373,34 @@ export class CopyOpenController {
 		}
 
 		this.#setToolbarExpanded(expanded, {
-			settingsOpen: expanded ? this.toolbar.settingsOpen : false
+			openPanel: expanded ? this.toolbar.openPanel : null
 		});
 	};
 
 	closeToolbar = () => {
 		this.cancelDeleteAll();
 
-		this.#setToolbarExpanded(false, { settingsOpen: false });
+		this.#setToolbarExpanded(false, { openPanel: null });
+	};
+
+	closeToolbarPanel = () => {
+		this.#setToolbar({ openPanel: null });
 	};
 
 	toggleSettings = () => {
 		this.#setToolbarExpanded(true, {
-			settingsOpen: !this.toolbar.settingsOpen
+			openPanel: this.toolbar.openPanel === 'settings' ? null : 'settings'
+		});
+	};
+
+	togglePreview = () => {
+		if (this.#getCurrentPageNotes().length === 0) {
+			this.#setToolbar({ openPanel: null });
+			return;
+		}
+
+		this.#setToolbarExpanded(true, {
+			openPanel: this.toolbar.openPanel === 'preview' ? null : 'preview'
 		});
 	};
 
@@ -443,6 +460,7 @@ export class CopyOpenController {
 		this.#clearTransientSelections();
 		this.#persistNotes();
 		this.#setToolbar({
+			openPanel: null,
 			confirmDeleteAll: false
 		});
 		this.#onAnnotationsClear?.(clearedSnapshots);
@@ -761,10 +779,10 @@ export class CopyOpenController {
 				return;
 			}
 
-			if (this.toolbar.settingsOpen || this.toolbar.confirmDeleteAll) {
+			if (this.toolbar.openPanel !== null || this.toolbar.confirmDeleteAll) {
 				event.preventDefault();
 				this.#setToolbar({
-					settingsOpen: false,
+					openPanel: null,
 					confirmDeleteAll: false
 				});
 			}
@@ -780,7 +798,7 @@ export class CopyOpenController {
 		}
 
 		if (matchesKeyBinding(event, this.#parsedKeyBindings.copy)) {
-			if (this.notes.length === 0) return;
+			if (this.#getCurrentPageNotes().length === 0) return;
 			event.preventDefault();
 			await this.copyNotes();
 			return;
@@ -929,6 +947,7 @@ export class CopyOpenController {
 		this.activeNoteId = note.id;
 		await scrollNoteIntoView(note);
 		this.#setComposerFromExistingNote(note);
+		this.#setToolbar({ openPanel: null });
 		return true;
 	};
 
@@ -949,6 +968,7 @@ export class CopyOpenController {
 			this.cancelDeleteAll();
 		}
 
+		this.#syncPreviewPanelState();
 		this.#persistNotes();
 		if (deletedNote) {
 			this.#onAnnotationDelete?.(this.#getAnnotationSnapshot(deletedNote));
@@ -957,6 +977,7 @@ export class CopyOpenController {
 
 	refreshRenderedNotes = () => {
 		this.renderedNotes = this.#getCurrentPageNotes().map(renderNote);
+		this.#syncPreviewPanelState();
 	};
 
 	destroy() {
@@ -1008,6 +1029,12 @@ export class CopyOpenController {
 		});
 	}
 
+	#syncPreviewPanelState() {
+		if (this.toolbar.openPanel !== 'preview') return;
+		if (this.renderedNotes.length > 0) return;
+		this.#setToolbar({ openPanel: null });
+	}
+
 	#persistNotes() {
 		if (typeof window === 'undefined') return;
 		writeStoredNotes(this.#pageStorageKey, this.notes);
@@ -1031,7 +1058,8 @@ export class CopyOpenController {
 		this.#clearToolbarCopyResetTimer();
 		this.#setToolbar({
 			copyFeedback: false,
-			confirmDeleteAll: false
+			confirmDeleteAll: false,
+			openPanel: null
 		});
 		this.activeNoteId = null;
 
@@ -1059,10 +1087,15 @@ export class CopyOpenController {
 	#setToolbarExpanded(
 		expanded: boolean,
 		options?: {
-			settingsOpen?: boolean;
+			openPanel?: ToolbarPanel | null;
 		}
 	) {
-		const settingsOpen = expanded ? (options?.settingsOpen ?? this.toolbar.settingsOpen) : false;
+		const openPanel =
+			expanded && options && 'openPanel' in options
+				? (options.openPanel ?? null)
+				: expanded
+					? this.toolbar.openPanel
+					: null;
 		const nextPosition =
 			expanded === this.toolbar.expanded
 				? clampToolbarPosition(this.toolbar.position, expanded)
@@ -1075,7 +1108,7 @@ export class CopyOpenController {
 
 		this.#setToolbar({
 			expanded,
-			settingsOpen,
+			openPanel,
 			confirmDeleteAll: false,
 			position: nextPosition
 		});

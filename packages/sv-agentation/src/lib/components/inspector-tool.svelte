@@ -3,6 +3,7 @@
 	import { COLLAPSED_TOOLBAR_SIZE, EXPANDED_TOOLBAR_WIDTH } from '../utils/notes';
 	import ToolbarActions from './inspector-tool/toolbar-actions.svelte';
 	import ToolbarLauncher from './inspector-tool/toolbar-launcher.svelte';
+	import ToolbarPreviewPanel from './inspector-tool/toolbar-preview-panel.svelte';
 	import ToolbarSettingsPanel from './inspector-tool/toolbar-settings-panel.svelte';
 
 	let {
@@ -15,8 +16,10 @@
 		toolbarDragEnabled,
 		toolbarPosition,
 		onCloseToolbar,
+		onCloseToolbarPanel,
 		onCopyNotes,
 		onDeleteAll,
+		onOpenNote,
 		onSetBlockPageInteractions,
 		onSetClearOnCopy,
 		onSetIncludeComponentContext,
@@ -27,6 +30,7 @@
 		onSetToolbarPosition,
 		onToggle,
 		onToggleNotesVisibility,
+		onTogglePreview,
 		onToggleSettings,
 		onToggleThemeMode,
 		onToggleToolbar,
@@ -35,11 +39,17 @@
 
 	let toolbarLayerElement = $state<HTMLDivElement | null>(null);
 	let toolbarShellElement = $state<HTMLDivElement | null>(null);
-	let settingsPanelElement = $state<HTMLDivElement | null>(null);
-	let settingsPanelPlacement = $state<'above' | 'below'>('above');
-	let settingsPanelOffsetX = $state(0);
-	let settingsPanelMaxHeight = $state<number | null>(null);
-	let settingsLayoutFrame: number | null = null;
+	let overlayPanelElement = $state<HTMLDivElement | null>(null);
+	let overlayPanelPlacement = $state<'above' | 'below'>('above');
+	let overlayPanelOffsetX = $state(0);
+	let overlayPanelMaxHeight = $state<number | null>(null);
+	let shellClipped = $state(false);
+	let badgeVisible = $state(true);
+	let overlayLayoutFrame: number | null = null;
+	let lastExpanded = false;
+	let badgeRevealTimeout: number | null = null;
+
+	const BADGE_REVEAL_DELAY_MS = 30;
 
 	const getToolbarShellStyle = () =>
 		[
@@ -47,35 +57,57 @@
 			`--toolbar-shell-height:${COLLAPSED_TOOLBAR_SIZE}px`
 		].join(';');
 
-	const getSettingsPanelStyle = () =>
+	const getOverlayPanelStyle = () =>
 		[
-			`--settings-panel-offset-x:${settingsPanelOffsetX}px`,
-			`--settings-panel-max-height:${settingsPanelMaxHeight === null ? 'none' : `${settingsPanelMaxHeight}px`}`
+			`--toolbar-panel-offset-x:${overlayPanelOffsetX}px`,
+			...(overlayPanelMaxHeight === null
+				? []
+				: [`--toolbar-panel-max-height:${overlayPanelMaxHeight}px`])
 		].join(';');
 
-	const resetSettingsPanelLayout = () => {
-		settingsPanelPlacement = 'above';
-		settingsPanelOffsetX = 0;
-		settingsPanelMaxHeight = null;
+	const resetOverlayPanelLayout = () => {
+		overlayPanelPlacement = 'above';
+		overlayPanelOffsetX = 0;
+		overlayPanelMaxHeight = null;
 	};
 
-	const clearSettingsLayoutFrame = () => {
-		if (settingsLayoutFrame === null || typeof window === 'undefined') return;
+	const clearOverlayLayoutFrame = () => {
+		if (overlayLayoutFrame === null || typeof window === 'undefined') return;
 
-		window.cancelAnimationFrame(settingsLayoutFrame);
-		settingsLayoutFrame = null;
+		window.cancelAnimationFrame(overlayLayoutFrame);
+		overlayLayoutFrame = null;
 	};
 
-	const updateSettingsPanelLayout = () => {
-		if (!toolbar.settingsOpen || !toolbarShellElement || !settingsPanelElement) return;
+	const clearBadgeRevealTimeout = () => {
+		if (badgeRevealTimeout === null || typeof window === 'undefined') return;
+
+		window.clearTimeout(badgeRevealTimeout);
+		badgeRevealTimeout = null;
+	};
+
+	const scheduleBadgeReveal = () => {
+		if (typeof window === 'undefined') {
+			badgeVisible = true;
+			return;
+		}
+
+		clearBadgeRevealTimeout();
+		badgeRevealTimeout = window.setTimeout(() => {
+			badgeVisible = true;
+			badgeRevealTimeout = null;
+		}, BADGE_REVEAL_DELAY_MS);
+	};
+
+	const updateOverlayPanelLayout = () => {
+		if (toolbar.openPanel === null || !toolbarShellElement || !overlayPanelElement) return;
 
 		const viewportPadding = 8;
 		const panelGap = 10;
 		const toolbarRect = toolbarShellElement.getBoundingClientRect();
 		const panelWidth =
-			Math.ceil(settingsPanelElement.getBoundingClientRect().width) ||
-			settingsPanelElement.offsetWidth;
-		const panelHeight = settingsPanelElement.scrollHeight;
+			Math.ceil(overlayPanelElement.getBoundingClientRect().width) ||
+			overlayPanelElement.offsetWidth;
+		const panelHeight = overlayPanelElement.scrollHeight;
 		const spaceAbove = Math.max(0, toolbarRect.top - viewportPadding - panelGap);
 		const spaceBelow = Math.max(
 			0,
@@ -89,58 +121,66 @@
 			Math.max(viewportPadding, window.innerWidth - panelWidth - viewportPadding)
 		);
 
-		settingsPanelPlacement = nextPlacement;
-		settingsPanelOffsetX = Math.round(clampedLeft - toolbarRect.left);
-		settingsPanelMaxHeight = Math.max(0, Math.floor(availableHeight));
+		overlayPanelPlacement = nextPlacement;
+		overlayPanelOffsetX = Math.round(clampedLeft - toolbarRect.left);
+		overlayPanelMaxHeight = Math.max(0, Math.floor(availableHeight));
 	};
 
-	const queueSettingsPanelLayoutUpdate = () => {
-		if (!toolbar.settingsOpen || typeof window === 'undefined') return;
+	const queueOverlayPanelLayoutUpdate = () => {
+		if (toolbar.openPanel === null || typeof window === 'undefined') return;
 
-		clearSettingsLayoutFrame();
-		settingsLayoutFrame = window.requestAnimationFrame(() => {
-			settingsLayoutFrame = null;
-			updateSettingsPanelLayout();
+		clearOverlayLayoutFrame();
+		overlayLayoutFrame = window.requestAnimationFrame(() => {
+			overlayLayoutFrame = null;
+			updateOverlayPanelLayout();
 		});
 	};
 
 	$effect(() => {
-		if (!toolbar.settingsOpen) {
-			clearSettingsLayoutFrame();
-			resetSettingsPanelLayout();
+		if (toolbar.openPanel === null) {
+			clearOverlayLayoutFrame();
+			resetOverlayPanelLayout();
 			return;
 		}
 
 		toolbarShellElement;
-		settingsPanelElement;
+		overlayPanelElement;
 		toolbar.position.x;
 		toolbar.position.y;
 		toolbar.expanded;
-		queueSettingsPanelLayoutUpdate();
+		queueOverlayPanelLayoutUpdate();
 	});
 
 	$effect(() => {
 		if (
-			!toolbar.settingsOpen ||
+			toolbar.openPanel === null ||
 			!toolbarShellElement ||
-			!settingsPanelElement ||
+			!overlayPanelElement ||
 			typeof ResizeObserver === 'undefined'
 		) {
 			return;
 		}
 
 		const resizeObserver = new ResizeObserver(() => {
-			queueSettingsPanelLayoutUpdate();
+			queueOverlayPanelLayoutUpdate();
 		});
 
 		resizeObserver.observe(toolbarShellElement);
-		resizeObserver.observe(settingsPanelElement);
-		queueSettingsPanelLayoutUpdate();
+		resizeObserver.observe(overlayPanelElement);
+		queueOverlayPanelLayoutUpdate();
 
 		return () => {
 			resizeObserver.disconnect();
 		};
 	});
+
+	const handlePreviewOpenNote = async (noteId: string) => {
+		const opened = await onOpenNote(noteId);
+		if (opened) {
+			onCloseToolbarPanel();
+		}
+		return opened;
+	};
 
 	const handleToolbarSurfacePointerDown = (event: PointerEvent) => {
 		if (!toolbarDragEnabled) return;
@@ -149,9 +189,44 @@
 		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
 		onToolbarPointerDown(event);
 	};
+
+	const handleToolbarShellTransitionEnd = (event: TransitionEvent) => {
+		if (event.propertyName !== 'width') return;
+
+		shellClipped = toolbar.expanded;
+		clearBadgeRevealTimeout();
+
+		if (toolbar.expanded) {
+			badgeVisible = false;
+			return;
+		}
+
+		scheduleBadgeReveal();
+	};
+
+	$effect(() => {
+		if (toolbar.expanded !== lastExpanded) {
+			shellClipped = true;
+			badgeVisible = false;
+			clearBadgeRevealTimeout();
+			lastExpanded = toolbar.expanded;
+			return;
+		}
+
+		if (toolbar.expanded) {
+			shellClipped = true;
+			badgeVisible = false;
+		}
+	});
+
+	$effect(() => {
+		return () => {
+			clearBadgeRevealTimeout();
+		};
+	});
 </script>
 
-<svelte:window onresize={queueSettingsPanelLayoutUpdate} />
+<svelte:window onresize={queueOverlayPanelLayoutUpdate} />
 
 <div
 	bind:this={toolbarLayerElement}
@@ -160,13 +235,13 @@
 	data-inspector-ui
 	style={`left:${toolbar.position.x}px;top:${toolbar.position.y}px;`}
 >
-	{#if toolbar.settingsOpen}
+	{#if toolbar.openPanel === 'settings'}
 		<ToolbarSettingsPanel
-			bind:panelElement={settingsPanelElement}
+			bind:panelElement={overlayPanelElement}
 			{keyBindings}
-			placement={settingsPanelPlacement}
+			placement={overlayPanelPlacement}
 			{settings}
-			style={getSettingsPanelStyle()}
+			style={getOverlayPanelStyle()}
 			{toolbarPosition}
 			{onSetBlockPageInteractions}
 			{onSetClearOnCopy}
@@ -178,6 +253,14 @@
 			{onSetToolbarPosition}
 			{onToggleThemeMode}
 		/>
+	{:else if toolbar.openPanel === 'preview'}
+		<ToolbarPreviewPanel
+			bind:panelElement={overlayPanelElement}
+			{notes}
+			onOpenNote={handlePreviewOpenNote}
+			placement={overlayPanelPlacement}
+			style={getOverlayPanelStyle()}
+		/>
 	{/if}
 
 	<!-- Ignore: the shell only handles drag affordance around focusable children. -->
@@ -185,11 +268,13 @@
 	<div
 		bind:this={toolbarShellElement}
 		class:drag-enabled={toolbarDragEnabled}
+		class:shell-clipped={shellClipped}
 		class:toolbar-expanded={toolbar.expanded}
 		class="toolbar-shell"
 		data-inspector-ui
 		style={getToolbarShellStyle()}
 		onpointerdown={handleToolbarSurfacePointerDown}
+		ontransitionend={handleToolbarShellTransitionEnd}
 	>
 		<div
 			aria-hidden={toolbar.expanded}
@@ -198,7 +283,12 @@
 			data-inspector-ui
 			inert={toolbar.expanded}
 		>
-			<ToolbarLauncher {notes} {onToggleToolbar} />
+			<ToolbarLauncher
+				badgeFloating={!shellClipped}
+				{badgeVisible}
+				{notes}
+				{onToggleToolbar}
+			/>
 		</div>
 
 		<div
@@ -219,6 +309,7 @@
 				{onDeleteAll}
 				{onToggle}
 				{onToggleNotesVisibility}
+				{onTogglePreview}
 				{onToggleSettings}
 			/>
 		</div>
@@ -254,8 +345,8 @@
 		will-change: width;
 	}
 
-	.toolbar-shell.toolbar-expanded {
-		overflow: clip;
+	.toolbar-shell.shell-clipped {
+		overflow: hidden;
 	}
 
 	.toolbar-shell.drag-enabled {
@@ -274,17 +365,20 @@
 		justify-content: stretch;
 		opacity: 0;
 		pointer-events: none;
+		will-change: opacity, transform;
 		transition:
-			opacity 170ms ease,
-			transform 240ms cubic-bezier(0.2, 0.92, 0.24, 1);
+			opacity 150ms ease,
+			transform 220ms cubic-bezier(0.2, 0.92, 0.24, 1);
 	}
 
 	.toolbar-launcher-content {
-		transform: scale(0.96);
+		transform: translateX(-4px) scale(0.92);
+		transform-origin: center center;
 	}
 
 	.toolbar-actions-content {
-		transform: translateX(10px) scale(0.98);
+		transform: translateX(8px) scale(0.98);
+		transform-origin: right center;
 	}
 
 	.toolbar-content.content-active {

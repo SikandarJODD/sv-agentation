@@ -10,7 +10,7 @@ import type {
 	RectBox,
 	TextSelectionAnchor
 } from '../types';
-import { clampNumber, resolveDomPath } from '../utils/dom';
+import { clampNumber, resolveDomPath, resolveInteractionHost } from '../utils/dom';
 import {
 	buildAreaComposerVisuals,
 	buildAreaTargetLabel,
@@ -107,7 +107,8 @@ export const buildElementComposer = ({
 		highlightRects: [],
 		selectedText: null,
 		anchor,
-		sourceInfo: buildSourceInfoFromHoverInfo(hoverInfo)
+		sourceInfo: buildSourceInfoFromHoverInfo(hoverInfo),
+		interactionHost: hoverInfo.interactionHost
 	});
 };
 
@@ -134,7 +135,8 @@ export const buildTextComposer = ({
 		highlightRects: selection.rects,
 		selectedText: selection.anchor.selectedText,
 		anchor: selection.anchor,
-		sourceInfo
+		sourceInfo,
+		interactionHost: resolveInteractionHost(selection.commonAncestor)
 	});
 
 export const buildGroupComposer = ({
@@ -182,7 +184,8 @@ export const buildGroupComposer = ({
 		highlightRects: [],
 		selectedText: null,
 		anchor: anchorData.anchor,
-		sourceInfo
+		sourceInfo,
+		interactionHost: resolveInteractionHost(anchorElement)
 	});
 };
 
@@ -210,7 +213,8 @@ export const buildAreaComposer = ({
 		highlightRects: [],
 		selectedText: null,
 		anchor,
-		sourceInfo: createEmptySourceInfo()
+		sourceInfo: createEmptySourceInfo(),
+		interactionHost: null
 	});
 };
 
@@ -276,6 +280,7 @@ export const buildComposerFromExistingNote = ({
 		highlightRects,
 		selectedText: note.kind === 'text' ? note.anchor.selectedText : null,
 		anchor: note.anchor,
+		interactionHost: renderedNote.position?.interactionHost ?? null,
 		sourceInfo: {
 			componentName: note.componentName,
 			tagName: note.tagName,
@@ -404,6 +409,7 @@ export const updateComposerPosition = (
 		highlightRects: nextLayout.highlightRects,
 		selectedText: composer.selectedText,
 		anchor: composer.anchor,
+		interactionHost: composer.interactionHost,
 		sourceInfo: {
 			componentName: composer.componentName,
 			tagName: composer.tagName,

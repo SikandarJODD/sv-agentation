@@ -29,6 +29,8 @@
 	import { Kbd } from '$lib/components/ui/kbd';
 	import PMCommand from '$lib/components/ui/pm-command/pm-command.svelte';
 	import { asset } from '$app/paths';
+	import DialogExample from '$lib/components/examples/dialog-example.svelte';
+	import DialogTwoExample from '$lib/components/examples/dialog-two-example.svelte';
 
 	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
 	let siteUrl = 'https://sv-agentation.com';
@@ -410,9 +412,7 @@ Use this example:
 
 <MetaTags {...metaTags} />
 
-<main
-	class="min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10"
->
+<main class="min-h-screen overflow-hidden bg-background px-5 py-8 text-foreground sm:px-6 sm:py-10">
 	<div class="z-50 mx-auto flex w-full max-w-2xl flex-col">
 		<header class="flex items-start justify-between gap-4">
 			<div class="flex min-w-0 flex-col items-start">
@@ -460,46 +460,10 @@ Use this example:
 				{/if}
 			</Button>
 		</header>
-
-		<!-- <section
-			aria-label="Preview"
-			class="mt-9 overflow-hidden rounded-2xl border border-border bg-card/35"
-		>
-			<div class="flex items-center gap-3 border-b border-border px-4 py-3">
-				<div class="flex gap-1.5">
-					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
-					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
-					<span class="size-1.5 rounded-full bg-muted-foreground/30"></span>
-				</div>
-				<span class="font-mono text-[0.74rem] text-muted-foreground/70">localhost:5173</span>
-			</div>
-
-			<div class="px-4 py-7 sm:px-5 sm:py-8">
-				<div class="relative grid max-w-[28rem] gap-3 px-2 py-2 sm:px-3">
-					<p class="font-mono text-[0.72rem] text-muted-foreground">
-						Hero - src/routes/+page.svelte:18
-					</p>
-					<h2
-						class="text-[1.65rem] font-medium tracking-tight text-foreground italic sm:text-[1.8rem]"
-					>
-						Svelte Agentation
-					</h2>
-					<p class="max-w-[24rem] text-[0.93rem] leading-7 text-muted-foreground">
-						Inspect any element, reveal its source, and stay inside your current dev flow.
-					</p>
-					<div
-						class="pointer-events-none absolute top-[3rem] right-2 left-1 h-[4.25rem] border border-ring/50 bg-accent/40 sm:right-3 sm:left-3"
-					></div>
-					<button
-						type="button"
-						class="w-fit border border-border bg-secondary px-4 py-2 text-sm text-foreground"
-					>
-						Inspect source
-					</button>
-				</div>
-			</div>
-		</section> -->
-
+		<!-- <div class="mt-6 flex w-full flex-col items-start gap-6 rounded-md border border-border bg-card p-4">
+			<DialogExample />
+			<DialogTwoExample />
+		</div> -->
 		<div class="mt-7 flex w-full flex-wrap items-center justify-between">
 			<div class="flex gap-3">
 				<CopyButton
@@ -556,8 +520,8 @@ Use this example:
 				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">Try It</p>
 				<p class="mt-2 text-sm leading-6 text-muted-foreground">
 					The <Highlight class="px-1 text-sm font-normal" tone="green">toolbar</Highlight> is active on
-					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then hover a saved
-					note marker to preview the exact area before opening it.
+					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then use the new preview
+					button to scan saved notes or hover a marker to preview the exact area before opening it.
 				</p>
 			</div>
 		</section>

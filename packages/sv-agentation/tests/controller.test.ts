@@ -48,10 +48,7 @@ const createToolbarHandle = (width: number, height: number) => {
 	return toolbarHandle;
 };
 
-const createKeyboardEvent = (
-	key: string,
-	init: Partial<KeyboardEvent> = {}
-) =>
+const createKeyboardEvent = (key: string, init: Partial<KeyboardEvent> = {}) =>
 	({
 		key,
 		altKey: false,
@@ -85,7 +82,7 @@ describe('CopyOpenController', () => {
 		expect(controller.toolbar.expanded).toBe(true);
 
 		controller.toggleSettings();
-		expect(controller.toolbar.settingsOpen).toBe(true);
+		expect(controller.toolbar.openPanel).toBe('settings');
 
 		controller.destroy();
 	});
@@ -219,13 +216,60 @@ describe('CopyOpenController', () => {
 
 		controller.toolbar = {
 			...controller.toolbar,
-			settingsOpen: true,
+			openPanel: 'preview',
 			confirmDeleteAll: true
 		};
 		await controller.handleKeyDown(createKeyboardEvent('Escape'));
-		expect(controller.toolbar.settingsOpen).toBe(false);
+		expect(controller.toolbar.openPanel).toBeNull();
 		expect(controller.toolbar.confirmDeleteAll).toBe(false);
 
+		controller.destroy();
+	});
+
+	it('switches between settings and preview panels and closes preview when current-page notes are removed', async () => {
+		const controller = new CopyOpenController();
+		controller.composer = buildComposerState({
+			noteId: null,
+			noteKind: 'element',
+			initialValue: '',
+			targetSummary: 'button',
+			targetLabel: 'button.primary',
+			placeholder: 'What should change ?',
+			accentColor: '#14CE4C',
+			markerLeft: 120,
+			markerTop: 120,
+			outlineRects: [],
+			highlightRects: [],
+			selectedText: null,
+			anchor: {
+				domPath: '0/0/0',
+				relativeX: 0.5,
+				relativeY: 0.5,
+				viewportX: 120,
+				viewportY: 120
+			},
+			sourceInfo: createEmptySourceInfo('button')
+		});
+		controller.noteDraft = 'Adjust this action.';
+		await controller.saveComposer();
+
+		controller.togglePreview();
+		expect(controller.toolbar.expanded).toBe(true);
+		expect(controller.toolbar.openPanel).toBe('preview');
+
+		controller.toggleSettings();
+		expect(controller.toolbar.openPanel).toBe('settings');
+
+		controller.togglePreview();
+		expect(controller.toolbar.openPanel).toBe('preview');
+
+		const savedNoteId = controller.notes[0]?.id;
+		if (!savedNoteId) {
+			throw new Error('expected a saved note id');
+		}
+
+		controller.deleteNote(savedNoteId);
+		expect(controller.toolbar.openPanel).toBeNull();
 		controller.destroy();
 	});
 
@@ -684,7 +728,7 @@ describe('CopyOpenController', () => {
 			clientX: 600,
 			clientY: 320
 		} as PointerEvent);
-		expect(expandedController.toolbar.position).toEqual({ x: 467, y: 294 });
+		expect(expandedController.toolbar.position).toEqual({ x: 454, y: 294 });
 		expandedController.handlePointerUp({
 			pointerId: 2
 		} as PointerEvent);
