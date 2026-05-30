@@ -2,6 +2,7 @@
 	import { onDestroy, onMount, untrack } from 'svelte';
 
 	import { CopyOpenController } from './copy-open.svelte.ts';
+	import PortalSurface from './components/portal-surface.svelte';
 	import InspectorTool from './components/inspector-tool.svelte';
 	import HoverCard from './components/hover-card.svelte';
 	import NoteComposer from './components/note-composer.svelte';
@@ -95,6 +96,36 @@
 			`--inspector-group-outline-bg:color-mix(in srgb, ${markerColor} 6%, transparent)`
 		].join(';');
 	};
+	const getConnectedHost = (host: HTMLElement | null) =>
+		typeof document !== 'undefined' && host instanceof HTMLElement && document.contains(host)
+			? host
+			: null;
+	const getSingleVisibleNotesHost = () => {
+		const visibleNotes = controller.renderedNotes.filter((note) => note.position?.visibleInViewport);
+		let resolvedHost: HTMLElement | null = null;
+
+		for (const note of visibleNotes) {
+			const host = getConnectedHost(note.position?.interactionHost ?? null);
+			if (!host) {
+				return null;
+			}
+
+			if (resolvedHost === null) {
+				resolvedHost = host;
+				continue;
+			}
+
+			if (resolvedHost !== host) {
+				return null;
+			}
+		}
+
+		return resolvedHost;
+	};
+	const getNotesInteractionHost = () => getSingleVisibleNotesHost();
+	const getHoverInteractionHost = () => getConnectedHost(controller.hoverInfo?.interactionHost ?? null);
+	const getComposerInteractionHost = () =>
+		getConnectedHost(controller.composer?.interactionHost ?? null);
 
 	onMount(() => {
 		if (typeof window === 'undefined') return;
@@ -144,9 +175,9 @@
 	onscroll={controller.handleViewportChange}
 />
 
-<div
-	class:theme-dark={controller.settings.themeMode === 'dark'}
-	class:theme-light={controller.settings.themeMode === 'light'}
+	<div
+		class:theme-dark={controller.settings.themeMode === 'dark'}
+		class:theme-light={controller.settings.themeMode === 'light'}
 	class="inspector-root"
 	data-inspector-ui
 	style={getInspectorThemeStyle(controller.settings.markerColor)}
@@ -182,43 +213,83 @@
 		keyBindings={controller.keyBindings}
 	/>
 
-	<NoteMarkers
-		activeNoteId={controller.activeNoteId}
-		composerNoteId={controller.composer?.noteId ?? null}
-		notes={controller.renderedNotes}
-		onOpenNote={controller.openNote}
-		visible={controller.toolbar.notesVisible}
-	/>
+	<PortalSurface target={getNotesInteractionHost()}>
+		{#snippet children()}
+			<div
+				class:theme-dark={controller.settings.themeMode === 'dark'}
+				class:theme-light={controller.settings.themeMode === 'light'}
+				class="inspector-portal-root"
+				data-inspector-ui
+				style={getInspectorThemeStyle(controller.settings.markerColor)}
+			>
+				<NoteMarkers
+					activeNoteId={controller.activeNoteId}
+					composerNoteId={controller.composer?.noteId ?? null}
+					hosted={getNotesInteractionHost() !== null}
+					notes={controller.renderedNotes}
+					onOpenNote={controller.openNote}
+					visible={controller.toolbar.notesVisible}
+				/>
+			</div>
+		{/snippet}
+	</PortalSurface>
 
 	<SelectionPreview
 		dragSelection={controller.dragSelection}
 		selectionPreview={controller.selectionPreview}
 	/>
 
-	<NoteComposer
-		composer={controller.composer}
-		keyBindings={{
-			delete: controller.keyBindings.delete,
-			submit: controller.keyBindings.submit
-		}}
-		onCancel={controller.closeComposer}
-		onDelete={controller.deleteNote}
-		onInput={controller.updateNoteDraft}
-		onSubmit={controller.saveComposer}
-		value={controller.noteDraft}
-	/>
+	<PortalSurface target={getComposerInteractionHost()}>
+		{#snippet children()}
+			<div
+				class:theme-dark={controller.settings.themeMode === 'dark'}
+				class:theme-light={controller.settings.themeMode === 'light'}
+				class="inspector-portal-root"
+				data-inspector-ui
+				style={getInspectorThemeStyle(controller.settings.markerColor)}
+			>
+				<NoteComposer
+					composer={controller.composer}
+					hosted={getComposerInteractionHost() !== null}
+					keyBindings={{
+						delete: controller.keyBindings.delete,
+						submit: controller.keyBindings.submit
+					}}
+					onCancel={controller.closeComposer}
+					onDelete={controller.deleteNote}
+					onInput={controller.updateNoteDraft}
+					onSubmit={controller.saveComposer}
+					value={controller.noteDraft}
+				/>
+			</div>
+		{/snippet}
+	</PortalSurface>
 
 	{#if controller.enabled && !controller.composer}
-		<HoverCard
-			hoverInfo={controller.hoverInfo}
-			onOpen={controller.open}
-			openShortcut={controller.keyBindings.open}
-		/>
+		<PortalSurface target={getHoverInteractionHost()}>
+			{#snippet children()}
+				<div
+					class:theme-dark={controller.settings.themeMode === 'dark'}
+					class:theme-light={controller.settings.themeMode === 'light'}
+					class="inspector-portal-root"
+					data-inspector-ui
+					style={getInspectorThemeStyle(controller.settings.markerColor)}
+				>
+					<HoverCard
+						hosted={getHoverInteractionHost() !== null}
+						hoverInfo={controller.hoverInfo}
+						onOpen={controller.open}
+						openShortcut={controller.keyBindings.open}
+					/>
+				</div>
+			{/snippet}
+		</PortalSurface>
 	{/if}
 </div>
 
 <style>
-	.inspector-root {
+	.inspector-root,
+	.inspector-portal-root {
 		--inspector-accent: #0a84ff;
 		--inspector-accent-text: #45a3ff;
 		--inspector-accent-soft: rgba(10, 132, 255, 0.22);
@@ -229,7 +300,8 @@
 		--inspector-danger-soft: rgba(255, 69, 58, 0.12);
 	}
 
-	.inspector-root.theme-dark {
+	.inspector-root.theme-dark,
+	.inspector-portal-root.theme-dark {
 		--inspector-toolbar-surface: rgba(28, 28, 30, 0.98);
 		--inspector-panel-surface: rgba(29, 29, 31, 0.98);
 		--inspector-overlay-surface: rgba(28, 28, 30, 0.98);
@@ -261,7 +333,8 @@
 		--inspector-checkbox-check: #111111;
 	}
 
-	.inspector-root.theme-light {
+	.inspector-root.theme-light,
+	.inspector-portal-root.theme-light {
 		--inspector-toolbar-surface: rgba(255, 255, 255, 1);
 		--inspector-panel-surface: rgba(255, 255, 255, 1);
 		--inspector-overlay-surface: rgba(255, 255, 255, 0.99);
@@ -294,5 +367,9 @@
 		--inspector-checkbox-bg: rgba(255, 255, 255, 0.72);
 		--inspector-checkbox-checked-bg: #17181c;
 		--inspector-checkbox-check: #ffffff;
+	}
+
+	.inspector-portal-root {
+		position: static;
 	}
 </style>

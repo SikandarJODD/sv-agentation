@@ -16,6 +16,7 @@ export interface HoverCardProps {
 	hoverInfo: InspectorHoverInfo | null;
 	openShortcut: string | null;
 	onOpen: () => boolean;
+	hosted?: boolean;
 }
 
 export interface NoteComposerProps {
@@ -26,6 +27,7 @@ export interface NoteComposerProps {
 	onDelete: (noteId: string) => void;
 	onInput: (value: string) => void;
 	onSubmit: () => boolean | Promise<boolean>;
+	hosted?: boolean;
 }
 
 export interface NoteMarkersProps {
@@ -34,6 +36,7 @@ export interface NoteMarkersProps {
 	notes: RenderedInspectorNote[];
 	visible: boolean;
 	onOpenNote: (noteId: string) => Promise<boolean>;
+	hosted?: boolean;
 }
 
 export interface SelectionPreviewProps {
@@ -70,6 +73,7 @@ export interface InspectorToolProps {
 	onToggleThemeMode: () => void;
 	onToggleToolbar: () => void;
 	onToolbarPointerDown: (event: PointerEvent) => void;
+	hosted?: boolean;
 }
 
 export interface InspectorToolbarActionsProps {

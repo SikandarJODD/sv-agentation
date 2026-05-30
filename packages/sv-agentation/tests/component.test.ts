@@ -3,11 +3,15 @@ import { flushSync, mount, unmount } from 'svelte';
 
 import Agentation from '../src/lib/element-source-inspector.svelte';
 import AgentationHarness from './fixtures/agentation-harness.svelte';
+import HoverCard from '../src/lib/components/hover-card.svelte';
 import NoteMarkers from '../src/lib/components/note-markers.svelte';
+import NoteComposer from '../src/lib/components/note-composer.svelte';
 import {
+	buildComposerState,
 	COLLAPSED_TOOLBAR_SIZE,
 	DEFAULT_NOTES_SETTINGS,
 	EXPANDED_TOOLBAR_WIDTH,
+	createEmptySourceInfo,
 	readStoredSettings,
 	writeStoredNotes,
 	writeStoredSettings
@@ -57,6 +61,29 @@ const dispatchWindowKey = (key: string, init: KeyboardEventInit = {}) => {
 			...init
 		})
 	);
+	flushSync();
+};
+
+const dispatchClick = (element: Element | null, init: MouseEventInit = {}) => {
+	if (!(element instanceof Element)) {
+		throw new Error('expected click target');
+	}
+
+	element.dispatchEvent(
+		new MouseEvent('click', {
+			bubbles: true,
+			button: 0,
+			...init
+		})
+	);
+	flushSync();
+};
+
+const dispatchClickAsync = async (element: Element | null, init: MouseEventInit = {}) => {
+	dispatchClick(element, init);
+	await Promise.resolve();
+	await Promise.resolve();
+	await new Promise((resolve) => window.setTimeout(resolve, 0));
 	flushSync();
 };
 
@@ -159,6 +186,7 @@ describe('Agentation component', () => {
 		setViewport(1280, 720);
 		window.history.replaceState({}, '', '/');
 		document.body.innerHTML = '';
+		document.body.removeAttribute('style');
 		if (!Element.prototype.animate) {
 			Object.defineProperty(Element.prototype, 'animate', {
 				configurable: true,
@@ -186,6 +214,7 @@ describe('Agentation component', () => {
 
 		mountedComponent = null;
 		document.body.innerHTML = '';
+		document.body.removeAttribute('style');
 	});
 
 	it('syncs explicit persisted props into state and storage without locking the UI', async () => {
@@ -543,7 +572,8 @@ describe('Agentation component', () => {
 							bounds: null,
 							outlineRects: [],
 							highlightRects: [],
-							visibleInViewport: true
+							visibleInViewport: true,
+							interactionHost: null
 						}
 					}
 				]
@@ -597,7 +627,8 @@ describe('Agentation component', () => {
 							bounds: null,
 							outlineRects: [],
 							highlightRects: [],
-							visibleInViewport: true
+							visibleInViewport: true,
+							interactionHost: null
 						}
 					}
 				]
@@ -612,5 +643,203 @@ describe('Agentation component', () => {
 
 		expect(marker.textContent).toContain('1');
 		expect(marker.querySelector('svg')).toBeFalsy();
+	});
+
+	it('opens a dialog annotation composer and keeps it interactive when the body is pointer-locked', async () => {
+		document.body.style.pointerEvents = 'none';
+
+		const dialogRoot = document.createElement('div');
+		dialogRoot.style.pointerEvents = 'auto';
+		const dialogContent = document.createElement('div');
+		dialogContent.setAttribute('data-slot', 'dialog-content');
+		dialogContent.setAttribute('role', 'dialog');
+		dialogContent.style.pointerEvents = 'auto';
+		const dialogTarget = document.createElement('p');
+		dialogTarget.textContent = 'Dialog body copy';
+		dialogContent.appendChild(dialogTarget);
+		dialogRoot.appendChild(dialogContent);
+		document.body.appendChild(dialogRoot);
+
+		mountedComponent = mount(Agentation, {
+			target
+		});
+		flushSync();
+
+		dispatchWindowKey('i');
+		await dispatchClickAsync(dialogTarget, {
+			clientX: 120,
+			clientY: 140
+		});
+
+		const composerInput = document.querySelector('.composer-input');
+		if (!(composerInput instanceof HTMLTextAreaElement)) {
+			throw new Error('expected composer input');
+		}
+
+		expect(dialogContent.contains(composerInput)).toBe(true);
+		expect(target.querySelector('.composer-input')).toBeNull();
+		expect(document.activeElement).toBe(composerInput);
+
+		const submitButton = document.querySelector('.submit-button');
+		if (!(submitButton instanceof HTMLButtonElement)) {
+			throw new Error('expected submit button');
+		}
+
+		expect(submitButton.disabled).toBe(true);
+
+		composerInput.value = 'Tighten this dialog copy.';
+		composerInput.dispatchEvent(new Event('input', { bubbles: true }));
+		flushSync();
+		expect(submitButton.disabled).toBe(false);
+	});
+
+	it('keeps hover card actions clickable when the body is pointer-locked', () => {
+		document.body.style.pointerEvents = 'none';
+		let opened = false;
+
+		mountedComponent = mount(HoverCard, {
+			target,
+			props: {
+				hoverInfo: {
+					componentName: 'DialogExample',
+					tagName: 'p',
+					targetLabel: 'paragraph: "Dialog body copy"',
+					filePath: '/src/lib/components/examples/dialog-example.svelte',
+					shortFileName: 'dialog-example.svelte',
+					lineNumber: 8,
+					columnNumber: 4,
+					left: 16,
+					top: 24,
+					width: 120,
+					height: 32,
+					cardLeft: 40,
+					cardTop: 40,
+					copyText: 'DialogExample | dialog-example.svelte:8:4',
+					vscodeUrl: 'vscode://file/src/lib/components/examples/dialog-example.svelte:8:4',
+					canCopy: true,
+					canOpen: true,
+					interactionHost: null
+				},
+				onOpen: () => {
+					opened = true;
+					return true;
+				},
+				openShortcut: 'O'
+			}
+		});
+		flushSync();
+
+		clickButton(target.querySelector('.action-button'));
+		expect(opened).toBe(true);
+	});
+
+	it('keeps composer controls clickable when the body is pointer-locked', () => {
+		document.body.style.pointerEvents = 'none';
+		let cancelled = false;
+		let submitted = false;
+
+		mountedComponent = mount(NoteComposer, {
+			target,
+			props: {
+				composer: buildComposerState({
+					noteId: null,
+					noteKind: 'element',
+					initialValue: '',
+					targetSummary: 'Dialog body copy',
+					targetLabel: 'paragraph: "Dialog body copy"',
+					placeholder: 'What should change ?',
+					accentColor: '#14CE4C',
+					markerLeft: 120,
+					markerTop: 140,
+					outlineRects: [],
+					highlightRects: [],
+					selectedText: null,
+					anchor: {
+						domPath: '0/1',
+						relativeX: 0.5,
+						relativeY: 0.5,
+						viewportX: 120,
+						viewportY: 140
+					},
+					sourceInfo: createEmptySourceInfo('p')
+				}),
+				keyBindings: {
+					delete: 'D',
+					submit: 'Enter'
+				},
+				value: 'Tighten this dialog copy.',
+				onCancel: () => {
+					cancelled = true;
+				},
+				onDelete: () => {},
+				onInput: () => {},
+				onSubmit: () => {
+					submitted = true;
+				}
+			}
+		});
+		flushSync();
+
+		clickButton(target.querySelector('.cancel-button'));
+		clickButton(target.querySelector('.submit-button'));
+
+		expect(cancelled).toBe(true);
+		expect(submitted).toBe(true);
+	});
+
+	it('keeps saved note markers clickable when the body is pointer-locked', async () => {
+		document.body.style.pointerEvents = 'none';
+		let openedNoteId: string | null = null;
+
+		mountedComponent = mount(NoteMarkers, {
+			target,
+			props: {
+				activeNoteId: null,
+				composerNoteId: null,
+				visible: true,
+				onOpenNote: async (noteId: string) => {
+					openedNoteId = noteId;
+					return true;
+				},
+				notes: [
+					{
+						id: 'dialog-note-1',
+						kind: 'element',
+						note: 'Tighten this dialog copy.',
+						targetSummary: 'Dialog body copy',
+						targetLabel: 'paragraph: "Dialog body copy"',
+						createdAt: '2026-03-26T00:00:00.000Z',
+						updatedAt: '2026-03-26T00:00:00.000Z',
+						componentName: 'DialogExample',
+						tagName: 'p',
+						filePath: '/src/lib/components/examples/dialog-example.svelte',
+						shortFileName: 'dialog-example.svelte',
+						lineNumber: 8,
+						columnNumber: 4,
+						anchor: {
+							domPath: '0/1',
+							relativeX: 0.5,
+							relativeY: 0.5,
+							viewportX: 120,
+							viewportY: 140
+						},
+						resolution: 'resolved',
+						position: {
+							markerLeft: 120,
+							markerTop: 140,
+							bounds: null,
+							outlineRects: [],
+							highlightRects: [],
+							visibleInViewport: true,
+							interactionHost: null
+						}
+					}
+				]
+			}
+		});
+		flushSync();
+
+		await clickButtonAsync(target.querySelector('.marker'));
+		expect(openedNoteId).toBe('dialog-note-1');
 	});
 });

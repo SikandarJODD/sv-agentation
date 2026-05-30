@@ -1,7 +1,7 @@
 import type { ElementInfo } from 'element-source';
 
 import type { InspectorHoverInfo, InspectorRuntimeOptions } from '../types';
-import { clampNumber, getElementTextPreview, getTagLabel } from './dom';
+import { clampNumber, getElementTextPreview, getTagLabel, resolveInteractionHost } from './dom';
 import { buildVsCodeUrl } from './path';
 import { NO_SOURCE_VALUE } from './shared/constants';
 
@@ -116,6 +116,7 @@ export const buildHoverInfo = (
 		copyText,
 		vscodeUrl,
 		canCopy: filePath !== NO_SOURCE_VALUE,
-		canOpen: vscodeUrl !== null
+		canOpen: vscodeUrl !== null,
+		interactionHost: resolveInteractionHost(target)
 	};
 };

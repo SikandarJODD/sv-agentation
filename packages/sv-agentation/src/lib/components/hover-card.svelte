@@ -2,8 +2,9 @@
 	import { fade, scale } from 'svelte/transition';
 
 	import type { HoverCardProps } from '../internal/component-props';
+	import { toInteractionHostPoint } from '../utils/dom';
 
-	let { hoverInfo, onOpen, openShortcut }: HoverCardProps = $props();
+	let { hoverInfo, onOpen, openShortcut, hosted = false }: HoverCardProps = $props();
 
 	const handleOpenClick = (event: MouseEvent) => {
 		event.preventDefault();
@@ -13,22 +14,39 @@
 
 	const getOpenTitle = () =>
 		openShortcut ? `Open in VS Code (${openShortcut})` : 'Open in VS Code';
+
+	const getHostAdjustedStyle = (left: number, top: number, width?: number, height?: number) => {
+		const nextPosition = toInteractionHostPoint(left, top, hoverInfo?.interactionHost ?? null);
+		return [
+			`left:${nextPosition.left}px`,
+			`top:${nextPosition.top}px`,
+			...(width === undefined ? [] : [`width:${width}px`]),
+			...(height === undefined ? [] : [`height:${height}px`])
+		].join(';');
+	};
 </script>
 
 {#if hoverInfo}
 	<div
 		aria-hidden="true"
+		class:hosted-layer={hosted}
 		class="hover-outline"
 		data-inspector-ui
-		style={`left:${hoverInfo.left}px;top:${hoverInfo.top}px;width:${hoverInfo.width}px;height:${hoverInfo.height}px;`}
+		style={getHostAdjustedStyle(
+			hoverInfo.left,
+			hoverInfo.top,
+			hoverInfo.width,
+			hoverInfo.height
+		)}
 		in:fade={{ duration: 100 }}
 		out:fade={{ duration: 90 }}
 	></div>
 
 	<div
+		class:hosted-layer={hosted}
 		class="hover-badge"
 		data-inspector-ui
-		style={`left:${hoverInfo.cardLeft}px;top:${hoverInfo.cardTop}px;`}
+		style={getHostAdjustedStyle(hoverInfo.cardLeft, hoverInfo.cardTop)}
 		in:scale={{ duration: 120, start: 0.97 }}
 		out:fade={{ duration: 90 }}
 	>
@@ -69,6 +87,10 @@
 			height 180ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
 
+	.hover-outline.hosted-layer {
+		position: absolute;
+	}
+
 	.hover-badge {
 		position: fixed;
 		z-index: 9999;
@@ -83,9 +105,14 @@
 		color: var(--inspector-text-primary);
 		box-shadow: var(--inspector-shadow-overlay);
 		backdrop-filter: blur(16px);
+		pointer-events: auto;
 		transition:
 			left 180ms cubic-bezier(0.22, 1, 0.36, 1),
 			top 180ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.hover-badge.hosted-layer {
+		position: absolute;
 	}
 
 	.hover-label {

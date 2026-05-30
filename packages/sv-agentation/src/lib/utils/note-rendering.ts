@@ -8,7 +8,7 @@ import type {
 	ResolvedNotePosition,
 	TextInspectorNote
 } from '../types';
-import { clampNumber, resolveDomPath } from './dom';
+import { clampNumber, resolveDomPath, resolveInteractionHost } from './dom';
 import { getComposerPosition } from './note-layout';
 import type { NoteSourceInfo } from '../types';
 import {
@@ -55,13 +55,16 @@ const resolveElementNotePosition = (note: Extract<InspectorNote, { kind: 'elemen
 		bounds,
 		outlineRects: [bounds],
 		highlightRects: [],
-		visibleInViewport: isResolvedPositionVisible(bounds, markerLeft, markerTop)
+		visibleInViewport: isResolvedPositionVisible(bounds, markerLeft, markerTop),
+		interactionHost: resolveInteractionHost(target)
 	};
 };
 
 const resolveTextNotePosition = (note: TextInspectorNote) => {
 	const resolved = resolveTextSelection(note.anchor);
 	if (!resolved) return null;
+
+	const commonAncestor = resolveDomPath(note.anchor.commonAncestorPath);
 
 	return {
 		markerLeft: resolved.markerLeft,
@@ -73,7 +76,8 @@ const resolveTextNotePosition = (note: TextInspectorNote) => {
 			resolved.bounds,
 			resolved.markerLeft,
 			resolved.markerTop
-		)
+		),
+		interactionHost: resolveInteractionHost(commonAncestor)
 	};
 };
 
@@ -92,7 +96,10 @@ const resolveGroupNotePosition = (note: Extract<InspectorNote, { kind: 'group' |
 					resolved.bounds,
 					resolved.markerLeft,
 					resolved.markerTop
-				)
+				),
+				interactionHost:
+					resolveInteractionHost(resolveDomPath(note.anchor.anchorDomPath)) ??
+					resolveInteractionHost(resolveDomPath(note.anchor.selectedDomPaths[0] ?? ''))
 			} satisfies ResolvedNotePosition,
 			resolution:
 				resolved.resolvedCount === note.anchor.selectedDomPaths.length ? 'resolved' : 'partial'
@@ -110,7 +117,8 @@ const resolveGroupNotePosition = (note: Extract<InspectorNote, { kind: 'group' |
 			resolved.bounds,
 			resolved.markerLeft,
 			resolved.markerTop
-		)
+		),
+		interactionHost: null
 	};
 
 	return {
@@ -131,7 +139,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 				bounds: null,
 				outlineRects: [],
 				highlightRects: [],
-				visibleInViewport: true
+				visibleInViewport: true,
+				interactionHost: null
 			}
 		};
 	}
@@ -146,7 +155,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 				bounds: null,
 				outlineRects: [],
 				highlightRects: [],
-				visibleInViewport: true
+				visibleInViewport: true,
+				interactionHost: null
 			}
 		};
 	}
@@ -160,7 +170,8 @@ export const renderNote = (note: InspectorNote): RenderedInspectorNote => {
 			bounds: null,
 			outlineRects: [],
 			highlightRects: [],
-			visibleInViewport: true
+			visibleInViewport: true,
+			interactionHost: null
 		}
 	};
 };
@@ -179,7 +190,8 @@ export const buildComposerState = ({
 	highlightRects,
 	selectedText,
 	anchor,
-	sourceInfo
+	sourceInfo,
+	interactionHost = null
 }: {
 	noteId: string | null;
 	noteKind: InspectorNote['kind'];
@@ -195,6 +207,7 @@ export const buildComposerState = ({
 	selectedText: string | null;
 	anchor: InspectorNote['anchor'];
 	sourceInfo: NoteSourceInfo;
+	interactionHost?: HTMLElement | null;
 }): NoteComposerState => {
 	const { panelLeft, panelTop } = getComposerPosition(markerLeft, markerTop);
 
@@ -214,6 +227,7 @@ export const buildComposerState = ({
 		highlightRects,
 		selectedText,
 		anchor,
+		interactionHost,
 		...sourceInfo
 	};
 };
