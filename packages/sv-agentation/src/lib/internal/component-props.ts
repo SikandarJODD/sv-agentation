@@ -93,6 +93,8 @@ export interface InspectorToolbarActionsProps {
 
 export interface InspectorToolbarLauncherProps {
 	notes: RenderedInspectorNote[];
+	badgeFloating: boolean;
+	badgeVisible: boolean;
 	onToggleToolbar: () => void;
 }
 

@@ -23,7 +23,7 @@ type ToolbarAlignment = {
 };
 
 const STORAGE_KEY = 'sv-agentation:toolbar-placement:v2';
-const RIGHT_PRESET_INSET = TOOLBAR_MARGIN + 10;
+const RIGHT_PRESET_INSET = TOOLBAR_MARGIN + 20;
 
 export const DEFAULT_INSPECTOR_POSITION: InspectorPosition = 'bottom-right';
 

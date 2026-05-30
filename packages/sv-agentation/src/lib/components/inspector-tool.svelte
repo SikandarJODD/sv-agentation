@@ -43,7 +43,13 @@
 	let overlayPanelPlacement = $state<'above' | 'below'>('above');
 	let overlayPanelOffsetX = $state(0);
 	let overlayPanelMaxHeight = $state<number | null>(null);
+	let shellClipped = $state(false);
+	let badgeVisible = $state(true);
 	let overlayLayoutFrame: number | null = null;
+	let lastExpanded = false;
+	let badgeRevealTimeout: number | null = null;
+
+	const BADGE_REVEAL_DELAY_MS = 30;
 
 	const getToolbarShellStyle = () =>
 		[
@@ -70,6 +76,26 @@
 
 		window.cancelAnimationFrame(overlayLayoutFrame);
 		overlayLayoutFrame = null;
+	};
+
+	const clearBadgeRevealTimeout = () => {
+		if (badgeRevealTimeout === null || typeof window === 'undefined') return;
+
+		window.clearTimeout(badgeRevealTimeout);
+		badgeRevealTimeout = null;
+	};
+
+	const scheduleBadgeReveal = () => {
+		if (typeof window === 'undefined') {
+			badgeVisible = true;
+			return;
+		}
+
+		clearBadgeRevealTimeout();
+		badgeRevealTimeout = window.setTimeout(() => {
+			badgeVisible = true;
+			badgeRevealTimeout = null;
+		}, BADGE_REVEAL_DELAY_MS);
 	};
 
 	const updateOverlayPanelLayout = () => {
@@ -163,6 +189,41 @@
 		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
 		onToolbarPointerDown(event);
 	};
+
+	const handleToolbarShellTransitionEnd = (event: TransitionEvent) => {
+		if (event.propertyName !== 'width') return;
+
+		shellClipped = toolbar.expanded;
+		clearBadgeRevealTimeout();
+
+		if (toolbar.expanded) {
+			badgeVisible = false;
+			return;
+		}
+
+		scheduleBadgeReveal();
+	};
+
+	$effect(() => {
+		if (toolbar.expanded !== lastExpanded) {
+			shellClipped = true;
+			badgeVisible = false;
+			clearBadgeRevealTimeout();
+			lastExpanded = toolbar.expanded;
+			return;
+		}
+
+		if (toolbar.expanded) {
+			shellClipped = true;
+			badgeVisible = false;
+		}
+	});
+
+	$effect(() => {
+		return () => {
+			clearBadgeRevealTimeout();
+		};
+	});
 </script>
 
 <svelte:window onresize={queueOverlayPanelLayoutUpdate} />
@@ -207,11 +268,13 @@
 	<div
 		bind:this={toolbarShellElement}
 		class:drag-enabled={toolbarDragEnabled}
+		class:shell-clipped={shellClipped}
 		class:toolbar-expanded={toolbar.expanded}
 		class="toolbar-shell"
 		data-inspector-ui
 		style={getToolbarShellStyle()}
 		onpointerdown={handleToolbarSurfacePointerDown}
+		ontransitionend={handleToolbarShellTransitionEnd}
 	>
 		<div
 			aria-hidden={toolbar.expanded}
@@ -220,7 +283,12 @@
 			data-inspector-ui
 			inert={toolbar.expanded}
 		>
-			<ToolbarLauncher {notes} {onToggleToolbar} />
+			<ToolbarLauncher
+				badgeFloating={!shellClipped}
+				{badgeVisible}
+				{notes}
+				{onToggleToolbar}
+			/>
 		</div>
 
 		<div
@@ -277,8 +345,8 @@
 		will-change: width;
 	}
 
-	.toolbar-shell.toolbar-expanded {
-		overflow: clip;
+	.toolbar-shell.shell-clipped {
+		overflow: hidden;
 	}
 
 	.toolbar-shell.drag-enabled {
@@ -297,17 +365,20 @@
 		justify-content: stretch;
 		opacity: 0;
 		pointer-events: none;
+		will-change: opacity, transform;
 		transition:
-			opacity 170ms ease,
-			transform 240ms cubic-bezier(0.2, 0.92, 0.24, 1);
+			opacity 150ms ease,
+			transform 220ms cubic-bezier(0.2, 0.92, 0.24, 1);
 	}
 
 	.toolbar-launcher-content {
-		transform: scale(0.96);
+		transform: translateX(-4px) scale(0.92);
+		transform-origin: center center;
 	}
 
 	.toolbar-actions-content {
-		transform: translateX(10px) scale(0.98);
+		transform: translateX(8px) scale(0.98);
+		transform-origin: right center;
 	}
 
 	.toolbar-content.content-active {

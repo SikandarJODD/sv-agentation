@@ -22,7 +22,7 @@
 		opacity: 0
 	};
 
-	const previewPanelWidth = '388px';
+	const previewPanelWidth = '320px';
 
 	const getSavedLabel = (count: number) => `${count} ${count === 1 ? 'note' : 'notes'}`;
 
@@ -166,6 +166,7 @@
 		overscroll-behavior: contain;
 		scrollbar-color: color-mix(in srgb, var(--inspector-text-muted) 30%, transparent) transparent;
 		scrollbar-width: thin;
+		border-radius: 10px;
 	}
 
 	.preview-list::-webkit-scrollbar {
@@ -189,7 +190,7 @@
 		width: 100%;
 		padding: 12px;
 		border: 1px solid var(--inspector-border);
-		border-radius: 20px;
+		border-radius: 15px;
 		background: color-mix(in srgb, var(--inspector-surface-soft) 92%, transparent);
 		color: inherit;
 		text-align: left;
@@ -204,7 +205,7 @@
 	.preview-item:hover {
 		border-color: color-mix(in srgb, var(--inspector-marker-color) 22%, var(--inspector-border));
 		background: color-mix(in srgb, var(--inspector-toolbar-hover) 72%, transparent);
-		box-shadow: 0 12px 20px color-mix(in srgb, #000000 10%, transparent);
+		/* box-shadow: 0 12px 20px color-mix(in srgb, #000000 10%, transparent); */
 	}
 
 	.preview-item-head {
