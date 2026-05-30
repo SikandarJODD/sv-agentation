@@ -13,6 +13,11 @@
 
 	const context = getAllContexts();
 	let instance: ReturnType<typeof mount> | null = null;
+	const isMountedPortalTarget = (value: Element | null): value is Element =>
+		typeof Element !== 'undefined' &&
+		typeof document !== 'undefined' &&
+		value instanceof Element &&
+		document.contains(value);
 
 	const unmountInstance = () => {
 		if (!instance) return;
@@ -21,7 +26,7 @@
 	};
 
 	$effect(() => {
-		const nextTarget = target instanceof Element && document.contains(target) ? target : null;
+		const nextTarget = isMountedPortalTarget(target) ? target : null;
 
 		if (!nextTarget) {
 			unmountInstance();
@@ -40,6 +45,6 @@
 	});
 </script>
 
-{#if !(target instanceof Element) || !document.contains(target)}
+{#if !isMountedPortalTarget(target)}
 	{@render children?.()}
 {/if}

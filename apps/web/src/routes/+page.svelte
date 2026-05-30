@@ -460,10 +460,10 @@ Use this example:
 				{/if}
 			</Button>
 		</header>
-		<div class="mt-6 flex w-full flex-col items-start gap-6 rounded-md border border-border bg-card p-4">
+		<!-- <div class="mt-6 flex w-full flex-col items-start gap-6 rounded-md border border-border bg-card p-4">
 			<DialogExample />
 			<DialogTwoExample />
-		</div>
+		</div> -->
 		<div class="mt-7 flex w-full flex-wrap items-center justify-between">
 			<div class="flex gap-3">
 				<CopyButton

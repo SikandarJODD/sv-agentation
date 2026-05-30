@@ -904,6 +904,7 @@ describe('Agentation component', () => {
 				onInput: () => {},
 				onSubmit: () => {
 					submitted = true;
+					return true;
 				}
 			}
 		});
