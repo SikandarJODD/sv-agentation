@@ -2,6 +2,9 @@ import type { RectBox } from '../types';
 
 export const INSPECTOR_UI_ATTRIBUTE = 'data-inspector-ui';
 const DOM_PATH_SEPARATOR = '/';
+// A segment with this prefix marks a descent through an open shadow root
+// boundary (into `host.shadowRoot.children`) rather than a normal light-DOM child.
+const SHADOW_SEGMENT_PREFIX = 's';
 
 const TEXT_CURSOR_SELECTOR = [
 	'p',
@@ -51,15 +54,13 @@ export const clampNumber = (value: number, min: number, max: number) =>
 export const resolveInteractionHost = (target: Element | null) => {
 	if (!(target instanceof HTMLElement)) return null;
 
-	const host = target.closest('[data-slot="dialog-content"], [role="dialog"], [role="alertdialog"]');
+	const host = target.closest(
+		'[data-slot="dialog-content"], [role="dialog"], [role="alertdialog"]'
+	);
 	return host instanceof HTMLElement ? host : null;
 };
 
-export const toInteractionHostPoint = (
-	left: number,
-	top: number,
-	host: HTMLElement | null
-) => {
+export const toInteractionHostPoint = (left: number, top: number, host: HTMLElement | null) => {
 	if (!host || !document.contains(host)) return { left, top };
 
 	const rect = host.getBoundingClientRect();
@@ -120,19 +121,45 @@ export const resolveInspectableTarget = (target: EventTarget | null, selector: s
 	return target;
 };
 
+// Events that cross an open shadow boundary are retargeted: `event.target`
+// becomes the shadow host, not the element actually under the pointer. The
+// composed path keeps the real innermost target, so prefer it when available.
+export const getDeepEventTarget = (event: Event): EventTarget | null => {
+	if (typeof event.composedPath === 'function') {
+		const path = event.composedPath();
+		if (path.length > 0) return path[0];
+	}
+	return event.target;
+};
+
 export const buildDomPath = (target: Element) => {
-	const segments: number[] = [];
+	const segments: string[] = [];
 	let current: Element | null = target;
 
 	while (current && current !== document.body) {
 		const parent: Element | null = current.parentElement;
-		if (!parent) return null;
+		if (parent) {
+			const index = Array.from(parent.children).indexOf(current);
+			if (index < 0) return null;
 
-		const index = Array.from(parent.children).indexOf(current);
-		if (index < 0) return null;
+			segments.unshift(String(index));
+			current = parent;
+			continue;
+		}
 
-		segments.unshift(index);
-		current = parent;
+		// No element parent: we may be sitting at the top of a shadow tree.
+		// Cross into the host and record the boundary so it can be replayed.
+		const root: Node | null = current.parentNode;
+		if (root instanceof ShadowRoot) {
+			const index = Array.from(root.children).indexOf(current);
+			if (index < 0) return null;
+
+			segments.unshift(`${SHADOW_SEGMENT_PREFIX}${index}`);
+			current = root.host;
+			continue;
+		}
+
+		return null;
 	}
 
 	return segments.join(DOM_PATH_SEPARATOR);
@@ -143,14 +170,19 @@ export const resolveDomPath = (domPath: string) => {
 	if (!domPath) return document.body;
 
 	let current: Element | null = document.body;
-	const segments = domPath
-		.split(DOM_PATH_SEPARATOR)
-		.map((value) => Number.parseInt(value, 10))
-		.filter((value) => Number.isInteger(value) && value >= 0);
+	const segments = domPath.split(DOM_PATH_SEPARATOR).filter((value) => value.length > 0);
 
 	for (const segment of segments) {
 		if (!current) return null;
-		current = current.children.item(segment);
+
+		const isShadowSegment = segment.startsWith(SHADOW_SEGMENT_PREFIX);
+		const raw = isShadowSegment ? segment.slice(SHADOW_SEGMENT_PREFIX.length) : segment;
+		const index = Number.parseInt(raw, 10);
+		if (!Number.isInteger(index) || index < 0) return null;
+
+		current = isShadowSegment
+			? (current.shadowRoot?.children.item(index) ?? null)
+			: current.children.item(index);
 	}
 
 	return current;
@@ -204,16 +236,44 @@ export const getDeepElementFromPoint = (x: number, y: number) => {
 	return element;
 };
 
-const toNthChildSuffix = (target: Element) => {
-	if (!target.parentElement) return '';
+// `querySelectorAll` does not pierce shadow roots, so collect matches from the
+// document and recurse into every open shadow tree to mirror what the user can
+// actually see and select on the page.
+export const queryAllDeep = (selector: string): Element[] => {
+	const results: Element[] = [];
 
-	const siblings = Array.from(target.parentElement.children).filter(
-		(sibling) => sibling.tagName === target.tagName
-	);
+	const visit = (root: Document | ShadowRoot) => {
+		results.push(...Array.from(root.querySelectorAll(selector)));
+		for (const element of root.querySelectorAll('*')) {
+			if (element.shadowRoot) visit(element.shadowRoot);
+		}
+	};
+
+	visit(document);
+	return results;
+};
+
+// The element that should precede `element` in a selector chain. Crosses an
+// open shadow boundary into the host so shadow-DOM elements get a full ancestor
+// path instead of being treated as a root.
+const getSelectorParentElement = (element: Element): Element | null => {
+	if (element.parentElement) return element.parentElement;
+	const root = element.parentNode;
+	return root instanceof ShadowRoot ? root.host : null;
+};
+
+const toNthChildSuffix = (target: Element) => {
+	// `parentNode` (not `parentElement`) so elements directly inside a shadow
+	// root still resolve siblings against the shadow root's children.
+	const container = target.parentNode;
+	if (!(container instanceof Element || container instanceof ShadowRoot)) return '';
+
+	const children = Array.from(container.children);
+	const siblings = children.filter((sibling) => sibling.tagName === target.tagName);
 	if (siblings.length <= 1) return '';
 
-	const index = siblings.indexOf(target);
-	return index >= 0 ? `:nth-child(${Array.from(target.parentElement.children).indexOf(target) + 1})` : '';
+	const index = children.indexOf(target);
+	return index >= 0 ? `:nth-child(${index + 1})` : '';
 };
 
 export const buildElementSelectorSegment = (target: Element) => {
@@ -231,7 +291,7 @@ export const buildElementSelectorPath = (target: Element, maxDepth = 4) => {
 
 	while (current && current !== document.body) {
 		segments.unshift(buildElementSelectorSegment(current));
-		current = current.parentElement;
+		current = getSelectorParentElement(current);
 	}
 
 	return segments.slice(-maxDepth).join(' > ') || buildElementSelectorSegment(target);
@@ -243,7 +303,7 @@ export const buildFullDomPath = (target: Element) => {
 
 	while (current) {
 		segments.unshift(buildElementSelectorSegment(current));
-		current = current.parentElement;
+		current = getSelectorParentElement(current);
 	}
 
 	return segments.join(' > ');

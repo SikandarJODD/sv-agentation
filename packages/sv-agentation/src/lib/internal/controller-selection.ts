@@ -2,7 +2,8 @@ import type { DragSelectionState, RectBox } from '../types';
 import {
 	buildDomPath,
 	isInspectorUiTarget,
-	matchesSelectorScope
+	matchesSelectorScope,
+	queryAllDeep
 } from '../utils/dom';
 import { serializeTextSelection } from '../utils/selection';
 import {
@@ -13,10 +14,7 @@ import {
 	type MouseDownState
 } from './controller-state.svelte';
 
-export const toggleGroupSelectionItems = (
-	items: GroupSelectionItem[],
-	target: Element
-) => {
+export const toggleGroupSelectionItems = (items: GroupSelectionItem[], target: Element) => {
 	const domPath = buildDomPath(target);
 	if (!domPath) return items;
 
@@ -29,13 +27,14 @@ export const toggleGroupSelectionItems = (
 };
 
 export const resolvePendingGroupElements = (items: GroupSelectionItem[]) =>
-	items.filter((item) => document.contains(item.element)).map((item) => item.element);
+	// `isConnected` (not `document.contains`) so elements inside shadow trees survive.
+	items.filter((item) => item.element.isConnected).map((item) => item.element);
 
 export const findSelectableElementsInRect = (selection: RectBox, selector: string | null) => {
 	const querySelector = selector
 		? `${selector}, ${selector} ${DRAG_CANDIDATE_SELECTOR}`
 		: DRAG_CANDIDATE_SELECTOR;
-	const allCandidates = Array.from(document.querySelectorAll(querySelector))
+	const allCandidates = queryAllDeep(querySelector)
 		.filter((element): element is Element => element instanceof Element)
 		.filter((element) => !isInspectorUiTarget(element))
 		.filter((element) => matchesSelectorScope(element, selector));

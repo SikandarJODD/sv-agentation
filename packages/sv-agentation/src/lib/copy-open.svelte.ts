@@ -25,6 +25,7 @@ import type {
 import {
 	buildDomPath,
 	clampNumber,
+	getDeepEventTarget,
 	isInspectorUiTarget,
 	isInteractiveElement,
 	isTypingTarget,
@@ -571,7 +572,7 @@ export class CopyOpenController {
 		if (!this.enabled) return;
 		if (this.composer) return;
 
-		const target = resolveElementFromNode(event.target as Node | null);
+		const target = resolveElementFromNode(getDeepEventTarget(event) as Node | null);
 		if (!target || isInspectorUiTarget(target)) return;
 		if ((event.metaKey || event.ctrlKey) && event.shiftKey) return;
 
@@ -618,7 +619,7 @@ export class CopyOpenController {
 
 		if (!this.enabled || this.composer || this.#dragActive) return;
 
-		const target = resolveInspectableTarget(event.target, this.#selector);
+		const target = resolveInspectableTarget(getDeepEventTarget(event), this.#selector);
 		if (!target) {
 			this.clearHover();
 			return;
@@ -670,7 +671,7 @@ export class CopyOpenController {
 
 		if (!this.enabled || this.composer) return;
 
-		const target = resolveElementFromNode(event.target as Node | null);
+		const target = resolveElementFromNode(getDeepEventTarget(event) as Node | null);
 		if (target && isInspectorUiTarget(target)) return;
 
 		if (hadDrag && dragSelection) {
@@ -725,7 +726,7 @@ export class CopyOpenController {
 			return;
 		}
 
-		const target = resolveInspectableTarget(event.target, this.#selector);
+		const target = resolveInspectableTarget(getDeepEventTarget(event), this.#selector);
 		if (!target) return;
 
 		if (this.composer) {

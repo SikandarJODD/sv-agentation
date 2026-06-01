@@ -31,6 +31,7 @@
 	import { asset } from '$app/paths';
 	import DialogExample from '$lib/components/examples/dialog-example.svelte';
 	import DialogTwoExample from '$lib/components/examples/dialog-two-example.svelte';
+	import ShadowDomExample from '$lib/components/examples/shadow-dom-example.svelte';
 
 	let npmjsUrl = 'https://www.npmjs.com/package/sv-agentation';
 	let siteUrl = 'https://sv-agentation.com';
@@ -523,6 +524,16 @@ Use this example:
 					this page. Press <Kbd class="mx-1">i</Kbd> to activate or deactivate it, then use the new preview
 					button to scan saved notes or hover a marker to preview the exact area before opening it.
 				</p>
+			</div>
+			<div class="mt-3 rounded-md border border-border bg-card p-3">
+				<p class="text-[0.82rem] tracking-[0.14em] text-muted-foreground uppercase">
+					Works for shadow DOM too!
+				</p>
+				<p class="mt-2 mb-3 text-sm leading-6 text-muted-foreground">
+					The inspector pierces open shadow roots, so elements inside web components are fully
+					hoverable, clickable, and annotatable just like the rest of the page.
+				</p>
+				<ShadowDomExample />
 			</div>
 		</section>
 
