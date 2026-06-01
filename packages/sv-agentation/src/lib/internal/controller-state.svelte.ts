@@ -72,7 +72,7 @@ export const buildSelectionPreview = (
 	if (items.length === 0) return null;
 
 	const rects = items
-		.filter((item) => document.contains(item.element))
+		.filter((item) => item.element.isConnected)
 		.map((item) => item.element.getBoundingClientRect())
 		.map((rect) => ({
 			left: rect.left,
