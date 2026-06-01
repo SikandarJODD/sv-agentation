@@ -1,5 +1,11 @@
 # sv-agentation
 
+## 0.4.0
+
+### Minor Changes
+
+- d63b15c: feat: Allow inspection of elements in the shadow DOM
+
 ## 0.3.1
 
 ### Patch Changes
