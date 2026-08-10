@@ -87,6 +87,26 @@ const dispatchClickAsync = async (element: Element | null, init: MouseEventInit 
 	flushSync();
 };
 
+const dispatchPointer = (
+	target: EventTarget,
+	type: 'pointerdown' | 'pointermove' | 'pointerup',
+	init: MouseEventInit & { pointerId?: number } = {}
+) => {
+	const { pointerId = 1, ...mouseInit } = init;
+	const event = new MouseEvent(type, {
+		bubbles: true,
+		cancelable: true,
+		...mouseInit
+	});
+	Object.defineProperty(event, 'pointerId', {
+		configurable: true,
+		value: pointerId
+	});
+
+	target.dispatchEvent(event);
+	flushSync();
+};
+
 const findButtonByText = (target: ParentNode, text: string) =>
 	Array.from(target.querySelectorAll('button')).find((button) =>
 		button.textContent?.includes(text)
@@ -453,6 +473,78 @@ describe('Agentation component', () => {
 		expect(toolbarShell?.getAttribute('style')).toContain(
 			`--toolbar-shell-width: ${COLLAPSED_TOOLBAR_SIZE}px`
 		);
+	});
+
+	it('treats small pointer movement on the collapsed launcher as a click', () => {
+		mountedComponent = mount(Agentation, { target });
+		flushSync();
+
+		const launcher = findButtonByTitle(target, 'Open toolbar');
+		if (!(launcher instanceof HTMLButtonElement)) {
+			throw new Error('expected collapsed toolbar launcher');
+		}
+		const toolbarShell = target.querySelector('.toolbar-shell');
+		const collapsedPosition = getToolbarCoordinatesForPreset('bottom-right', false);
+		const startX = collapsedPosition.x + COLLAPSED_TOOLBAR_SIZE / 2;
+		const startY = collapsedPosition.y + COLLAPSED_TOOLBAR_SIZE / 2;
+
+		dispatchPointer(launcher, 'pointerdown', {
+			button: 0,
+			buttons: 1,
+			clientX: startX,
+			clientY: startY
+		});
+		dispatchPointer(window, 'pointermove', {
+			buttons: 1,
+			clientX: startX + 4,
+			clientY: startY + 3
+		});
+		dispatchPointer(window, 'pointerup', {
+			button: 0,
+			clientX: startX + 4,
+			clientY: startY + 3
+		});
+		clickButton(launcher);
+
+		expect(toolbarShell?.classList.contains('toolbar-expanded')).toBe(true);
+	});
+
+	it('drags the collapsed launcher without opening the toolbar', () => {
+		mountedComponent = mount(Agentation, { target });
+		flushSync();
+
+		const launcher = findButtonByTitle(target, 'Open toolbar');
+		if (!(launcher instanceof HTMLButtonElement)) {
+			throw new Error('expected collapsed toolbar launcher');
+		}
+		const toolbarLayer = target.querySelector('.toolbar-layer');
+		const toolbarShell = target.querySelector('.toolbar-shell');
+		const collapsedPosition = getToolbarCoordinatesForPreset('bottom-right', false);
+		const startX = collapsedPosition.x + COLLAPSED_TOOLBAR_SIZE / 2;
+		const startY = collapsedPosition.y + COLLAPSED_TOOLBAR_SIZE / 2;
+
+		dispatchPointer(launcher, 'pointerdown', {
+			button: 0,
+			buttons: 1,
+			clientX: startX,
+			clientY: startY
+		});
+		dispatchPointer(window, 'pointermove', {
+			buttons: 1,
+			clientX: startX - 120,
+			clientY: startY - 80
+		});
+		dispatchPointer(window, 'pointerup', {
+			button: 0,
+			clientX: startX - 120,
+			clientY: startY - 80
+		});
+		clickButton(launcher);
+
+		expect(toolbarLayer?.getAttribute('style')).toContain(`left: ${collapsedPosition.x - 120}px`);
+		expect(toolbarLayer?.getAttribute('style')).toContain(`top: ${collapsedPosition.y - 80}px`);
+		expect(findButtonByTitle(target, 'Open toolbar')).toBeInstanceOf(HTMLButtonElement);
+		expect(toolbarShell?.classList.contains('toolbar-expanded')).toBe(false);
 	});
 
 	it('maps behavior toggle controls to the matching persisted settings', () => {

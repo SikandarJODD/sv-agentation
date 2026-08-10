@@ -3,6 +3,8 @@ import { DEFAULT_DELETE_ALL_DELAY_MS, createDefaultToolbarPosition } from '../ut
 
 export type ToolbarDragState = {
 	pointerId: number | null;
+	startX: number;
+	startY: number;
 	offsetX: number;
 	offsetY: number;
 	width: number;
@@ -41,6 +43,7 @@ export type ModifierState = {
 
 export const DRAG_THRESHOLD = 8;
 export const DRAG_UPDATE_THROTTLE = 32;
+export const TOOLBAR_DRAG_THRESHOLD = 10;
 export const DRAG_CANDIDATE_SELECTOR =
 	'button, a, input, img, p, h1, h2, h3, h4, h5, h6, li, label, td, th, div, span, section, article, aside, nav';
 

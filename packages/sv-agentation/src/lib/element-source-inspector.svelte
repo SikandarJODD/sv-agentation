@@ -207,7 +207,7 @@
 		onTogglePreview={controller.togglePreview}
 		onToggleSettings={controller.toggleSettings}
 		onToggleThemeMode={controller.toggleThemeMode}
-		onToggleToolbar={controller.toggleToolbar}
+		onToggleToolbar={controller.handleToolbarLauncherClick}
 		onToolbarPointerDown={controller.handleToolbarPointerDown}
 		toolbarPosition={controller.toolbarPositionPreset}
 		keyBindings={controller.keyBindings}
