@@ -53,7 +53,7 @@
 		"jsdom": "^26.1.0",
 		"publint": "^0.3.17",
 		"svelte": "^5.51.0",
-		"svelte-check": "^4.4.2",
+		"svelte-check": "^4.7.5",
 		"typescript": "^6.0.3",
 		"vite": "^8.0.8",
 		"vitest": "^3.2.4"

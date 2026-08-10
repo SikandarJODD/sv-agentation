@@ -721,7 +721,7 @@ describe('CopyOpenController', () => {
 			clientX: 400,
 			clientY: 300,
 			preventDefault: vi.fn()
-		} as PointerEvent);
+		} as unknown as PointerEvent);
 		expect(collapsedController.toolbar.position).toEqual({ x: 374, y: 274 });
 		collapsedController.handlePointerUp({
 			pointerId: 1
@@ -751,7 +751,7 @@ describe('CopyOpenController', () => {
 			clientX: 600,
 			clientY: 320,
 			preventDefault: vi.fn()
-		} as PointerEvent);
+		} as unknown as PointerEvent);
 		expect(expandedController.toolbar.position).toEqual({ x: 454, y: 294 });
 		expandedController.handlePointerUp({
 			pointerId: 2
