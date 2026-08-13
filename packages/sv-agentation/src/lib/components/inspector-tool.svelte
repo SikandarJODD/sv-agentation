@@ -186,7 +186,11 @@
 		if (!toolbarDragEnabled) return;
 
 		const target = event.target;
-		if (target instanceof Element && target.closest('button, input, textarea, label')) return;
+		if (target instanceof Element) {
+			const interactiveTarget = target.closest('button, input, textarea, label');
+			const collapsedLauncher = !toolbar.expanded && target.closest('[data-toolbar-launcher]');
+			if (interactiveTarget && !collapsedLauncher) return;
+		}
 		onToolbarPointerDown(event);
 	};
 

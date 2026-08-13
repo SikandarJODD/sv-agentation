@@ -12,6 +12,7 @@
 	aria-label="Open toolbar"
 	class="launcher-button"
 	data-inspector-ui
+	data-toolbar-launcher
 	title="Open toolbar"
 	type="button"
 	onclick={onToggleToolbar}

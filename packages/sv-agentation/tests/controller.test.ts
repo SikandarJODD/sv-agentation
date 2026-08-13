@@ -17,6 +17,7 @@ import {
 	readStoredToolbarPlacement,
 	writeStoredToolbarPlacement
 } from '../src/lib/utils/position';
+import { TOOLBAR_DRAG_THRESHOLD } from '../src/lib/internal/controller-state.svelte';
 
 const setViewport = (width: number, height: number) => {
 	Object.defineProperty(window, 'innerWidth', {
@@ -504,7 +505,7 @@ describe('CopyOpenController', () => {
 		controller.destroy();
 	});
 
-	it('syncs explicit persisted props into runtime state and storage', () => {
+	it('syncs explicit persisted props into runtime state and storage', async () => {
 		writeStoredSettings({
 			...DEFAULT_NOTES_SETTINGS,
 			blockPageInteractions: true,
@@ -564,6 +565,13 @@ describe('CopyOpenController', () => {
 			clientX: 120,
 			clientY: 120,
 			currentTarget: toolbarHandle,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		expect(controller.toolbar.dragging).toBe(false);
+		await controller.handlePointerMove({
+			pointerId: 1,
+			clientX: 140,
+			clientY: 140,
 			preventDefault: vi.fn()
 		} as unknown as PointerEvent);
 		expect(controller.toolbar.dragging).toBe(true);
@@ -690,6 +698,7 @@ describe('CopyOpenController', () => {
 	it('supports dragging the toolbar in both collapsed and expanded states', async () => {
 		const collapsedController = new CopyOpenController();
 		const collapsedHandle = createToolbarHandle(COLLAPSED_TOOLBAR_SIZE, COLLAPSED_TOOLBAR_SIZE);
+		const collapsedStart = { ...collapsedController.toolbar.position };
 
 		collapsedController.handleToolbarPointerDown({
 			button: 0,
@@ -699,16 +708,29 @@ describe('CopyOpenController', () => {
 			currentTarget: collapsedHandle,
 			preventDefault: vi.fn()
 		} as unknown as PointerEvent);
+		expect(collapsedController.toolbar.dragging).toBe(false);
+		await collapsedController.handlePointerMove({
+			pointerId: 1,
+			clientX: collapsedStart.x + 26 + TOOLBAR_DRAG_THRESHOLD,
+			clientY: collapsedStart.y + 26,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
+		expect(collapsedController.toolbar.position).toEqual(collapsedStart);
 		await collapsedController.handlePointerMove({
 			pointerId: 1,
 			clientX: 400,
-			clientY: 300
-		} as PointerEvent);
+			clientY: 300,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
 		expect(collapsedController.toolbar.position).toEqual({ x: 374, y: 274 });
 		collapsedController.handlePointerUp({
 			pointerId: 1
 		} as PointerEvent);
 		expect(collapsedController.toolbar.dragging).toBe(false);
+		collapsedController.handleToolbarLauncherClick();
+		expect(collapsedController.toolbar.expanded).toBe(false);
+		collapsedController.handleToolbarLauncherClick();
+		expect(collapsedController.toolbar.expanded).toBe(true);
 		collapsedController.destroy();
 
 		const expandedController = new CopyOpenController();
@@ -723,11 +745,13 @@ describe('CopyOpenController', () => {
 			currentTarget: expandedHandle,
 			preventDefault: vi.fn()
 		} as unknown as PointerEvent);
+		expect(expandedController.toolbar.dragging).toBe(false);
 		await expandedController.handlePointerMove({
 			pointerId: 2,
 			clientX: 600,
-			clientY: 320
-		} as PointerEvent);
+			clientY: 320,
+			preventDefault: vi.fn()
+		} as unknown as PointerEvent);
 		expect(expandedController.toolbar.position).toEqual({ x: 454, y: 294 });
 		expandedController.handlePointerUp({
 			pointerId: 2

@@ -108,6 +108,7 @@ import {
 	createModifierState,
 	createToolbarState,
 	DRAG_THRESHOLD,
+	TOOLBAR_DRAG_THRESHOLD,
 	type DeleteAllState,
 	type GroupSelectionItem,
 	type ModifierState,
@@ -201,10 +202,20 @@ export class CopyOpenController {
 	#explicitToolbarPosition: InspectorPosition | null = null;
 	#copyResetTimer: number | null = null;
 	#toolbarCopyResetTimer: number | null = null;
+	#toolbarDragClickResetTimer: number | null = null;
 	#deleteAllCommitTimer: number | null = null;
 	#deleteAllFrame: number | null = null;
 	#deleteAllDeadline = 0;
-	#toolbarDrag: ToolbarDragState = { pointerId: null, offsetX: 0, offsetY: 0, width: 0, height: 0 };
+	#toolbarDrag: ToolbarDragState = {
+		pointerId: null,
+		startX: 0,
+		startY: 0,
+		offsetX: 0,
+		offsetY: 0,
+		width: 0,
+		height: 0
+	};
+	#suppressNextToolbarLauncherClick = false;
 	#pageStorageKey = 'unknown-page';
 	#groupSelectionItems: GroupSelectionItem[] = [];
 	#mouseDownState: MouseDownState | null = null;
@@ -378,6 +389,16 @@ export class CopyOpenController {
 		});
 	};
 
+	handleToolbarLauncherClick = () => {
+		if (this.#suppressNextToolbarLauncherClick) {
+			this.#clearToolbarDragClickResetTimer();
+			this.#suppressNextToolbarLauncherClick = false;
+			return;
+		}
+
+		this.toggleToolbar();
+	};
+
 	closeToolbar = () => {
 		this.cancelDeleteAll();
 
@@ -546,6 +567,8 @@ export class CopyOpenController {
 
 	handleToolbarPointerDown = (event: PointerEvent) => {
 		if (event.button !== 0) return;
+		this.#clearToolbarDragClickResetTimer();
+		this.#suppressNextToolbarLauncherClick = false;
 
 		let width = 0;
 		let height = 0;
@@ -558,13 +581,14 @@ export class CopyOpenController {
 
 		this.#toolbarDrag = {
 			pointerId: event.pointerId,
+			startX: event.clientX,
+			startY: event.clientY,
 			offsetX: event.clientX - this.toolbar.position.x,
 			offsetY: event.clientY - this.toolbar.position.y,
 			width,
 			height
 		};
-		this.#setToolbar({ dragging: true });
-		event.preventDefault();
+		this.#setToolbar({ dragging: false });
 	};
 
 	handleMouseDownCapture = (event: MouseEvent) => {
@@ -586,8 +610,19 @@ export class CopyOpenController {
 	};
 
 	handlePointerMove = async (event: PointerEvent) => {
-		if (this.toolbar.dragging) {
+		if (this.#toolbarDrag.pointerId !== null) {
 			if (this.#toolbarDrag.pointerId !== event.pointerId) return;
+
+			const deltaX = event.clientX - this.#toolbarDrag.startX;
+			const deltaY = event.clientY - this.#toolbarDrag.startY;
+			if (!this.toolbar.dragging && Math.hypot(deltaX, deltaY) <= TOOLBAR_DRAG_THRESHOLD) {
+				return;
+			}
+
+			if (!this.toolbar.dragging) {
+				this.#setToolbar({ dragging: true });
+			}
+			event.preventDefault();
 
 			const nextPosition: ToolbarCoordinates = {
 				x: event.clientX - this.#toolbarDrag.offsetX,
@@ -644,17 +679,32 @@ export class CopyOpenController {
 	};
 
 	handlePointerUp = (event: PointerEvent) => {
-		if (!this.toolbar.dragging) return;
-		if (this.#toolbarDrag.pointerId !== null && event.pointerId !== this.#toolbarDrag.pointerId)
-			return;
+		if (this.#toolbarDrag.pointerId === null) return;
+		if (event.pointerId !== this.#toolbarDrag.pointerId) return;
 
+		const didDrag = this.toolbar.dragging;
 		const nextPosition = this.toolbar.position;
-		this.#toolbarDrag = { pointerId: null, offsetX: 0, offsetY: 0, width: 0, height: 0 };
+		this.#toolbarDrag = {
+			pointerId: null,
+			startX: 0,
+			startY: 0,
+			offsetX: 0,
+			offsetY: 0,
+			width: 0,
+			height: 0
+		};
 		this.#setToolbar({ dragging: false });
+		if (!didDrag) return;
+
 		this.#persistToolbarPlacement(nextPosition, {
 			mode: 'custom',
 			expanded: this.toolbar.expanded
 		});
+		this.#suppressNextToolbarLauncherClick = true;
+		this.#toolbarDragClickResetTimer = window.setTimeout(() => {
+			this.#suppressNextToolbarLauncherClick = false;
+			this.#toolbarDragClickResetTimer = null;
+		}, 0);
 	};
 
 	handleMouseUpCapture = async (event: MouseEvent) => {
@@ -985,6 +1035,7 @@ export class CopyOpenController {
 		this.cancelDeleteAll();
 		this.#clearCopyResetTimer();
 		this.#clearToolbarCopyResetTimer();
+		this.#clearToolbarDragClickResetTimer();
 		this.#dragUserSelectSnapshot = setDragUserSelectSuppressed(false, this.#dragUserSelectSnapshot);
 		this.#cursorStyleElement = removeInspectorCursorStyles(this.#cursorStyleElement);
 		this.#pausedAnimationsStyleElement = setPausedAnimations(
@@ -1605,5 +1656,11 @@ export class CopyOpenController {
 		if (this.#toolbarCopyResetTimer === null) return;
 		window.clearTimeout(this.#toolbarCopyResetTimer);
 		this.#toolbarCopyResetTimer = null;
+	}
+
+	#clearToolbarDragClickResetTimer() {
+		if (this.#toolbarDragClickResetTimer === null || typeof window === 'undefined') return;
+		window.clearTimeout(this.#toolbarDragClickResetTimer);
+		this.#toolbarDragClickResetTimer = null;
 	}
 }
